@@ -1,0 +1,20 @@
+{
+  "name": "vrcontrol",
+  "version": "1.0.0",
+  "description": "VR Control System - Go Backend + React Frontend",
+  "private": true,
+  "workspaces": [
+    "client"
+  ],
+  "scripts": {
+    "dev": "concurrently \"cd server && go run main.go\" \"cd client && npm run dev\"",
+    "build": "npm --prefix client run build",
+    "client:dev": "cd client && npm run dev",
+    "client:build": "cd client && npm run build",
+    "server:build": "cd server && go build -o ../vrcontrol-server main.go",
+    "server:run": "cd server && go run main.go"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}

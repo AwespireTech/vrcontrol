@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #282c34; /* #ffffff; */
+  --foreground: #ededed;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #282c34;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  text-align: left;
+  min-height: 100vh;
+  width: 100vw;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  /* align-items: center;
+  justify-content: center; */
+  color: white;
+  font-size: large;
+}
+
+.player-table {
+  border-collapse: collapse;
+}
+
+.player-table td {
+  padding: 5px 5px;
+}
+
+.player-table td:first-child {
+  min-width: 170px;
+}
+
+@layer components {
+  .title {
+    @apply my-2 bg-gradient-to-b from-transparent from-60% to-blue/50 to-60% font-bold;
+  }
+}
