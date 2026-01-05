@@ -6,7 +6,7 @@ import "./app/globals.css"
 function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-black text-white">
+      <div className="min-h-screen bg-background text-foreground">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/:roomID" element={<RoomState />} />

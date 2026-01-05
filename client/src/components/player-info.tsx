@@ -27,7 +27,7 @@ const PlayerInfo = ({
 
   return (
     <div
-      className={`${player.ready_to_move ? "border-blue" : "border-gray"} w-[400px] rounded-lg border-2 p-2`}
+      className={`${player.ready_to_move ? "border-primary" : "border-muted"} w-[400px] rounded-lg border-2 p-2`}
     >
       <table className="player-table">
         <tbody>
@@ -58,7 +58,7 @@ const PlayerInfo = ({
               {" ⭢ "}
               <input
                 type="number"
-                className="border-gray-300 w-14 place-self-center rounded px-2 py-1 text-gray"
+                className="w-14 place-self-center rounded border border-border bg-surface px-2 py-1 text-foreground"
                 value={numberInput}
                 onChange={handleNumberChange}
                 min={0}
@@ -91,7 +91,7 @@ const PlayerInfo = ({
               <strong>Last Update Time</strong>
             </td>
             <td
-              className={`${lastUpdateTime.isSameOrBefore(currTime.subtract(5, "second")) && "font-bold text-red-600"}`}
+              className={`${lastUpdateTime.isSameOrBefore(currTime.subtract(5, "second")) && "font-bold text-danger"}`}
             >
               {lastUpdateTime.format("YYYY/MM/DD HH:mm:ss")}
             </td>

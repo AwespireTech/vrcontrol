@@ -27,11 +27,11 @@ const PlayerList = ({
       <div className="flex w-full place-items-center justify-between py-2">
         <span className="title">Player List :</span>
         <div className="flex place-items-center">
-          <span className="pr-1 text-xs text-white/50">Refreshing in {countdown} seconds</span>
+          <span className="pr-1 text-xs text-foreground/60">Refreshing in {countdown} seconds</span>
           <FiRefreshCcw className="hover:cursor-pointer hover:opacity-50" onClick={refresh} />
         </div>
       </div>
-      <div className="grid grid-cols-4 items-center gap-2 border-b p-2 font-medium text-white/50">
+      <div className="grid grid-cols-4 items-center gap-2 border-b border-border p-2 font-medium text-foreground/60">
         <span>Player ID</span>
         <span className="text-center">Room ID</span>
         <span className="text-center">Seq</span>
