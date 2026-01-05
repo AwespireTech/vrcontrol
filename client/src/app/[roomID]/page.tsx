@@ -71,22 +71,22 @@ export const RoomState = () => {
       <p>{webSocketData ? `Player Count: ${webSocketData.player_count}` : "No data available"}</p>
       <div className="flex items-center justify-start gap-2 py-3">
         <div>Ready to move: &nbsp;</div>
-        <div className="w-8 border-b-2 border-b-blue" />
+        <div className="w-8 border-b-2 border-b-primary" />
         <div>True &nbsp;</div>
-        <div className="w-8 border-b-2 border-b-gray" />
+        <div className="w-8 border-b-2 border-b-muted" />
         <div>False</div>
       </div>
       <div className="flex items-center gap-2">
         <span>Force all move to chapter</span>
         <select
           id="mySelect"
-          className={`mx-2 place-self-center overflow-y-auto rounded px-2 py-1 text-center text-gray ${selectedOption === "" && "text-gray/50"}`}
+          className={`mx-2 place-self-center overflow-y-auto rounded border border-border bg-surface px-2 py-1 text-center text-foreground ${selectedOption === "" && "text-foreground/50"}`}
           value={selectedOption}
           onChange={(e) => setSelectedOption(e.target.value)}
         >
-          <option value="" className="text-gray/50"></option>
+          <option value="" className="text-foreground/50"></option>
           {options.map((option, index) => (
-            <option key={index} value={option} className="text-gray">
+            <option key={index} value={option} className="text-foreground">
               {option}
             </option>
           ))}
@@ -110,10 +110,8 @@ export const RoomState = () => {
         >
           Go
         </Button>
-        {moveState === "success" && <span className="text-green-500">Move command sent!</span>}
-        {moveState === "failed" && (
-          <span className="text-red-500">Failed to send move command.</span>
-        )}
+        {moveState === "success" && <span className="text-success">Move command sent!</span>}
+        {moveState === "failed" && <span className="text-danger">Failed to send move command.</span>}
       </div>
 
       {/* <p>Player Info:</p> */}

@@ -2,32 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #282c34; /* #ffffff; */
-  --foreground: #ededed;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #282c34;
-    --foreground: #ededed;
+    color-scheme: dark;
   }
-}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-  text-align: left;
-  min-height: 100vh;
-  width: 100vw;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  /* align-items: center;
-  justify-content: center; */
-  color: white;
-  font-size: large;
+  body {
+    @apply flex min-h-screen w-full flex-col bg-background p-10 text-foreground text-lg;
+    font-family: Arial, Helvetica, sans-serif;
+    text-align: left;
+  }
 }
 
 .player-table {
@@ -44,6 +28,6 @@ body {
 
 @layer components {
   .title {
-    @apply my-2 bg-gradient-to-b from-transparent from-60% to-blue/50 to-60% font-bold;
+    @apply my-2 bg-gradient-to-b from-transparent from-60% to-primary/50 to-60% font-bold;
   }
 }

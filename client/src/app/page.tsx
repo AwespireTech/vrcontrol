@@ -55,7 +55,7 @@ export default function Home() {
   return (
     <div className="grid h-full w-full items-center justify-items-center gap-16 p-8 pb-20 font-[family-name:var(--font-geist-sans)] sm:p-20">
       <main className="grid w-full grid-cols-1 gap-8 lg:grid-cols-2">
-        <div className="flex w-full flex-col items-center gap-8 rounded-lg border border-white p-3 text-xs sm:text-base">
+        <div className="flex w-full flex-col items-center gap-8 rounded-lg border border-border p-3 text-xs sm:text-base">
           <PlayerList
             playerList={playerList}
             roomList={roomList}
@@ -63,9 +63,9 @@ export default function Home() {
             refresh={getPlayer}
           />
         </div>
-        <div className="flex w-full flex-col items-center gap-8 rounded-lg border border-white p-3 sm:items-start">
+        <div className="flex w-full flex-col items-center gap-8 rounded-lg border border-border p-3 sm:items-start">
           <RoomCreate />
-          <div className="m-1 w-full border-b border-white"></div>
+          <div className="m-1 w-full border-b border-border"></div>
           <RoomList roomList={roomList} countdown={countdown} refresh={getRoom} />
         </div>
       </main>

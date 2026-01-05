@@ -11,7 +11,7 @@ export const Button = ({
 }) => {
   return (
     <button
-      className={`rounded-lg bg-blue px-2 py-1 hover:bg-blue/80 ${className} disabled:bg-gray disabled:opacity-70`}
+      className={`rounded-lg bg-primary px-2 py-1 text-foreground hover:bg-primary/80 ${className} disabled:bg-muted disabled:opacity-70`}
       disabled={disabled}
       onClick={onClick}
     >
