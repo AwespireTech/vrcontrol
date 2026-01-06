@@ -62,6 +62,13 @@ export default function QuestPage() {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto">
+        {/* 返回首頁按鈕 */}
+        <div className="mb-4">
+          <Link to="/" className="inline-flex items-center gap-2 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors">
+            ← 返回首頁
+          </Link>
+        </div>
+        
         {/* 頁面標題 */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground">Quest 設備管理</h1>
