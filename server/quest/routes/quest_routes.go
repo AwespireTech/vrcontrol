@@ -1,0 +1,96 @@
+package routes
+
+import (
+	"time"
+
+	"vrcontrol/server/quest/adb"
+	"vrcontrol/server/quest/controller"
+	"vrcontrol/server/quest/questsocket"
+	"vrcontrol/server/quest/repository"
+	"vrcontrol/server/quest/service"
+
+	"github.com/gin-gonic/gin"
+)
+
+// SetupQuestRoutes 設置 Quest 模組的所有路由
+func SetupQuestRoutes(router *gin.Engine, dataDir string) {
+	// 初始化 Managers
+	adbManager := adb.NewADBManager("", 30*time.Second)
+	pingManager := adb.NewPingManager(2 * time.Second)
+	socketManager := questsocket.NewSocketManager()
+
+	// 初始化 Repositories
+	deviceRepo := repository.NewDeviceRepository(dataDir + "/quest_devices.json")
+	roomRepo := repository.NewRoomRepository(dataDir + "/quest_rooms.json")
+	actionRepo := repository.NewActionRepository(dataDir + "/quest_actions.json")
+
+	// 初始化 Services
+	deviceService := service.NewDeviceService(deviceRepo, adbManager, pingManager)
+	roomService := service.NewRoomService(roomRepo, deviceRepo, socketManager)
+	actionService := service.NewActionService(actionRepo, deviceRepo, adbManager)
+	monitoringService := service.NewMonitoringService(deviceRepo, pingManager, adbManager)
+
+	// 初始化 Controllers
+	deviceController := controller.NewDeviceController(deviceService)
+	roomController := controller.NewRoomController(roomService)
+	actionController := controller.NewActionController(actionService)
+	monitoringController := controller.NewMonitoringController(monitoringService)
+
+	// Quest API 路由群組
+	questAPI := router.Group("/api/quest")
+	{
+		// 設備管理路由
+		devices := questAPI.Group("/devices")
+		{
+			devices.GET("", deviceController.GetAllDevices)
+			devices.GET("/:id", deviceController.GetDevice)
+			devices.POST("", deviceController.CreateDevice)
+			devices.PUT("/:id", deviceController.UpdateDevice)
+			devices.DELETE("/:id", deviceController.DeleteDevice)
+			devices.POST("/:id/connect", deviceController.ConnectDevice)
+			devices.POST("/:id/disconnect", deviceController.DisconnectDevice)
+			devices.GET("/:id/status", deviceController.GetDeviceStatus)
+			devices.POST("/:id/ping", deviceController.PingDevice)
+			devices.POST("/batch/connect", deviceController.ConnectBatch)
+			devices.POST("/batch/ping", deviceController.PingBatch)
+		}
+
+		// 房間管理路由
+		rooms := questAPI.Group("/rooms")
+		{
+			rooms.GET("", roomController.GetAllRooms)
+			rooms.GET("/:id", roomController.GetRoom)
+			rooms.POST("", roomController.CreateRoom)
+			rooms.PUT("/:id", roomController.UpdateRoom)
+			rooms.DELETE("/:id", roomController.DeleteRoom)
+			rooms.POST("/:id/devices/:deviceId", roomController.AddDevice)
+			rooms.DELETE("/:id/devices/:deviceId", roomController.RemoveDevice)
+			rooms.POST("/:id/socket/start", roomController.StartSocket)
+			rooms.POST("/:id/socket/stop", roomController.StopSocket)
+			rooms.GET("/:id/socket/info", roomController.GetSocketInfo)
+			rooms.POST("/:id/parameters/sync", roomController.SyncParameters)
+		}
+
+		// 動作管理路由
+		actions := questAPI.Group("/actions")
+		{
+			actions.GET("", actionController.GetAllActions)
+			actions.GET("/:id", actionController.GetAction)
+			actions.POST("", actionController.CreateAction)
+			actions.PUT("/:id", actionController.UpdateAction)
+			actions.DELETE("/:id", actionController.DeleteAction)
+			actions.POST("/:id/execute", actionController.ExecuteAction)
+			actions.POST("/batch/execute", actionController.ExecuteBatch)
+		}
+
+		// 監控服務路由
+		monitoring := questAPI.Group("/monitoring")
+		{
+			monitoring.GET("/status", monitoringController.GetStatus)
+			monitoring.POST("/start", monitoringController.Start)
+			monitoring.POST("/stop", monitoringController.Stop)
+			monitoring.POST("/interval", monitoringController.SetInterval)
+			monitoring.POST("/run-once", monitoringController.RunOnce)
+		}
+	}
+}
