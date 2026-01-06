@@ -150,16 +150,24 @@ export default function QuestPage() {
                 自動監控設備連接狀態 · 下次更新: {countdown} 秒
               </p>
             </div>
-            <button
-              onClick={toggleMonitoring}
-              className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
-                monitoringRunning
-                  ? 'bg-red-500 hover:bg-red-600 text-white'
-                  : 'bg-green-500 hover:bg-green-600 text-white'
-              }`}
-            >
-              {monitoringRunning ? '停止監控' : '啟動監控'}
-            </button>
+            <div className="flex gap-3">
+              <Link
+                to="/quest/settings"
+                className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-semibold"
+              >
+                ⚙️ 系統設置
+              </Link>
+              <button
+                onClick={toggleMonitoring}
+                className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
+                  monitoringRunning
+                    ? 'bg-red-500 hover:bg-red-600 text-white'
+                    : 'bg-green-500 hover:bg-green-600 text-white'
+                }`}
+              >
+                {monitoringRunning ? '停止監控' : '啟動監控'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
