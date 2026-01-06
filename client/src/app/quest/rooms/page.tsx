@@ -86,30 +86,30 @@ export default function RoomsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-xl text-gray-600">加載中...</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-xl text-foreground">加載中...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto">
         {/* 頁面標題和操作 */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <button
               onClick={() => navigate(-1)}
-              className="text-blue-500 hover:text-blue-600 mb-2"
+              className="text-primary hover:text-primary/80 mb-2"
             >
               ← 返回
             </button>
-            <h1 className="text-3xl font-bold text-gray-900">房間管理</h1>
-            <p className="text-gray-600 mt-2">下次更新: {countdown} 秒</p>
+            <h1 className="text-3xl font-bold text-foreground">房間管理</h1>
+            <p className="text-foreground/70 mt-2">下次更新: {countdown} 秒</p>
           </div>
           <button
             onClick={() => navigate('/quest/rooms/new')}
-            className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors"
+            className="px-4 py-2 bg-primary text-foreground rounded-lg hover:bg-primary/80 transition-colors"
           >
             + 創建房間
           </button>
@@ -117,10 +117,10 @@ export default function RoomsPage() {
 
         {/* 房間列表 */}
         {rooms.length === 0 ? (
-          <div className="bg-white rounded-lg p-12 text-center shadow-sm border border-gray-200">
+          <div className="bg-surface rounded-lg p-12 text-center border border-border">
             <div className="text-6xl mb-4">🏠</div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">還沒有房間</h3>
-            <p className="text-gray-600 mb-4">點擊上方按鈕創建您的第一個房間</p>
+            <h3 className="text-xl font-semibold text-foreground mb-2">還沒有房間</h3>
+            <p className="text-foreground/70 mb-4">點擊上方按鈕創建您的第一個房間</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

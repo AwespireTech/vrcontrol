@@ -207,51 +207,51 @@ export default function DevicesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-xl text-gray-600">加載中...</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-xl text-foreground">加載中...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto">
         {/* 頁面標題和操作 */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <button
               onClick={() => navigate(-1)}
-              className="text-blue-500 hover:text-blue-600 mb-2"
+              className="text-primary hover:text-primary/80 mb-2"
             >
               ← 返回
             </button>
-            <h1 className="text-3xl font-bold text-gray-900">設備管理</h1>
-            <p className="text-gray-600 mt-2">下次更新: {countdown} 秒</p>
+            <h1 className="text-3xl font-bold text-foreground">設備管理</h1>
+            <p className="text-foreground/70 mt-2">下次更新: {countdown} 秒</p>
           </div>
           <div className="flex gap-2">
             <button
               onClick={handleConnectAll}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+              className="px-4 py-2 bg-primary text-foreground rounded-lg hover:bg-primary/80 transition-colors"
             >
               批量連接
             </button>
             <button
               onClick={handlePingAll}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+              className="px-4 py-2 bg-success text-foreground rounded-lg hover:bg-success/80 transition-colors"
             >
               批量 Ping
             </button>
             {scrcpySystemInfo?.installed && selectedDeviceIds.length > 0 && (
               <button
                 onClick={handleMonitorBatch}
-                className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
+                className="px-4 py-2 bg-accent text-foreground rounded-lg hover:bg-accent/80 transition-colors"
               >
                 批量監看 ({selectedDeviceIds.length})
               </button>
             )}
             <button
               onClick={() => navigate('/quest/devices/new')}
-              className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors"
+              className="px-4 py-2 bg-primary text-foreground rounded-lg hover:bg-primary/80 transition-colors"
             >
               + 添加設備
             </button>
@@ -260,8 +260,8 @@ export default function DevicesPage() {
 
         {/* 設備列表 */}
         {devices.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-            <p className="text-gray-500">尚無設備</p>
+          <div className="text-center py-12 bg-surface rounded-lg border border-border">
+            <p className="text-foreground/70">尚無設備</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -292,58 +292,58 @@ export default function DevicesPage() {
 
         {/* Scrcpy 會話列表 */}
         {scrcpySystemInfo?.installed && scrcpySessions.length > 0 && (
-          <div className="mt-8 bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+          <div className="mt-8 bg-surface rounded-lg border border-border p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-gray-900">監看會話</h2>
+              <h2 className="text-xl font-bold text-foreground">監看會話</h2>
               <button
                 onClick={handleRefreshSessions}
-                className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                className="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors"
               >
                 刷新狀態
               </button>
             </div>
 
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+              <table className="min-w-full divide-y divide-border">
+                <thead className="bg-surface">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider">
                       設備
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider">
                       PID
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider">
                       啟動時間
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider">
                       狀態
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider">
                       操作
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-surface divide-y divide-border">
                   {scrcpySessions.map((session) => {
                     const device = devices.find((d) => d.device_id === session.device_id)
                     return (
                       <tr key={session.device_id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
                           {device?.name || session.device_id}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-600">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-foreground/70">
                           {session.process_id}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground/70">
                           {new Date(session.started_at).toLocaleString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span
                             className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                               session.is_running
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-gray-100 text-gray-800'
+                                ? 'bg-success/20 text-success'
+                                : 'bg-muted/50 text-foreground/70'
                             }`}
                           >
                             {session.is_running ? '運行中' : '已停止'}
@@ -353,7 +353,7 @@ export default function DevicesPage() {
                           {session.is_running && (
                             <button
                               onClick={() => handleStopScrcpy(session.device_id)}
-                              className="text-red-600 hover:text-red-800"
+                              className="text-danger hover:text-danger/80"
                             >
                               停止
                             </button>

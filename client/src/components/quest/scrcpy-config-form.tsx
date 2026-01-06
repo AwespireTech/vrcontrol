@@ -231,7 +231,7 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
             className="w-full px-3 py-2 border rounded-md"
             placeholder="預設 (opengl, metal, direct3d)"
           />
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-foreground/50 mt-1">
             留空使用系統預設，Windows 可選 direct3d，macOS 可選 metal
           </p>
         </div>

@@ -67,16 +67,16 @@ export default function RoomDevicesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
-        <div className="text-gray-600">載入中...</div>
+      <div className="min-h-screen bg-background p-6 flex items-center justify-center">
+        <div className="text-foreground/70">載入中...</div>
       </div>
     )
   }
 
   if (!room) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
-        <div className="text-red-600">房間不存在</div>
+      <div className="min-h-screen bg-background p-6 flex items-center justify-center">
+        <div className="text-danger">房間不存在</div>
       </div>
     )
   }
@@ -87,29 +87,29 @@ export default function RoomDevicesPage() {
   )
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto">
         <button
           onClick={() => navigate(-1)}
-          className="text-blue-500 hover:text-blue-600 mb-4"
+          className="text-primary hover:text-primary/80 mb-4"
         >
           ← 返回
         </button>
 
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">管理房間設備</h1>
-          <p className="text-gray-600 mt-2">房間: {room.name}</p>
+          <h1 className="text-2xl font-bold text-foreground">管理房間設備</h1>
+          <p className="text-foreground/70 mt-2">房間: {room.name}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* 房間中的設備 */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
+          <div className="bg-surface rounded-lg  border border-border p-6">
+            <h2 className="text-xl font-bold text-foreground mb-4">
               房間中的設備 ({roomDevices.length})
             </h2>
             
             {roomDevices.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-foreground/50">
                 此房間還沒有設備
               </div>
             ) : (
@@ -117,18 +117,18 @@ export default function RoomDevicesPage() {
                 {roomDevices.map((device) => (
                   <div
                     key={device.device_id}
-                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors"
+                    className="flex items-center justify-between p-4 border border-border rounded-lg hover:border-blue-300 transition-colors"
                   >
                     <div>
-                      <div className="font-semibold text-gray-900">{device.name}</div>
-                      <div className="text-sm text-gray-500">
+                      <div className="font-semibold text-foreground">{device.name}</div>
+                      <div className="text-sm text-foreground/50">
                         {device.ip}:{device.port}
                       </div>
                       <div className="mt-1">
                         <span className={`text-xs px-2 py-1 rounded ${
                           device.status === 'online' 
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
+                            ? 'bg-green-100 text-success'
+                            : 'bg-surface text-foreground'
                         }`}>
                           {device.status}
                         </span>
@@ -136,7 +136,7 @@ export default function RoomDevicesPage() {
                     </div>
                     <button
                       onClick={() => handleRemoveDevice(device.device_id)}
-                      className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                      className="px-4 py-2 bg-danger text-white rounded-lg hover:bg-danger/80 transition-colors"
                     >
                       移除
                     </button>
@@ -147,13 +147,13 @@ export default function RoomDevicesPage() {
           </div>
 
           {/* 可添加的設備 */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">
+          <div className="bg-surface rounded-lg  border border-border p-6">
+            <h2 className="text-xl font-bold text-foreground mb-4">
               可添加的設備 ({availableDevices.length})
             </h2>
             
             {availableDevices.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-foreground/50">
                 沒有可添加的設備
               </div>
             ) : (
@@ -161,18 +161,18 @@ export default function RoomDevicesPage() {
                 {availableDevices.map((device) => (
                   <div
                     key={device.device_id}
-                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-green-300 transition-colors"
+                    className="flex items-center justify-between p-4 border border-border rounded-lg hover:border-green-300 transition-colors"
                   >
                     <div>
-                      <div className="font-semibold text-gray-900">{device.name}</div>
-                      <div className="text-sm text-gray-500">
+                      <div className="font-semibold text-foreground">{device.name}</div>
+                      <div className="text-sm text-foreground/50">
                         {device.ip}:{device.port}
                       </div>
                       <div className="mt-1">
                         <span className={`text-xs px-2 py-1 rounded ${
                           device.status === 'online' 
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
+                            ? 'bg-green-100 text-success'
+                            : 'bg-surface text-foreground'
                         }`}>
                           {device.status}
                         </span>
@@ -180,7 +180,7 @@ export default function RoomDevicesPage() {
                     </div>
                     <button
                       onClick={() => handleAddDevice(device.device_id)}
-                      className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+                      className="px-4 py-2 bg-success/100 text-white rounded-lg hover:bg-success/80 transition-colors"
                     >
                       添加
                     </button>

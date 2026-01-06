@@ -13,17 +13,17 @@ export default function NewDevicePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-background p-6">
       <div className="max-w-2xl mx-auto">
         <button
           onClick={() => navigate(-1)}
-          className="text-blue-500 hover:text-blue-600 mb-4"
+          className="text-primary hover:text-primary/80 mb-4"
         >
           ← 返回
         </button>
 
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-6">添加新設備</h1>
+        <div className="bg-surface rounded-lg  border border-border p-6">
+          <h1 className="text-2xl font-bold text-foreground mb-6">添加新設備</h1>
           <DeviceForm onSubmit={handleSubmit} onCancel={() => navigate(-1)} />
         </div>
       </div>

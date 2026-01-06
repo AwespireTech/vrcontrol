@@ -24,15 +24,15 @@ export default function DeviceCard({
   const getStatusColor = (status: string) => {
     switch (status) {
       case QUEST_DEVICE_STATUS.ONLINE:
-        return 'bg-green-500'
+        return 'bg-success'
       case QUEST_DEVICE_STATUS.OFFLINE:
-        return 'bg-gray-500'
+        return 'bg-muted'
       case QUEST_DEVICE_STATUS.CONNECTING:
-        return 'bg-yellow-500'
+        return 'bg-warning'
       case QUEST_DEVICE_STATUS.ERROR:
-        return 'bg-red-500'
+        return 'bg-danger'
       default:
-        return 'bg-gray-500'
+        return 'bg-muted'
     }
   }
 
@@ -55,47 +55,47 @@ export default function DeviceCard({
   const isConnecting = device.status === QUEST_DEVICE_STATUS.CONNECTING
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="rounded-lg border border-border bg-surface p-4 hover:border-primary transition-colors">
       {/* 設備名稱和狀態 */}
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-semibold text-gray-900">{device.name}</h3>
+        <h3 className="text-lg font-semibold text-foreground">{device.name}</h3>
         <div className="flex items-center gap-2">
           <span className={`w-3 h-3 rounded-full ${getStatusColor(device.status)}`} />
-          <span className="text-sm text-gray-600">{getStatusText(device.status)}</span>
+          <span className="text-sm text-foreground/70">{getStatusText(device.status)}</span>
         </div>
       </div>
 
       {/* 設備信息 */}
       <div className="space-y-2 mb-4 text-sm">
         <div className="flex justify-between">
-          <span className="text-gray-600">IP 地址:</span>
-          <span className="font-mono text-gray-900">{device.ip}</span>
+          <span className="text-foreground/70">IP 地址:</span>
+          <span className="font-mono text-foreground">{device.ip}</span>
         </div>
         {device.serial && (
           <div className="flex justify-between">
-            <span className="text-gray-600">序列號:</span>
-            <span className="font-mono text-xs text-gray-900">{device.serial}</span>
+            <span className="text-foreground/70">序列號:</span>
+            <span className="font-mono text-xs text-foreground">{device.serial}</span>
           </div>
         )}
         {device.model && (
           <div className="flex justify-between">
-            <span className="text-gray-600">型號:</span>
-            <span className="text-gray-900">{device.model}</span>
+            <span className="text-foreground/70">型號:</span>
+            <span className="text-foreground">{device.model}</span>
           </div>
         )}
         {isOnline && (
           <>
             <div className="flex justify-between">
-              <span className="text-gray-600">電量:</span>
-              <span className="text-gray-900">{device.battery}%</span>
+              <span className="text-foreground/70">電量:</span>
+              <span className="text-foreground">{device.battery}%</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">溫度:</span>
-              <span className="text-gray-900">{device.temperature}°C</span>
+              <span className="text-foreground/70">溫度:</span>
+              <span className="text-foreground">{device.temperature}°C</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">延遲:</span>
-              <span className="text-gray-900">{device.ping_ms} ms</span>
+              <span className="text-foreground/70">延遲:</span>
+              <span className="text-foreground">{device.ping_ms} ms</span>
             </div>
           </>
         )}
@@ -106,7 +106,7 @@ export default function DeviceCard({
         {!isOnline && !isConnecting && onConnect && (
           <button
             onClick={() => onConnect(device.device_id)}
-            className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            className="px-3 py-1 text-sm bg-primary text-foreground rounded hover:bg-primary/80 transition-colors"
           >
             連接
           </button>
@@ -114,7 +114,7 @@ export default function DeviceCard({
         {isOnline && onDisconnect && (
           <button
             onClick={() => onDisconnect(device.device_id)}
-            className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+            className="px-3 py-1 text-sm bg-danger text-foreground rounded hover:bg-danger/80 transition-colors"
           >
             斷開
           </button>
@@ -122,7 +122,7 @@ export default function DeviceCard({
         {isOnline && onPing && (
           <button
             onClick={() => onPing(device.device_id)}
-            className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+            className="px-3 py-1 text-sm bg-success text-foreground rounded hover:bg-success/80 transition-colors"
           >
             Ping
           </button>
@@ -133,8 +133,8 @@ export default function DeviceCard({
             disabled={!scrcpyInstalled}
             className={`px-3 py-1 text-sm rounded transition-colors ${
               scrcpyInstalled
-                ? 'bg-purple-500 text-white hover:bg-purple-600'
-                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                ? 'bg-accent text-foreground hover:bg-accent/80'
+                : 'bg-muted/50 text-foreground/50 cursor-not-allowed'
             }`}
             title={scrcpyInstalled ? '啟動螢幕監看' : 'Scrcpy 未安裝'}
           >
@@ -144,7 +144,7 @@ export default function DeviceCard({
         {onEdit && (
           <button
             onClick={() => onEdit(device.device_id)}
-            className="px-3 py-1 text-sm bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+            className="px-3 py-1 text-sm bg-muted text-foreground rounded hover:bg-muted/80 transition-colors"
           >
             編輯
           </button>
@@ -152,7 +152,7 @@ export default function DeviceCard({
         {onDelete && (
           <button
             onClick={() => onDelete(device.device_id)}
-            className="px-3 py-1 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+            className="px-3 py-1 text-sm bg-danger text-foreground rounded hover:bg-danger/80 transition-colors"
           >
             刪除
           </button>

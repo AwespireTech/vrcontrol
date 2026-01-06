@@ -104,30 +104,30 @@ export default function ActionsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-xl text-gray-600">加載中...</div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-xl text-foreground">加載中...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto">
         {/* 頁面標題和操作 */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <button
               onClick={() => navigate(-1)}
-              className="text-blue-500 hover:text-blue-600 mb-2"
+              className="text-primary hover:text-primary/80 mb-2"
             >
               ← 返回
             </button>
-            <h1 className="text-3xl font-bold text-gray-900">動作管理</h1>
-            <p className="text-gray-600 mt-2">下次更新: {countdown} 秒</p>
+            <h1 className="text-3xl font-bold text-foreground">動作管理</h1>
+            <p className="text-foreground/70 mt-2">下次更新: {countdown} 秒</p>
           </div>
           <button
             onClick={() => navigate('/quest/actions/new')}
-            className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors"
+            className="px-4 py-2 bg-primary text-foreground rounded-lg hover:bg-primary/80 transition-colors"
           >
             + 創建動作
           </button>
@@ -135,10 +135,10 @@ export default function ActionsPage() {
 
         {/* 動作列表 */}
         {actions.length === 0 ? (
-          <div className="bg-white rounded-lg p-12 text-center shadow-sm border border-gray-200">
+          <div className="bg-surface rounded-lg p-12 text-center border border-border">
             <div className="text-6xl mb-4">⚡</div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">還沒有動作</h3>
-            <p className="text-gray-600 mb-4">點擊上方按鈕創建您的第一個動作</p>
+            <h3 className="text-xl font-semibold text-foreground mb-2">還沒有動作</h3>
+            <p className="text-foreground/70 mb-4">點擊上方按鈕創建您的第一個動作</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -158,29 +158,29 @@ export default function ActionsPage() {
       {/* 執行動作模態框 */}
       {showExecuteModal && selectedAction && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          <div className="bg-surface rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto border border-border">
+            <h2 className="text-2xl font-bold text-foreground mb-4">
               執行動作: {selectedAction.name}
             </h2>
 
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
-                <p className="text-sm font-semibold text-gray-700">
+                <p className="text-sm font-semibold text-foreground">
                   選擇要執行的設備 ({selectedDevices.length} 個已選)
                 </p>
                 <button
                   onClick={selectAllDevices}
-                  className="text-sm text-blue-500 hover:text-blue-600"
+                  className="text-sm text-primary hover:text-primary/80"
                 >
                   全選在線設備
                 </button>
               </div>
 
-              <div className="space-y-2 max-h-60 overflow-y-auto border border-gray-200 rounded p-2">
+              <div className="space-y-2 max-h-60 overflow-y-auto border border-border rounded p-2 bg-background">
                 {devices.map((device) => (
                   <label
                     key={device.device_id}
-                    className={`flex items-center gap-3 p-2 rounded cursor-pointer hover:bg-gray-50 ${
+                    className={`flex items-center gap-3 p-2 rounded cursor-pointer hover:bg-surface ${
                       device.status !== 'online' ? 'opacity-50' : ''
                     }`}
                   >
@@ -191,14 +191,14 @@ export default function ActionsPage() {
                       disabled={device.status !== 'online'}
                       className="w-4 h-4"
                     />
-                    <span className="flex-1 text-sm">
+                    <span className="flex-1 text-sm text-foreground">
                       {device.name} ({device.ip})
                     </span>
                     <span
                       className={`text-xs px-2 py-1 rounded ${
                         device.status === 'online'
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-700'
+                          ? 'bg-success/20 text-success'
+                          : 'bg-muted/50 text-foreground/70'
                       }`}
                     >
                       {device.status}
@@ -215,14 +215,14 @@ export default function ActionsPage() {
                   setSelectedAction(null)
                   setSelectedDevices([])
                 }}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition-colors"
+                className="px-4 py-2 bg-muted text-foreground rounded hover:bg-muted/80 transition-colors"
               >
                 取消
               </button>
               <button
                 onClick={handleConfirmExecute}
                 disabled={selectedDevices.length === 0}
-                className="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-primary text-foreground rounded hover:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 執行 ({selectedDevices.length} 個設備)
               </button>

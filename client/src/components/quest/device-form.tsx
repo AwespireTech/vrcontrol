@@ -43,7 +43,7 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
+        <label className="block text-sm font-semibold text-foreground mb-2">
           設備名稱 *
         </label>
         <input
@@ -52,13 +52,13 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
           value={formData.name}
           onChange={handleChange}
           required
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           placeholder="例如: Quest 1"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
+        <label className="block text-sm font-semibold text-foreground mb-2">
           IP 地址 *
         </label>
         <input
@@ -68,14 +68,14 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
           onChange={handleChange}
           required
           pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$"
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           placeholder="例如: 192.168.1.100"
         />
-        <p className="text-xs text-gray-500 mt-1">請輸入有效的 IPv4 地址</p>
+        <p className="text-xs text-foreground/50 mt-1">請輸入有效的 IPv4 地址</p>
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
+        <label className="block text-sm font-semibold text-foreground mb-2">
           ADB 端口
         </label>
         <input
@@ -85,13 +85,13 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
           onChange={handleChange}
           min="1"
           max="65535"
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
         />
-        <p className="text-xs text-gray-500 mt-1">預設: 5555</p>
+        <p className="text-xs text-foreground/50 mt-1">預設: 5555</p>
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
+        <label className="block text-sm font-semibold text-foreground mb-2">
           排序順序
         </label>
         <input
@@ -99,23 +99,23 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
           name="sort_order"
           value={formData.sort_order}
           onChange={handleChange}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
         />
-        <p className="text-xs text-gray-500 mt-1">數字越小越靠前</p>
+        <p className="text-xs text-foreground/50 mt-1">數字越小越靠前</p>
       </div>
 
-      <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
+      <div className="flex gap-3 justify-end pt-4 border-t border-border">
         <button
           type="button"
           onClick={onCancel}
-          className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+          className="px-6 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/50 transition-colors"
         >
           取消
         </button>
         <button
           type="submit"
           disabled={submitting}
-          className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {submitting ? '提交中...' : device ? '更新' : '創建'}
         </button>

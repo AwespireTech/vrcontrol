@@ -56,7 +56,7 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
+        <label className="block text-sm font-semibold text-foreground mb-2">
           房間名稱 *
         </label>
         <input
@@ -65,13 +65,13 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
           value={formData.name}
           onChange={handleChange}
           required
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           placeholder="例如: VR Room 1"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
+        <label className="block text-sm font-semibold text-foreground mb-2">
           房間描述
         </label>
         <textarea
@@ -79,13 +79,13 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
           value={formData.description}
           onChange={handleChange}
           rows={3}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           placeholder="描述這個房間的用途..."
         />
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
+        <label className="block text-sm font-semibold text-foreground mb-2">
           參數配置 (JSON)
         </label>
         <textarea
@@ -93,26 +93,26 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
           value={formData.parameters}
           onChange={handleChange}
           rows={6}
-          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
+          className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
           placeholder='{"key": "value"}'
         />
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-foreground/50 mt-1">
           輸入 JSON 格式的參數，將會同步到 Socket Server 的所有客戶端
         </p>
       </div>
 
-      <div className="flex gap-3 justify-end pt-4 border-t border-gray-200">
+      <div className="flex gap-3 justify-end pt-4 border-t border-border">
         <button
           type="button"
           onClick={onCancel}
-          className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+          className="px-6 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/50 transition-colors"
         >
           取消
         </button>
         <button
           type="submit"
           disabled={submitting}
-          className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {submitting ? '提交中...' : room ? '更新' : '創建'}
         </button>
