@@ -15,7 +15,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
     name: action?.name || '',
     description: action?.description || '',
     action_type: action?.action_type || QUEST_ACTION_TYPES.WAKE_UP,
-    parameters: action?.parameters ? JSON.stringify(action.parameters, null, 2) : '{}',
+    params: action?.params ? JSON.stringify(action.params, null, 2) : '{}',
   })
   const [submitting, setSubmitting] = useState(false)
 
@@ -24,10 +24,10 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
     setSubmitting(true)
 
     try {
-      // 解析 parameters JSON
-      let parameters = {}
+      // 解析 params JSON
+      let params = {}
       try {
-        parameters = JSON.parse(formData.parameters)
+        params = JSON.parse(formData.params)
       } catch (error) {
         alert('參數格式錯誤，請輸入有效的 JSON')
         setSubmitting(false)
@@ -38,7 +38,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
         name: formData.name,
         description: formData.description,
         action_type: formData.action_type,
-        parameters,
+        params,
       })
     } catch (error) {
       console.error('Failed to submit form:', error)
@@ -112,7 +112,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
     setFormData((prev) => ({
       ...prev,
       action_type: newType,
-      parameters: getParameterTemplate(newType),
+      params: getParameterTemplate(newType),
     }))
   }
 
@@ -174,8 +174,8 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
           參數配置 (JSON)
         </label>
         <textarea
-          name="parameters"
-          value={formData.parameters}
+          name="params"
+          value={formData.params}
           onChange={handleChange}
           rows={8}
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"

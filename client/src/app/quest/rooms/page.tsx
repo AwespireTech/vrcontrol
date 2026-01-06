@@ -132,7 +132,7 @@ export default function RoomsPage() {
                 onStartSocket={handleStartSocket}
                 onStopSocket={handleStopSocket}
                 onDelete={handleDelete}
-                onEdit={(roomId) => navigate(`/quest/rooms/${roomId}/edit`)}
+                onEdit={(roomId) => navigate(`/quest/rooms/${roomId}`)}
                 onManageDevices={(roomId) => navigate(`/quest/rooms/${roomId}/devices`)}
               />
             ))}

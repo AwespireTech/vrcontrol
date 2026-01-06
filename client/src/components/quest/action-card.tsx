@@ -55,8 +55,8 @@ export default function ActionCard({ action, onEdit, onDelete, onExecute }: Acti
   }
 
   const successRate =
-    action.success_count + action.failed_count > 0
-      ? ((action.success_count / (action.success_count + action.failed_count)) * 100).toFixed(1)
+    action.success_count + action.failure_count > 0
+      ? ((action.success_count / (action.success_count + action.failure_count)) * 100).toFixed(1)
       : 0
 
   return (
@@ -85,7 +85,7 @@ export default function ActionCard({ action, onEdit, onDelete, onExecute }: Acti
         </div>
         <div className="flex justify-between">
           <span className="text-gray-600">失敗次數:</span>
-          <span className="font-semibold text-red-600">{action.failed_count}</span>
+          <span className="font-semibold text-red-600">{action.failure_count}</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-600">成功率:</span>
@@ -102,11 +102,11 @@ export default function ActionCard({ action, onEdit, onDelete, onExecute }: Acti
       </div>
 
       {/* 參數預覽 */}
-      {Object.keys(action.parameters).length > 0 && (
+      {Object.keys(action.params).length > 0 && (
         <div className="mb-4">
           <p className="text-sm font-semibold text-gray-700 mb-2">參數:</p>
           <div className="bg-gray-50 rounded p-2 text-xs font-mono text-gray-700 max-h-20 overflow-y-auto">
-            {JSON.stringify(action.parameters, null, 2)}
+            {JSON.stringify(action.params, null, 2)}
           </div>
         </div>
       )}

@@ -34,18 +34,23 @@ export interface ApiResponse<T> {
 // 設備類型
 export interface QuestDevice {
   device_id: string
-  name: string
-  ip: string
-  port: number
   serial: string
-  status: string
-  battery_level: number
-  battery_temperature: number
-  ping_ms: number
-  room_id: string
+  alias: string
+  name: string
   model: string
   android_version: string
+  ip: string
+  port: number
+  status: string
+  battery: number
+  temperature: number
+  is_charging: boolean
+  ping_ms: number
+  room_id: string
+  notes: string
   sort_order: number
+  last_seen: string
+  first_connected: string
   created_at: string
   updated_at: string
 }
@@ -55,9 +60,11 @@ export interface QuestRoom {
   room_id: string
   name: string
   description: string
+  max_devices: number
   device_ids: string[]
+  socket_ip: string
   socket_port: number
-  socket_address: string
+  socket_running: boolean
   parameters: Record<string, any>
   created_at: string
   updated_at: string
@@ -69,10 +76,11 @@ export interface QuestAction {
   name: string
   description: string
   action_type: string
-  parameters: Record<string, any>
+  params: Record<string, any>
+  execution_count: number
   success_count: number
-  failed_count: number
-  last_executed_at: string
+  failure_count: number
+  last_executed_at?: string
   created_at: string
   updated_at: string
 }
@@ -114,3 +122,44 @@ export interface SocketInfo {
 export interface MonitoringStatus {
   running: boolean
 }
+
+// Scrcpy 配置
+export interface ScrcpyConfig {
+  bitrate: string          // 視訊位元率 (e.g., "8M", "16M")
+  max_size: number         // 最大螢幕寬度
+  max_fps: number          // 最大幀率
+  window_width?: number    // 視窗寬度
+  window_height?: number   // 視窗高度
+  window_x?: number        // 視窗 X 位置
+  window_y?: number        // 視窗 Y 位置
+  stay_awake: boolean      // 保持設備清醒
+  show_touches: boolean    // 顯示觸控點
+  fullscreen: boolean      // 全螢幕模式
+  always_on_top: boolean   // 視窗置頂
+  turn_screen_off: boolean // 關閉設備螢幕
+  enable_audio: boolean    // 啟用音訊轉發
+  render_driver: string    // 渲染驅動
+}
+
+// Scrcpy 會話
+export interface ScrcpySession {
+  device_id: string        // 設備 ID
+  process_id: number       // 進程 PID
+  started_at: string       // 啟動時間
+  is_running: boolean      // 是否運行中
+}
+
+// Scrcpy 系統信息
+export interface ScrcpySystemInfo {
+  installed: boolean       // 是否已安裝
+  version: string          // 版本號
+  path: string            // 執行檔路徑
+  error_message: string    // 錯誤訊息
+}
+
+// Scrcpy 批量啟動請求
+export interface ScrcpyBatchStartRequest {
+  device_ids: string[]
+  config?: ScrcpyConfig
+}
+

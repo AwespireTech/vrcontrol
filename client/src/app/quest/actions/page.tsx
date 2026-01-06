@@ -148,7 +148,7 @@ export default function ActionsPage() {
                 action={action}
                 onExecute={handleExecute}
                 onDelete={handleDelete}
-                onEdit={(actionId) => navigate(`/quest/actions/${actionId}/edit`)}
+                onEdit={(actionId) => navigate(`/quest/actions/${actionId}`)}
               />
             ))}
           </div>

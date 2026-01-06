@@ -7,6 +7,8 @@ interface DeviceCardProps {
   onEdit?: (deviceId: string) => void
   onDelete?: (deviceId: string) => void
   onPing?: (deviceId: string) => void
+  onMonitor?: (deviceId: string) => void
+  scrcpyInstalled?: boolean
 }
 
 export default function DeviceCard({
@@ -16,6 +18,8 @@ export default function DeviceCard({
   onEdit,
   onDelete,
   onPing,
+  onMonitor,
+  scrcpyInstalled = false,
 }: DeviceCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -83,11 +87,11 @@ export default function DeviceCard({
           <>
             <div className="flex justify-between">
               <span className="text-gray-600">電量:</span>
-              <span className="text-gray-900">{device.battery_level}%</span>
+              <span className="text-gray-900">{device.battery}%</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">溫度:</span>
-              <span className="text-gray-900">{device.battery_temperature}°C</span>
+              <span className="text-gray-900">{device.temperature}°C</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">延遲:</span>
@@ -121,6 +125,20 @@ export default function DeviceCard({
             className="px-3 py-1 text-sm bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
           >
             Ping
+          </button>
+        )}
+        {isOnline && onMonitor && (
+          <button
+            onClick={() => onMonitor(device.device_id)}
+            disabled={!scrcpyInstalled}
+            className={`px-3 py-1 text-sm rounded transition-colors ${
+              scrcpyInstalled
+                ? 'bg-purple-500 text-white hover:bg-purple-600'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
+            title={scrcpyInstalled ? '啟動螢幕監看' : 'Scrcpy 未安裝'}
+          >
+            監看
           </button>
         )}
         {onEdit && (

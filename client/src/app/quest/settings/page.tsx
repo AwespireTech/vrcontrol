@@ -1,17 +1,32 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { monitoringApi } from '@/services/quest-api'
+import { monitoringApi, scrcpyApi } from '@/services/quest-api'
+import { ScrcpyConfigForm } from '@/components/quest/scrcpy-config-form'
+import type { ScrcpyConfig, ScrcpySystemInfo } from '@/services/quest-types'
 
 export default function QuestSettingsPage() {
   const navigate = useNavigate()
   const [monitoringRunning, setMonitoringRunning] = useState(false)
   const [monitoringInterval, setMonitoringInterval] = useState(10)
   const [loading, setLoading] = useState(true)
+  
+  // Scrcpy 相關狀態
+  const [scrcpySystemInfo, setScrcpySystemInfo] = useState<ScrcpySystemInfo | null>(null)
+  const [scrcpyConfig, setScrcpyConfig] = useState<ScrcpyConfig | null>(null)
+  const [scrcpyConfigChanged, setScrcpyConfigChanged] = useState(false)
 
   const loadSettings = async () => {
     try {
       const status = await monitoringApi.getStatus()
       setMonitoringRunning(status.running)
+      
+      // 載入 scrcpy 系統信息
+      const systemInfo = await scrcpyApi.getSystemInfo()
+      setScrcpySystemInfo(systemInfo)
+      
+      // 載入 scrcpy 配置
+      const config = await scrcpyApi.getConfig()
+      setScrcpyConfig(config)
     } catch (error) {
       console.error('Failed to load settings:', error)
     } finally {
@@ -56,6 +71,24 @@ export default function QuestSettingsPage() {
     } catch (error) {
       console.error('Failed to run monitoring:', error)
       alert('執行失敗')
+    }
+  }
+
+  const handleScrcpyConfigChange = (config: ScrcpyConfig) => {
+    setScrcpyConfig(config)
+    setScrcpyConfigChanged(true)
+  }
+
+  const handleSaveScrcpyConfig = async () => {
+    if (!scrcpyConfig) return
+    
+    try {
+      await scrcpyApi.updateConfig(scrcpyConfig)
+      setScrcpyConfigChanged(false)
+      alert('Scrcpy 配置已保存')
+    } catch (error) {
+      console.error('Failed to save scrcpy config:', error)
+      alert('保存配置失敗')
     }
   }
 
@@ -141,6 +174,68 @@ export default function QuestSettingsPage() {
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* Scrcpy 螢幕鏡像設置 */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Scrcpy 螢幕鏡像</h2>
+
+            {/* 系統檢查區塊 */}
+            {scrcpySystemInfo && (
+              <div className={`p-4 rounded-lg mb-6 ${
+                scrcpySystemInfo.installed 
+                  ? 'bg-green-50 border border-green-200' 
+                  : 'bg-gray-100 border border-gray-300'
+              }`}>
+                {scrcpySystemInfo.installed ? (
+                  <div>
+                    <p className="font-semibold text-green-800 mb-1">✓ Scrcpy 已安裝</p>
+                    <p className="text-sm text-green-700">版本: {scrcpySystemInfo.version}</p>
+                    <p className="text-xs text-green-600 mt-1">路徑: {scrcpySystemInfo.path}</p>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="font-semibold text-gray-700 mb-2">✗ Scrcpy 未安裝</p>
+                    <p className="text-sm text-gray-600 mb-3">
+                      {scrcpySystemInfo.error_message}
+                    </p>
+                    <a
+                      href="https://github.com/Genymobile/scrcpy"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 hover:text-blue-700 underline"
+                    >
+                      前往 Scrcpy GitHub 頁面查看安裝指引 →
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 配置表單 */}
+            {scrcpyConfig && (
+              <div>
+                <ScrcpyConfigForm
+                  value={scrcpyConfig}
+                  onChange={handleScrcpyConfigChange}
+                  disabled={!scrcpySystemInfo?.installed}
+                />
+
+                <div className="mt-6 flex justify-end">
+                  <button
+                    onClick={handleSaveScrcpyConfig}
+                    disabled={!scrcpyConfigChanged || !scrcpySystemInfo?.installed}
+                    className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
+                      scrcpyConfigChanged && scrcpySystemInfo?.installed
+                        ? 'bg-blue-500 hover:bg-blue-600 text-white'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    保存配置
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 系統信息 */}

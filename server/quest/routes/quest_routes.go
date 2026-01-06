@@ -8,6 +8,7 @@ import (
 	"vrcontrol/server/quest/controller"
 	"vrcontrol/server/quest/questsocket"
 	"vrcontrol/server/quest/repository"
+	"vrcontrol/server/quest/scrcpy"
 	"vrcontrol/server/quest/service"
 
 	"github.com/gin-gonic/gin"
@@ -19,11 +20,13 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 	adbManager := adb.NewADBManager("", 30*time.Second)
 	pingManager := adb.NewPingManager(2 * time.Second)
 	socketManager := questsocket.NewSocketManager()
+	scrcpyManager := scrcpy.NewManager()
 
 	// 初始化 Repositories
 	deviceRepo := repository.NewDeviceRepository(dataDir + "/quest_devices.json")
 	roomRepo := repository.NewRoomRepository(dataDir + "/quest_rooms.json")
 	actionRepo := repository.NewActionRepository(dataDir + "/quest_actions.json")
+	scrcpyConfigRepo := repository.NewScrcpyConfigRepository(dataDir + "/quest_scrcpy_config.json")
 
 	// 從文件載入已保存的數據
 	log.Println("[Quest] 開始載入已保存的數據...")
@@ -45,17 +48,25 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 		log.Printf("[Quest] 成功載入 %d 個動作\n", len(actionRepo.GetAll()))
 	}
 
+	if err := scrcpyConfigRepo.Load(); err != nil {
+		log.Printf("[Quest] 警告: 載入 Scrcpy 配置失敗 - %v\n", err)
+	} else {
+		log.Println("[Quest] 成功載入 Scrcpy 配置")
+	}
+
 	// 初始化 Services
 	deviceService := service.NewDeviceService(deviceRepo, adbManager, pingManager)
 	roomService := service.NewRoomService(roomRepo, deviceRepo, socketManager)
 	actionService := service.NewActionService(actionRepo, deviceRepo, adbManager)
 	monitoringService := service.NewMonitoringService(deviceRepo, pingManager, adbManager)
+	scrcpyService := service.NewScrcpyService(scrcpyManager, deviceRepo, scrcpyConfigRepo)
 
 	// 初始化 Controllers
 	deviceController := controller.NewDeviceController(deviceService)
 	roomController := controller.NewRoomController(roomService)
 	actionController := controller.NewActionController(actionService)
 	monitoringController := controller.NewMonitoringController(monitoringService)
+	scrcpyController := controller.NewScrcpyController(scrcpyService)
 
 	// Quest API 路由群組
 	questAPI := router.Group("/api/quest")
@@ -112,6 +123,19 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 			monitoring.POST("/stop", monitoringController.Stop)
 			monitoring.POST("/interval", monitoringController.SetInterval)
 			monitoring.POST("/run-once", monitoringController.RunOnce)
+
+			// Scrcpy 螢幕鏡像路由
+			scrcpyGroup := questAPI.Group("/scrcpy")
+			{
+				scrcpyGroup.GET("/system-info", scrcpyController.GetSystemInfo)
+				scrcpyGroup.POST("/start/:id", scrcpyController.StartScrcpy)
+				scrcpyGroup.POST("/stop/:id", scrcpyController.StopScrcpy)
+				scrcpyGroup.POST("/batch/start", scrcpyController.StartScrcpyBatch)
+				scrcpyGroup.GET("/sessions", scrcpyController.GetSessions)
+				scrcpyGroup.POST("/sessions/refresh", scrcpyController.RefreshSessions)
+				scrcpyGroup.GET("/config", scrcpyController.GetConfig)
+				scrcpyGroup.PUT("/config", scrcpyController.UpdateConfig)
+			}
 		}
 	}
 }

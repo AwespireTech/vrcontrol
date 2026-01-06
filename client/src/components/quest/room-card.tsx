@@ -59,8 +59,8 @@ export default function RoomCard({
               <span className="font-mono text-gray-900">{room.socket_port}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-600">Socket 地址:</span>
-              <span className="font-mono text-xs text-gray-900">{room.socket_address}</span>
+              <span className="text-gray-600">Socket IP:</span>
+              <span className="font-mono text-xs text-gray-900">{room.socket_ip}</span>
             </div>
           </>
         )}
