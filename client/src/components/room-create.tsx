@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { SERVER } from "@/../environment"
+import { SERVER } from "@/environment"
 import Button from "./button"
 
 const RoomCreate = () => {

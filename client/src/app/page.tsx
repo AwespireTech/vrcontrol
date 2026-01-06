@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { SERVER } from "@/../environment"
+import { SERVER } from "@/environment"
 
 import PlayerList from "@/components/player-list"
 import RoomList from "@/components/room-list"

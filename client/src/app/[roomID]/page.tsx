@@ -1,7 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom"
 import { useEffect, useState } from "react"
 
-import { SERVER } from "@/../environment"
+import { SERVER } from "@/environment"
 import Button from "@/components/button"
 import PlayerInfo from "@/components/player-info"
 import { PlayerData, RoomInfoData } from "@/interfaces/room.interface"

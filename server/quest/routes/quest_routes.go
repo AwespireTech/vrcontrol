@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"log"
 	"time"
 
 	"vrcontrol/server/quest/adb"
@@ -23,6 +24,26 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 	deviceRepo := repository.NewDeviceRepository(dataDir + "/quest_devices.json")
 	roomRepo := repository.NewRoomRepository(dataDir + "/quest_rooms.json")
 	actionRepo := repository.NewActionRepository(dataDir + "/quest_actions.json")
+
+	// 從文件載入已保存的數據
+	log.Println("[Quest] 開始載入已保存的數據...")
+	if err := deviceRepo.Load(); err != nil {
+		log.Printf("[Quest] 警告: 載入設備數據失敗 - %v\n", err)
+	} else {
+		log.Printf("[Quest] 成功載入 %d 個設備\n", len(deviceRepo.GetAll()))
+	}
+
+	if err := roomRepo.Load(); err != nil {
+		log.Printf("[Quest] 警告: 載入房間數據失敗 - %v\n", err)
+	} else {
+		log.Printf("[Quest] 成功載入 %d 個房間\n", len(roomRepo.GetAll()))
+	}
+
+	if err := actionRepo.Load(); err != nil {
+		log.Printf("[Quest] 警告: 載入動作數據失敗 - %v\n", err)
+	} else {
+		log.Printf("[Quest] 成功載入 %d 個動作\n", len(actionRepo.GetAll()))
+	}
 
 	// 初始化 Services
 	deviceService := service.NewDeviceService(deviceRepo, adbManager, pingManager)
