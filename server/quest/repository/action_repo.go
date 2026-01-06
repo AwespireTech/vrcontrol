@@ -41,16 +41,20 @@ func (r *ActionRepository) Load() error {
 	return nil
 }
 
-// Save 保存所有動作
-func (r *ActionRepository) Save() error {
-	r.mu.RLock()
+// save 內部保存方法（不加鎖）
+func (r *ActionRepository) save() error {
 	actions := make([]*model.QuestAction, 0, len(r.actions))
 	for _, action := range r.actions {
 		actions = append(actions, action)
 	}
-	r.mu.RUnlock()
-
 	return r.repo.Save(actions)
+}
+
+// Save 保存所有動作
+func (r *ActionRepository) Save() error {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.save()
 }
 
 // GetAll 獲取所有動作
@@ -113,7 +117,7 @@ func (r *ActionRepository) Create(action *model.QuestAction) error {
 
 	r.actions[action.ActionID] = action
 
-	return r.Save()
+	return r.save()
 }
 
 // Update 更新動作
@@ -128,7 +132,7 @@ func (r *ActionRepository) Update(action *model.QuestAction) error {
 	action.UpdatedAt = time.Now()
 	r.actions[action.ActionID] = action
 
-	return r.Save()
+	return r.save()
 }
 
 // Delete 刪除動作
@@ -142,7 +146,7 @@ func (r *ActionRepository) Delete(actionID string) error {
 
 	delete(r.actions, actionID)
 
-	return r.Save()
+	return r.save()
 }
 
 // UpdateExecutionStats 更新執行統計
@@ -166,7 +170,7 @@ func (r *ActionRepository) UpdateExecutionStats(actionID string, success bool) e
 	action.LastExecutedAt = &now
 	action.UpdatedAt = now
 
-	return r.Save()
+	return r.save()
 }
 
 // Count 獲取動作總數

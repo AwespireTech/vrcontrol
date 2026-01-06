@@ -40,10 +40,12 @@ func (s *DeviceService) GetDevice(deviceID string) (*model.QuestDevice, error) {
 
 // CreateDevice 創建新設備
 func (s *DeviceService) CreateDevice(device *model.QuestDevice) error {
+	log.Println("[DeviceService] CreateDevice: 開始創建設備")
 	// 生成 DeviceID
 	if device.DeviceID == "" {
 		device.DeviceID = fmt.Sprintf("QQ-%d", time.Now().UnixNano()%1000000)
 	}
+	log.Printf("[DeviceService] CreateDevice: 設備 ID 生成 - %s\n", device.DeviceID)
 
 	// 設置預設值
 	if device.Port == 0 {
@@ -53,7 +55,14 @@ func (s *DeviceService) CreateDevice(device *model.QuestDevice) error {
 		device.Status = model.DeviceStatusDisconnected
 	}
 
-	return s.deviceRepo.Create(device)
+	log.Println("[DeviceService] CreateDevice: 調用 Repository Create")
+	err := s.deviceRepo.Create(device)
+	if err != nil {
+		log.Printf("[DeviceService] CreateDevice: Repository Create 失敗 - %v\n", err)
+	} else {
+		log.Println("[DeviceService] CreateDevice: Repository Create 成功")
+	}
+	return err
 }
 
 // UpdateDevice 更新設備

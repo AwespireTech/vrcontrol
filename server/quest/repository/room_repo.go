@@ -41,16 +41,20 @@ func (r *RoomRepository) Load() error {
 	return nil
 }
 
-// Save 保存所有房間
-func (r *RoomRepository) Save() error {
-	r.mu.RLock()
+// save 內部保存方法（不加鎖）
+func (r *RoomRepository) save() error {
 	rooms := make([]*model.QuestRoom, 0, len(r.rooms))
 	for _, room := range r.rooms {
 		rooms = append(rooms, room)
 	}
-	r.mu.RUnlock()
-
 	return r.repo.Save(rooms)
+}
+
+// Save 保存所有房間
+func (r *RoomRepository) Save() error {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.save()
 }
 
 // GetAll 獲取所有房間
@@ -110,12 +114,12 @@ func (r *RoomRepository) Create(room *model.QuestRoom) error {
 		room.DeviceIDs = []string{}
 	}
 	if room.Parameters == nil {
-		room.Parameters = []model.RoomParameter{}
+		room.Parameters = make(map[string]any)
 	}
 
 	r.rooms[room.RoomID] = room
 
-	return r.Save()
+	return r.save()
 }
 
 // Update 更新房間
@@ -130,7 +134,7 @@ func (r *RoomRepository) Update(room *model.QuestRoom) error {
 	room.UpdatedAt = time.Now()
 	r.rooms[room.RoomID] = room
 
-	return r.Save()
+	return r.save()
 }
 
 // Delete 刪除房間
@@ -144,7 +148,7 @@ func (r *RoomRepository) Delete(roomID string) error {
 
 	delete(r.rooms, roomID)
 
-	return r.Save()
+	return r.save()
 }
 
 // AddDevice 添加設備到房間

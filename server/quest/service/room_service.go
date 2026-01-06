@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"time"
 
 	"vrcontrol/server/quest/model"
 	"vrcontrol/server/quest/questsocket"
@@ -36,6 +37,11 @@ func (s *RoomService) GetRoom(roomID string) (*model.QuestRoom, error) {
 
 // CreateRoom 創建新房間
 func (s *RoomService) CreateRoom(room *model.QuestRoom) error {
+	// 生成 RoomID
+	if room.RoomID == "" {
+		room.RoomID = fmt.Sprintf("ROOM-%d", time.Now().UnixNano()%1000000)
+	}
+
 	// 設置預設值
 	if room.MaxDevices == 0 {
 		room.MaxDevices = 10
@@ -171,20 +177,9 @@ func (s *RoomService) SyncParameters(roomID string) error {
 		return fmt.Errorf("socket server not running")
 	}
 
-	// 構建參數消息
-	params := make([]map[string]interface{}, 0)
-	for _, param := range room.Parameters {
-		params = append(params, map[string]interface{}{
-			"key":           param.Key,
-			"type":          param.Type,
-			"global_value":  param.GlobalValue,
-			"device_values": param.DeviceValues,
-		})
-	}
-
 	// 廣播參數更新
 	return s.socketManager.BroadcastToRoom(roomID, map[string]interface{}{
-		"type": "params_update",
-		"data": params,
+		"type":       "params_update",
+		"parameters": room.Parameters,
 	})
 }

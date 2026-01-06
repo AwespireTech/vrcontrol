@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"log"
 	"net/http"
 
 	"vrcontrol/server/quest/model"
@@ -54,8 +55,10 @@ func (c *DeviceController) GetDevice(ctx *gin.Context) {
 // CreateDevice 創建新設備
 // @Router /api/quest/devices [post]
 func (c *DeviceController) CreateDevice(ctx *gin.Context) {
+	log.Println("[DeviceController] CreateDevice: 開始處理請求")
 	var device model.QuestDevice
 	if err := ctx.ShouldBindJSON(&device); err != nil {
+		log.Printf("[DeviceController] CreateDevice: JSON 綁定失敗 - %v\n", err)
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"error":   "Invalid request body",
@@ -64,7 +67,9 @@ func (c *DeviceController) CreateDevice(ctx *gin.Context) {
 		return
 	}
 
+	log.Printf("[DeviceController] CreateDevice: 收到設備數據 - Name: %s, IP: %s\n", device.Name, device.IP)
 	if err := c.deviceService.CreateDevice(&device); err != nil {
+		log.Printf("[DeviceController] CreateDevice: Service 創建失敗 - %v\n", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"error":   err.Error(),
@@ -72,6 +77,7 @@ func (c *DeviceController) CreateDevice(ctx *gin.Context) {
 		return
 	}
 
+	log.Printf("[DeviceController] CreateDevice: 創建成功 - Device ID: %s\n", device.DeviceID)
 	ctx.JSON(http.StatusCreated, gin.H{
 		"success": true,
 		"data":    device,

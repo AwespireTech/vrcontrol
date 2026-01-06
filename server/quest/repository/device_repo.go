@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"log"
 	"sort"
 	"sync"
 	"time"
@@ -42,14 +43,12 @@ func (r *DeviceRepository) Load() error {
 	return nil
 }
 
-// Save 保存所有設備
-func (r *DeviceRepository) Save() error {
-	r.mu.RLock()
+// save 內部保存方法（不加鎖）
+func (r *DeviceRepository) save() error {
 	devices := make([]*model.QuestDevice, 0, len(r.devices))
 	for _, device := range r.devices {
 		devices = append(devices, device)
 	}
-	r.mu.RUnlock()
 
 	// 按 SortOrder 排序
 	sort.Slice(devices, func(i, j int) bool {
@@ -57,6 +56,13 @@ func (r *DeviceRepository) Save() error {
 	})
 
 	return r.repo.Save(devices)
+}
+
+// Save 保存所有設備
+func (r *DeviceRepository) Save() error {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.save()
 }
 
 // GetAll 獲取所有設備
@@ -121,10 +127,12 @@ func (r *DeviceRepository) GetByRoomID(roomID string) []*model.QuestDevice {
 
 // Create 創建新設備
 func (r *DeviceRepository) Create(device *model.QuestDevice) error {
+	log.Printf("[DeviceRepo] Create: 開始創建設備 - ID: %s\n", device.DeviceID)
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
 	if _, exists := r.devices[device.DeviceID]; exists {
+		log.Printf("[DeviceRepo] Create: 設備已存在 - ID: %s\n", device.DeviceID)
 		return fmt.Errorf("device already exists: %s", device.DeviceID)
 	}
 
@@ -142,7 +150,14 @@ func (r *DeviceRepository) Create(device *model.QuestDevice) error {
 
 	r.devices[device.DeviceID] = device
 
-	return r.Save()
+	log.Println("[DeviceRepo] Create: 調用 save 方法")
+	err := r.save() // 使用內部不加鎖方法
+	if err != nil {
+		log.Printf("[DeviceRepo] Create: save 失敗 - %v\n", err)
+	} else {
+		log.Println("[DeviceRepo] Create: save 成功")
+	}
+	return err
 }
 
 // Update 更新設備
@@ -157,7 +172,7 @@ func (r *DeviceRepository) Update(device *model.QuestDevice) error {
 	device.UpdatedAt = time.Now()
 	r.devices[device.DeviceID] = device
 
-	return r.Save()
+	return r.save()
 }
 
 // Delete 刪除設備
@@ -171,7 +186,7 @@ func (r *DeviceRepository) Delete(deviceID string) error {
 
 	delete(r.devices, deviceID)
 
-	return r.Save()
+	return r.save()
 }
 
 // UpdateStatus 更新設備狀態
