@@ -331,11 +331,11 @@ func (r *Room) Run() {
 func (r *Room) UpdateInfo(stop chan struct{}) {
 	ticker := time.NewTicker(time.Second / time.Duration(TickRate))
 	defer ticker.Stop()
-	for range ticker.C {
+	for {
 		select {
 		case <-stop:
 			return
-		default:
+		case <-ticker.C:
 			if len(r.Players) == 0 {
 				continue
 			}
@@ -372,7 +372,6 @@ func (r *Room) UpdateInfo(stop chan struct{}) {
 					r.PlayerUnregister <- player
 				}
 			}
-
 		}
 	}
 }

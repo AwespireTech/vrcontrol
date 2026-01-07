@@ -171,7 +171,7 @@ func (r *RoomRepository) AddDevice(roomID, deviceID string) error {
 	room.DeviceIDs = append(room.DeviceIDs, deviceID)
 	room.UpdatedAt = time.Now()
 
-	return r.Save()
+	return r.save()
 }
 
 // RemoveDevice 從房間移除設備
@@ -194,7 +194,7 @@ func (r *RoomRepository) RemoveDevice(roomID, deviceID string) error {
 	room.DeviceIDs = newDeviceIDs
 	room.UpdatedAt = time.Now()
 
-	return r.Save()
+	return r.save()
 }
 
 // UpdateSocketInfo 更新 Socket 資訊
@@ -211,7 +211,7 @@ func (r *RoomRepository) UpdateSocketInfo(roomID string, port int, running bool)
 	room.SocketRunning = running
 	room.UpdatedAt = time.Now()
 
-	return r.Save()
+	return r.save()
 }
 
 // Count 獲取房間總數

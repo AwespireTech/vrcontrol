@@ -204,7 +204,7 @@ func (r *DeviceRepository) UpdateStatus(deviceID, status string, pingMS float64)
 	device.LastSeen = time.Now()
 	device.UpdatedAt = time.Now()
 
-	return r.Save()
+	return r.save()
 }
 
 // UpdateBatteryInfo 更新電池資訊
@@ -222,7 +222,7 @@ func (r *DeviceRepository) UpdateBatteryInfo(deviceID string, battery int, tempe
 	device.IsCharging = isCharging
 	device.UpdatedAt = time.Now()
 
-	return r.Save()
+	return r.save()
 }
 
 // Count 獲取設備總數
