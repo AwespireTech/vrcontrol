@@ -13,6 +13,8 @@ import {
   type ScrcpySession,
   type ScrcpySystemInfo,
   type ScrcpyBatchStartRequest,
+  type UserPreference,
+  type BatchStatusResponse,
 } from './quest-types'
 
 // ============ 設備 API ============
@@ -113,6 +115,16 @@ export const deviceApi = {
   // 批量 Ping
   pingBatch: async (deviceIds: string[], maxWorkers?: number): Promise<BatchExecuteResponse> => {
     const res = await fetch(`${QUEST_API_BASE}/devices/batch/ping`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device_ids: deviceIds, max_workers: maxWorkers }),
+    })
+    return await res.json()
+  },
+
+  // 批量獲取設備狀態
+  getStatusBatch: async (deviceIds: string[], maxWorkers?: number): Promise<BatchStatusResponse> => {
+    const res = await fetch(`${QUEST_API_BASE}/devices/batch/status`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ device_ids: deviceIds, max_workers: maxWorkers }),
@@ -424,3 +436,25 @@ export const scrcpyApi = {
   },
 }
 
+// ============ 使用者偏好 API ============
+
+export const preferenceApi = {
+  // 獲取使用者偏好
+  get: async (): Promise<UserPreference> => {
+    const res = await fetch(`${QUEST_API_BASE}/preferences`)
+    const data: ApiResponse<UserPreference> = await res.json()
+    return data.data!
+  },
+
+  // 更新使用者偏好
+  update: async (preference: Partial<UserPreference>): Promise<UserPreference> => {
+    const res = await fetch(`${QUEST_API_BASE}/preferences`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(preference),
+    })
+    const data: ApiResponse<UserPreference> = await res.json()
+    if (!data.success) throw new Error(data.error || 'Failed to update preference')
+    return data.data!
+  },
+}

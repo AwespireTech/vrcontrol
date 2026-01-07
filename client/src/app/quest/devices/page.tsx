@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { deviceApi, scrcpyApi } from '@/services/quest-api'
-import type { QuestDevice, ScrcpySession, ScrcpySystemInfo } from '@/services/quest-types'
-import DeviceCard from '@/components/quest/device-card'
+import { deviceApi, scrcpyApi, preferenceApi } from '@/services/quest-api'
+import type { QuestDevice, ScrcpySession, ScrcpySystemInfo, UserPreference } from '@/services/quest-types'
+import DeviceCard, { type StatusErrorType } from '@/components/quest/device-card'
 
 export default function DevicesPage() {
   const navigate = useNavigate()
@@ -15,6 +15,15 @@ export default function DevicesPage() {
   const [scrcpySessions, setScrcpySessions] = useState<ScrcpySession[]>([])
   const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([])
 
+  // 使用者偏好與狀態錯誤追蹤
+  const [preference, setPreference] = useState<UserPreference | null>(null)
+  const [statusErrors, setStatusErrors] = useState<Record<string, StatusErrorType>>({})
+  
+  // 輪詢控制
+  const statusIntervalRef = useRef<number | null>(null)
+  const listIntervalRef = useRef<number | null>(null)
+  const isVisibleRef = useRef(true)
+
   const loadDevices = async () => {
     try {
       const data = await deviceApi.getAll()
@@ -25,6 +34,62 @@ export default function DevicesPage() {
       setLoading(false)
     }
   }
+
+  const refreshOnlineStatuses = useCallback(async () => {
+    if (!preference) return
+
+    const onlineDevices = devices.filter((d) => d.status === 'online')
+    if (onlineDevices.length === 0) return
+
+    // 分批處理
+    const batchSize = preference.batch_size
+    const batches: QuestDevice[][] = []
+    for (let i = 0; i < onlineDevices.length; i += batchSize) {
+      batches.push(onlineDevices.slice(i, i + batchSize))
+    }
+
+    // 批量查詢所有批次
+    for (const batch of batches) {
+      try {
+        const result = await deviceApi.getStatusBatch(
+          batch.map((d) => d.device_id),
+          preference.max_concurrency
+        )
+
+        if (result.success && result.results) {
+          setDevices((prevDevices) => {
+            const newDevices = [...prevDevices]
+            result.results.forEach((statusResult) => {
+              const deviceIndex = newDevices.findIndex(
+                (d) => d.device_id === statusResult.device_id
+              )
+              if (deviceIndex >= 0) {
+                if (statusResult.error) {
+                  // 分類錯誤：含 timeout 為超時，其他為 ADB 錯誤
+                  const errorType = statusResult.error.toLowerCase().includes('timeout')
+                    ? 'timeout'
+                    : 'adb-error'
+                  setStatusErrors((prev) => ({ ...prev, [statusResult.device_id]: errorType }))
+                } else {
+                  // 成功獲取狀態
+                  newDevices[deviceIndex] = {
+                    ...newDevices[deviceIndex],
+                    battery: statusResult.battery,
+                    temperature: statusResult.temperature,
+                    is_charging: statusResult.is_charging,
+                  }
+                  setStatusErrors((prev) => ({ ...prev, [statusResult.device_id]: 'ok' }))
+                }
+              }
+            })
+            return newDevices
+          })
+        }
+      } catch (error) {
+        console.error('Failed to refresh status batch:', error)
+      }
+    }
+  }, [devices, preference])
 
   const loadScrcpyInfo = async () => {
     try {
@@ -41,26 +106,119 @@ export default function DevicesPage() {
   }
 
   useEffect(() => {
-    loadDevices()
-    loadScrcpyInfo()
+    const init = async () => {
+      // 載入偏好設定
+      try {
+        const pref = await preferenceApi.get()
+        setPreference(pref)
+      } catch (error) {
+        console.error('Failed to load preference:', error)
+        // 使用預設值
+        setPreference({
+          poll_interval_sec: 15,
+          batch_size: 8,
+          max_concurrency: 8,
+          updated_at: '',
+        })
+      }
 
-    const intervalId = setInterval(() => {
+      // 載入設備列表
+      await loadDevices()
+      await loadScrcpyInfo()
+    }
+
+    init()
+  }, [])
+
+  // 當設備列表或偏好設定更新時，執行一次狀態刷新
+  useEffect(() => {
+    if (devices.length > 0 && preference) {
+      refreshOnlineStatuses()
+    }
+  }, [devices.length, preference, refreshOnlineStatuses])
+
+  // 設定輪詢和可見性監聽
+  useEffect(() => {
+    if (!preference) return
+
+    // 頁面可見性監聽
+    const handleVisibilityChange = () => {
+      isVisibleRef.current = !document.hidden
+      if (isVisibleRef.current) {
+        // 頁面恢復可見，立即刷新狀態
+        refreshOnlineStatuses()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    // 設定狀態輪詢（使用偏好設定的間隔）
+    if (statusIntervalRef.current) {
+      clearInterval(statusIntervalRef.current)
+    }
+    statusIntervalRef.current = setInterval(() => {
+      if (isVisibleRef.current) {
+        refreshOnlineStatuses()
+      }
+    }, preference.poll_interval_sec * 1000)
+
+    // 設定列表輪詢（60 秒）
+    if (listIntervalRef.current) {
+      clearInterval(listIntervalRef.current)
+    }
+    listIntervalRef.current = setInterval(() => {
+      if (isVisibleRef.current) {
+        loadDevices()
+      }
+    }, 60000)
+
+    // 倒數計時器（UI 顯示用）
+    const countdownInterval = setInterval(() => {
       setCountdown((prev) => {
         if (prev === 1) {
-          loadDevices()
-          return 5
+          return preference.poll_interval_sec
         }
         return prev - 1
       })
     }, 1000)
 
-    return () => clearInterval(intervalId)
-  }, [])
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      if (statusIntervalRef.current) clearInterval(statusIntervalRef.current)
+      if (listIntervalRef.current) clearInterval(listIntervalRef.current)
+      clearInterval(countdownInterval)
+    }
+  }, [preference, refreshOnlineStatuses])
 
   const handleConnect = async (deviceId: string) => {
     try {
       await deviceApi.connect(deviceId)
       await loadDevices()
+      
+      // 連接成功後立即查詢狀態
+      try {
+        const status = await deviceApi.getStatus(deviceId)
+        setDevices((prevDevices) =>
+          prevDevices.map((d) =>
+            d.device_id === deviceId
+              ? {
+                  ...d,
+                  battery: status.battery,
+                  temperature: status.temperature,
+                  is_charging: status.is_charging,
+                }
+              : d
+          )
+        )
+        setStatusErrors((prev) => ({ ...prev, [deviceId]: 'ok' }))
+      } catch (statusError: any) {
+        console.error('Failed to get device status after connect:', statusError)
+        // 分類錯誤
+        const errorType = statusError?.message?.toLowerCase().includes('timeout')
+          ? 'timeout'
+          : 'adb-error'
+        setStatusErrors((prev) => ({ ...prev, [deviceId]: errorType }))
+      }
     } catch (error) {
       console.error('Failed to connect device:', error)
       alert('連接失敗')
@@ -284,6 +442,7 @@ export default function DevicesPage() {
                   onEdit={(deviceId) => navigate(`/quest/devices/${deviceId}`)}
                   onMonitor={handleMonitor}
                   scrcpyInstalled={scrcpySystemInfo?.installed}
+                  statusErrorType={statusErrors[device.device_id] || 'idle'}
                 />
               </div>
             ))}

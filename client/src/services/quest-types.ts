@@ -163,3 +163,26 @@ export interface ScrcpyBatchStartRequest {
   config?: ScrcpyConfig
 }
 
+// 使用者偏好
+export interface UserPreference {
+  poll_interval_sec: number    // 輪詢間隔（秒）
+  batch_size: number            // 批次大小
+  max_concurrency: number       // 最大併發數
+  updated_at: string            // 更新時間
+}
+
+// 批量狀態查詢結果項
+export interface DeviceStatusResult {
+  device_id: string
+  battery: number
+  temperature: number
+  is_charging: boolean
+  error: string
+}
+
+// 批量狀態查詢響應
+export interface BatchStatusResponse {
+  success: boolean
+  count: number
+  results: DeviceStatusResult[]
+}

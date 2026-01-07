@@ -130,7 +130,25 @@ func (s *DeviceService) ConnectDevice(deviceID string) error {
 	device.Status = model.DeviceStatusOnline
 	device.LastSeen = time.Now()
 
-	return s.deviceRepo.Update(device)
+	if err := s.deviceRepo.Update(device); err != nil {
+		return err
+	}
+
+	// 連接成功後立即查詢設備狀態（電量、溫度）
+	if device.Serial != "" {
+		status, err := s.adbManager.GetDeviceStatus(device.Serial)
+		if err != nil {
+			log.Printf("[DeviceService] 警告: 連接後查詢設備狀態失敗 - %v\n", err)
+		} else {
+			device.Battery = status.Battery
+			device.Temperature = status.Temperature
+			device.IsCharging = status.IsCharging
+			s.deviceRepo.Update(device)
+			log.Printf("[DeviceService] 設備 %s 狀態更新: 電量=%d%%, 溫度=%.1f°C\n", device.DeviceID, status.Battery, status.Temperature)
+		}
+	}
+
+	return nil
 }
 
 // DisconnectDevice 斷開設備連接
@@ -231,12 +249,12 @@ func (s *DeviceService) ConnectBatch(deviceIDs []string, maxWorkers int) map[str
 }
 
 // GetDeviceStatusBatch 批量獲取設備狀態
-func (s *DeviceService) GetDeviceStatusBatch(deviceIDs []string, maxWorkers int) map[string]*adb.DeviceStatus {
+func (s *DeviceService) GetDeviceStatusBatch(deviceIDs []string, maxWorkers int) []map[string]interface{} {
 	if maxWorkers < 1 {
 		maxWorkers = 10
 	}
 
-	results := make(map[string]*adb.DeviceStatus)
+	results := make([]map[string]interface{}, 0, len(deviceIDs))
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, maxWorkers)
@@ -248,12 +266,26 @@ func (s *DeviceService) GetDeviceStatusBatch(deviceIDs []string, maxWorkers int)
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
-			status, err := s.GetDeviceStatus(id)
-			if err == nil {
-				mu.Lock()
-				results[id] = status
-				mu.Unlock()
+			result := map[string]interface{}{
+				"device_id": id,
 			}
+
+			status, err := s.GetDeviceStatus(id)
+			if err != nil {
+				result["error"] = err.Error()
+				result["battery"] = 0
+				result["temperature"] = 0.0
+				result["is_charging"] = false
+			} else {
+				result["battery"] = status.Battery
+				result["temperature"] = status.Temperature
+				result["is_charging"] = status.IsCharging
+				result["error"] = ""
+			}
+
+			mu.Lock()
+			results = append(results, result)
+			mu.Unlock()
 		}(deviceID)
 	}
 

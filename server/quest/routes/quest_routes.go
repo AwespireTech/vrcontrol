@@ -27,6 +27,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 	roomRepo := repository.NewRoomRepository(dataDir + "/quest_rooms.json")
 	actionRepo := repository.NewActionRepository(dataDir + "/quest_actions.json")
 	scrcpyConfigRepo := repository.NewScrcpyConfigRepository(dataDir + "/quest_scrcpy_config.json")
+	preferenceRepo := repository.NewPreferenceRepository(dataDir + "/quest_preferences.json")
 
 	// 從文件載入已保存的數據
 	log.Println("[Quest] 開始載入已保存的數據...")
@@ -54,12 +55,22 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 		log.Println("[Quest] 成功載入 Scrcpy 配置")
 	}
 
+	if err := preferenceRepo.Load(); err != nil {
+		log.Printf("[Quest] 警告: 載入使用者偏好失敗 - %v\n", err)
+		log.Println("[Quest] 將使用記憶體中的預設偏好設定")
+	} else {
+		pref := preferenceRepo.Get()
+		log.Printf("[Quest] 成功載入使用者偏好 (輪詢: %ds, 批大小: %d, 併發: %d)\n",
+			pref.PollIntervalSec, pref.BatchSize, pref.MaxConcurrency)
+	}
+
 	// 初始化 Services
 	deviceService := service.NewDeviceService(deviceRepo, adbManager, pingManager)
 	roomService := service.NewRoomService(roomRepo, deviceRepo, socketManager)
 	actionService := service.NewActionService(actionRepo, deviceRepo, adbManager)
 	monitoringService := service.NewMonitoringService(deviceRepo, pingManager, adbManager)
 	scrcpyService := service.NewScrcpyService(scrcpyManager, deviceRepo, scrcpyConfigRepo)
+	preferenceService := service.NewPreferenceService(preferenceRepo)
 
 	// 初始化 Controllers
 	deviceController := controller.NewDeviceController(deviceService)
@@ -67,6 +78,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 	actionController := controller.NewActionController(actionService)
 	monitoringController := controller.NewMonitoringController(monitoringService)
 	scrcpyController := controller.NewScrcpyController(scrcpyService)
+	preferenceController := controller.NewPreferenceController(preferenceService)
 
 	// Quest API 路由群組
 	questAPI := router.Group("/api/quest")
@@ -84,6 +96,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 			devices.GET("/:id/status", deviceController.GetDeviceStatus)
 			devices.POST("/:id/ping", deviceController.PingDevice)
 			devices.POST("/batch/connect", deviceController.ConnectBatch)
+			devices.POST("/batch/status", deviceController.GetDeviceStatusBatch)
 			devices.POST("/batch/ping", deviceController.PingBatch)
 		}
 
@@ -137,5 +150,9 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 			scrcpyGroup.GET("/config", scrcpyController.GetConfig)
 			scrcpyGroup.PUT("/config", scrcpyController.UpdateConfig)
 		}
+
+		// 使用者偏好路由
+		questAPI.GET("/preferences", preferenceController.GetPreference)
+		questAPI.PUT("/preferences", preferenceController.UpdatePreference)
 	}
 }

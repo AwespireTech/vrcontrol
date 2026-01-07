@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { monitoringApi, scrcpyApi } from '@/services/quest-api'
+import { monitoringApi, scrcpyApi, preferenceApi } from '@/services/quest-api'
 import { ScrcpyConfigForm } from '@/components/quest/scrcpy-config-form'
-import type { ScrcpyConfig, ScrcpySystemInfo } from '@/services/quest-types'
+import type { ScrcpyConfig, ScrcpySystemInfo, UserPreference } from '@/services/quest-types'
 
 export default function QuestSettingsPage() {
   const navigate = useNavigate()
@@ -14,6 +14,10 @@ export default function QuestSettingsPage() {
   const [scrcpySystemInfo, setScrcpySystemInfo] = useState<ScrcpySystemInfo | null>(null)
   const [scrcpyConfig, setScrcpyConfig] = useState<ScrcpyConfig | null>(null)
   const [scrcpyConfigChanged, setScrcpyConfigChanged] = useState(false)
+
+  // 使用者偏好狀態
+  const [preference, setPreference] = useState<UserPreference | null>(null)
+  const [preferenceChanged, setPreferenceChanged] = useState(false)
 
   const loadSettings = async () => {
     try {
@@ -27,6 +31,10 @@ export default function QuestSettingsPage() {
       // 載入 scrcpy 配置
       const config = await scrcpyApi.getConfig()
       setScrcpyConfig(config)
+
+      // 載入使用者偏好
+      const pref = await preferenceApi.get()
+      setPreference(pref)
     } catch (error) {
       console.error('Failed to load settings:', error)
     } finally {
@@ -92,6 +100,25 @@ export default function QuestSettingsPage() {
     }
   }
 
+  const handlePreferenceChange = (field: keyof UserPreference, value: number) => {
+    if (!preference) return
+    setPreference({ ...preference, [field]: value })
+    setPreferenceChanged(true)
+  }
+
+  const handleSavePreference = async () => {
+    if (!preference) return
+    
+    try {
+      await preferenceApi.update(preference)
+      setPreferenceChanged(false)
+      alert('設備狀態設定已保存')
+    } catch (error) {
+      console.error('Failed to save preference:', error)
+      alert('保存設定失敗')
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -113,6 +140,83 @@ export default function QuestSettingsPage() {
         <h1 className="text-3xl font-bold text-foreground mb-6">Quest 系統設置</h1>
 
         <div className="space-y-6">
+          {/* 設備狀態設定 */}
+          <div className="bg-surface rounded-lg border border-border p-6">
+            <h2 className="text-xl font-bold text-foreground mb-4">設備狀態設定</h2>
+            
+            {preference && (
+              <div className="space-y-4">
+                <div className="p-4 bg-background rounded-lg">
+                  <p className="font-semibold text-foreground mb-3">狀態輪詢間隔</p>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min="5"
+                      max="300"
+                      value={preference.poll_interval_sec}
+                      onChange={(e) => handlePreferenceChange('poll_interval_sec', parseInt(e.target.value) || 15)}
+                      className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <span className="text-foreground/70">秒</span>
+                  </div>
+                  <p className="text-xs text-foreground/50 mt-2">
+                    設定設備頁自動刷新設備狀態的時間間隔 (5-300 秒)
+                  </p>
+                </div>
+
+                <div className="p-4 bg-background rounded-lg">
+                  <p className="font-semibold text-foreground mb-3">批次大小</p>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min="1"
+                      max="50"
+                      value={preference.batch_size}
+                      onChange={(e) => handlePreferenceChange('batch_size', parseInt(e.target.value) || 8)}
+                      className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <span className="text-foreground/70">台</span>
+                  </div>
+                  <p className="text-xs text-foreground/50 mt-2">
+                    每次批量查詢的設備數量 (1-50 台)
+                  </p>
+                </div>
+
+                <div className="p-4 bg-background rounded-lg">
+                  <p className="font-semibold text-foreground mb-3">最大併發數</p>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min="1"
+                      max="20"
+                      value={preference.max_concurrency}
+                      onChange={(e) => handlePreferenceChange('max_concurrency', parseInt(e.target.value) || 8)}
+                      className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <span className="text-foreground/70">個</span>
+                  </div>
+                  <p className="text-xs text-foreground/50 mt-2">
+                    同時查詢設備狀態的最大並行數 (1-20 個)
+                  </p>
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    onClick={handleSavePreference}
+                    disabled={!preferenceChanged}
+                    className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
+                      preferenceChanged
+                        ? 'bg-primary hover:bg-primary/80 text-white'
+                        : 'bg-muted/50 text-foreground/50 cursor-not-allowed'
+                    }`}
+                  >
+                    保存設定
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* 監控服務設置 */}
           <div className="bg-surface rounded-lg  border border-border p-6">
             <h2 className="text-xl font-bold text-foreground mb-4">網絡監控服務</h2>

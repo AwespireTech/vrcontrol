@@ -275,7 +275,7 @@ func (c *DeviceController) GetDeviceStatusBatch(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"count":   len(results),
-		"data":    results,
+		"results": results,
 	})
 }
 

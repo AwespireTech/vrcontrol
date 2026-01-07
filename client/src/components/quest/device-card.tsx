@@ -1,6 +1,8 @@
 import { type QuestDevice, QUEST_DEVICE_STATUS } from '@/services/quest-types'
 import { getDisplayName } from '@/lib/utils/device'
 
+export type StatusErrorType = 'idle' | 'ok' | 'timeout' | 'adb-error'
+
 interface DeviceCardProps {
   device: QuestDevice
   onConnect?: (deviceId: string) => void
@@ -10,6 +12,7 @@ interface DeviceCardProps {
   onPing?: (deviceId: string) => void
   onMonitor?: (deviceId: string) => void
   scrcpyInstalled?: boolean
+  statusErrorType?: StatusErrorType
 }
 
 export default function DeviceCard({
@@ -21,6 +24,7 @@ export default function DeviceCard({
   onPing,
   onMonitor,
   scrcpyInstalled = false,
+  statusErrorType = 'idle',
 }: DeviceCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -55,6 +59,19 @@ export default function DeviceCard({
   const isOnline = device.status === QUEST_DEVICE_STATUS.ONLINE
   const isConnecting = device.status === QUEST_DEVICE_STATUS.CONNECTING
 
+  const renderStatusValue = (value: number | string, unit: string) => {
+    if (statusErrorType === 'idle') {
+      return <span className="text-foreground/50">-</span>
+    }
+    if (statusErrorType === 'timeout') {
+      return <span className="text-foreground/50" title="狀態查詢逾時">?</span>
+    }
+    if (statusErrorType === 'adb-error') {
+      return <span className="text-foreground/50" title="ADB 查詢失敗">X</span>
+    }
+    return <span className="text-foreground">{value}{unit}</span>
+  }
+
   return (
     <div className="rounded-lg border border-border bg-surface p-4 hover:border-primary transition-colors">
       {/* 設備名稱和狀態 */}
@@ -88,11 +105,11 @@ export default function DeviceCard({
           <>
             <div className="flex justify-between">
               <span className="text-foreground/70">電量:</span>
-              <span className="text-foreground">{device.battery}%</span>
+              {renderStatusValue(device.battery, '%')}
             </div>
             <div className="flex justify-between">
               <span className="text-foreground/70">溫度:</span>
-              <span className="text-foreground">{device.temperature}°C</span>
+              {renderStatusValue(device.temperature, '°C')}
             </div>
             <div className="flex justify-between">
               <span className="text-foreground/70">延遲:</span>
