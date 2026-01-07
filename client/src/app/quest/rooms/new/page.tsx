@@ -16,7 +16,7 @@ export default function NewRoomPage() {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-2xl mx-auto">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/quest/rooms')}
           className="text-primary hover:text-primary/80 mb-4"
         >
           ← 返回
@@ -24,7 +24,7 @@ export default function NewRoomPage() {
 
         <div className="bg-surface rounded-lg  border border-border p-6">
           <h1 className="text-2xl font-bold text-foreground mb-6">創建新房間</h1>
-          <RoomForm onSubmit={handleSubmit} onCancel={() => navigate(-1)} />
+          <RoomForm onSubmit={handleSubmit} onCancel={() => navigate('/quest/rooms')} />
         </div>
       </div>
     </div>

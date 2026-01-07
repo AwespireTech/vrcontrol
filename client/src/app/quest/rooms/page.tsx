@@ -99,7 +99,7 @@ export default function RoomsPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <button
-              onClick={() => navigate(-1)}
+              onClick={() => navigate('/quest')}
               className="text-primary hover:text-primary/80 mb-2"
             >
               ← 返回

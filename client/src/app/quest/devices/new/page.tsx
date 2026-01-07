@@ -16,7 +16,7 @@ export default function NewDevicePage() {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-2xl mx-auto">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/quest/devices')}
           className="text-primary hover:text-primary/80 mb-4"
         >
           ← 返回
@@ -24,7 +24,7 @@ export default function NewDevicePage() {
 
         <div className="bg-surface rounded-lg  border border-border p-6">
           <h1 className="text-2xl font-bold text-foreground mb-6">添加新設備</h1>
-          <DeviceForm onSubmit={handleSubmit} onCancel={() => navigate(-1)} />
+          <DeviceForm onSubmit={handleSubmit} onCancel={() => navigate('/quest/devices')} />
         </div>
       </div>
     </div>

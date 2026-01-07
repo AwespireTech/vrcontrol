@@ -63,7 +63,7 @@ export default function EditActionPage() {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-2xl mx-auto">
         <button
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/quest/actions')}
           className="text-primary hover:text-primary/80 mb-4"
         >
           ← 返回
@@ -74,7 +74,7 @@ export default function EditActionPage() {
           <ActionForm 
             action={action} 
             onSubmit={handleSubmit} 
-            onCancel={() => navigate(-1)} 
+            onCancel={() => navigate('/quest/actions')} 
           />
         </div>
       </div>
