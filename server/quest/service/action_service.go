@@ -157,11 +157,11 @@ func (s *ActionService) executeActionToDevice(action *model.QuestAction, device 
 		pkg := getStringParam(action.Params, "package", "")
 		activity := getStringParam(action.Params, "activity", "")
 		if pkg == "" {
-			result.Error = "package name required"
+			result.Error = "Missing required parameter: package for launch_app action"
 			return result
 		}
 		// 提取 extras
-		extras := make(map[string]interface{})
+		extras := make(map[string]any)
 		if extrasData, ok := action.Params["extras"].(map[string]interface{}); ok {
 			extras = extrasData
 		}
@@ -172,7 +172,7 @@ func (s *ActionService) executeActionToDevice(action *model.QuestAction, device 
 		pkg := getStringParam(action.Params, "package", "")
 		method := getStringParam(action.Params, "method", "force-stop")
 		if pkg == "" {
-			result.Error = "package name required"
+			result.Error = "Missing required parameter: package for stop_app action"
 			return result
 		}
 		err = s.adbManager.StopApp(device.Serial, pkg, method)
@@ -183,7 +183,7 @@ func (s *ActionService) executeActionToDevice(action *model.QuestAction, device 
 		activity := getStringParam(action.Params, "activity", "")
 		delay := getIntParam(action.Params, "delay", 1000)
 		if pkg == "" {
-			result.Error = "package name required"
+			result.Error = "Missing required parameter: package for restart_app action"
 			return result
 		}
 		// 停止應用
@@ -200,7 +200,7 @@ func (s *ActionService) executeActionToDevice(action *model.QuestAction, device 
 		keycode := getIntParam(action.Params, "keycode", 0)
 		repeat := getIntParam(action.Params, "repeat", 1)
 		if keycode == 0 {
-			result.Error = "keycode required"
+			result.Error = "Missing required parameter: keycode for send_key action"
 			return result
 		}
 		err = s.adbManager.SendKey(device.Serial, keycode, repeat)
@@ -211,7 +211,7 @@ func (s *ActionService) executeActionToDevice(action *model.QuestAction, device 
 		replace := getBoolParam(action.Params, "replace", true)
 		grantPerms := getBoolParam(action.Params, "grant_permissions", true)
 		if apkPath == "" {
-			result.Error = "apk_path required"
+			result.Error = "Missing required parameter: apk_path for install_apk action"
 			return result
 		}
 		err = s.adbManager.InstallAPK(device.Serial, apkPath, replace, grantPerms)

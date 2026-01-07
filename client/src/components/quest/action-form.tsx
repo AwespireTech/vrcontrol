@@ -19,6 +19,68 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
   })
   const [submitting, setSubmitting] = useState(false)
 
+  const validateParams = (actionType: string, params: any): string | null => {
+    // Validate required parameters based on action type
+    switch (actionType) {
+      case QUEST_ACTION_TYPES.LAUNCH_APP:
+      case QUEST_ACTION_TYPES.STOP_APP:
+      case QUEST_ACTION_TYPES.RESTART_APP:
+        if (!params.package || typeof params.package !== 'string') {
+          return 'Missing required parameter: package (string)'
+        }
+        if (params.package.trim() === '') {
+          return 'Parameter "package" cannot be empty'
+        }
+        break
+
+      case QUEST_ACTION_TYPES.SEND_KEY:
+        if (!params.keycode || typeof params.keycode !== 'number') {
+          return 'Missing required parameter: keycode (number)'
+        }
+        if (params.keycode <= 0) {
+          return 'Parameter "keycode" must be a positive number'
+        }
+        break
+
+      case QUEST_ACTION_TYPES.INSTALL_APK:
+        if (!params.apk_path || typeof params.apk_path !== 'string') {
+          return 'Missing required parameter: apk_path (string)'
+        }
+        if (params.apk_path.trim() === '') {
+          return 'Parameter "apk_path" cannot be empty'
+        }
+        break
+    }
+
+    // Validate optional parameter types if present
+    if (params.activity !== undefined && typeof params.activity !== 'string') {
+      return 'Parameter "activity" must be a string'
+    }
+    if (params.delay !== undefined && typeof params.delay !== 'number') {
+      return 'Parameter "delay" must be a number'
+    }
+    if (params.repeat !== undefined && typeof params.repeat !== 'number') {
+      return 'Parameter "repeat" must be a number'
+    }
+    if (params.force !== undefined && typeof params.force !== 'boolean') {
+      return 'Parameter "force" must be a boolean'
+    }
+    if (params.replace !== undefined && typeof params.replace !== 'boolean') {
+      return 'Parameter "replace" must be a boolean'
+    }
+    if (params.grant_permissions !== undefined && typeof params.grant_permissions !== 'boolean') {
+      return 'Parameter "grant_permissions" must be a boolean'
+    }
+    if (params.duration_seconds !== undefined && typeof params.duration_seconds !== 'number') {
+      return 'Parameter "duration_seconds" must be a number'
+    }
+    if (params.timeout !== undefined && typeof params.timeout !== 'number') {
+      return 'Parameter "timeout" must be a number'
+    }
+
+    return null // No validation errors
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
@@ -30,6 +92,14 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
         params = JSON.parse(formData.params)
       } catch (error) {
         alert('參數格式錯誤，請輸入有效的 JSON')
+        setSubmitting(false)
+        return
+      }
+
+      // 驗證參數
+      const validationError = validateParams(formData.action_type, params)
+      if (validationError) {
+        alert(`參數驗證失敗: ${validationError}`)
         setSubmitting(false)
         return
       }
@@ -63,7 +133,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
       case QUEST_ACTION_TYPES.LAUNCH_APP:
         return JSON.stringify(
           {
-            package_name: 'com.example.app',
+            package: 'com.example.app',
             activity: '.MainActivity',
           },
           null,
@@ -73,7 +143,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
       case QUEST_ACTION_TYPES.RESTART_APP:
         return JSON.stringify(
           {
-            package_name: 'com.example.app',
+            package: 'com.example.app',
           },
           null,
           2,
