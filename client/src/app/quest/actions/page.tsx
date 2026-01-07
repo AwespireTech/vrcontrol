@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { actionApi, deviceApi } from '@/services/quest-api'
 import type { QuestAction, QuestDevice } from '@/services/quest-types'
 import ActionCard from '@/components/quest/action-card'
+import { getDisplayName } from '@/lib/utils/device'
 
 export default function ActionsPage() {
   const navigate = useNavigate()
@@ -192,7 +193,7 @@ export default function ActionsPage() {
                       className="w-4 h-4"
                     />
                     <span className="flex-1 text-sm text-foreground">
-                      {device.name} ({device.ip})
+                      {getDisplayName(device)} ({device.ip})
                     </span>
                     <span
                       className={`text-xs px-2 py-1 rounded ${

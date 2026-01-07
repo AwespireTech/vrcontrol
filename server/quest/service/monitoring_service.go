@@ -142,7 +142,7 @@ func (s *MonitoringService) performMonitoring() {
 			// Ping 成功
 			if device.Status == model.DeviceStatusOffline {
 				// 從離線變為在線，嘗試重新連接
-				log.Printf("[MonitoringService] Device %s back online, attempting reconnect\n", device.Name)
+				log.Printf("[MonitoringService] Device %s back online, attempting reconnect\n", device.GetDisplayName())
 				s.tryReconnectDevice(device)
 			} else {
 				// 更新 ping 值
@@ -151,14 +151,14 @@ func (s *MonitoringService) performMonitoring() {
 		} else {
 			// Ping 失敗
 			if device.Status != model.DeviceStatusOffline {
-				log.Printf("[MonitoringService] Device %s offline (ping failed)\n", device.Name)
+				log.Printf("[MonitoringService] Device %s offline (ping failed)\n", device.GetDisplayName())
 				s.deviceRepo.UpdateStatus(deviceID, model.DeviceStatusOffline, 0)
 			}
 		}
 
 		if oldStatus != device.Status {
 			log.Printf("[MonitoringService] Device %s status changed: %s -> %s\n",
-				device.Name, oldStatus, device.Status)
+				device.GetDisplayName(), oldStatus, device.Status)
 		}
 	}
 }
@@ -200,7 +200,7 @@ func (s *MonitoringService) tryReconnectDevice(device *model.QuestDevice) {
 
 	// 嘗試連接
 	if err := s.adbManager.Connect(device.IP, 5555); err != nil {
-		log.Printf("[MonitoringService] Failed to reconnect device %s: %v\n", device.Name, err)
+		log.Printf("[MonitoringService] Failed to reconnect device %s: %v\n", device.GetDisplayName(), err)
 		s.deviceRepo.UpdateStatus(device.DeviceID, model.DeviceStatusOffline, 0)
 		return
 	}
@@ -208,7 +208,7 @@ func (s *MonitoringService) tryReconnectDevice(device *model.QuestDevice) {
 	// 獲取設備列表以確認連接成功
 	devices, err := s.adbManager.GetDevices()
 	if err != nil {
-		log.Printf("[MonitoringService] Failed to get devices for %s: %v\n", device.Name, err)
+		log.Printf("[MonitoringService] Failed to get devices for %s: %v\n", device.GetDisplayName(), err)
 		s.deviceRepo.UpdateStatus(device.DeviceID, model.DeviceStatusOffline, 0)
 		return
 	}
@@ -224,7 +224,7 @@ func (s *MonitoringService) tryReconnectDevice(device *model.QuestDevice) {
 	}
 
 	if serial == "" {
-		log.Printf("[MonitoringService] Device %s not found in device list\n", device.Name)
+		log.Printf("[MonitoringService] Device %s not found in device list\n", device.GetDisplayName())
 		s.deviceRepo.UpdateStatus(device.DeviceID, model.DeviceStatusOffline, 0)
 		return
 	}
@@ -234,11 +234,11 @@ func (s *MonitoringService) tryReconnectDevice(device *model.QuestDevice) {
 	device.Status = model.DeviceStatusOnline
 
 	if err := s.deviceRepo.Update(device); err != nil {
-		log.Printf("[MonitoringService] Failed to update device %s: %v\n", device.Name, err)
+		log.Printf("[MonitoringService] Failed to update device %s: %v\n", device.GetDisplayName(), err)
 		return
 	}
 
-	log.Printf("[MonitoringService] Device %s reconnected successfully\n", device.Name)
+	log.Printf("[MonitoringService] Device %s reconnected successfully\n", device.GetDisplayName())
 }
 
 // MonitorOnce 手動執行一次監控

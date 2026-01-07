@@ -116,9 +116,10 @@ func (s *DeviceService) ConnectDevice(deviceID string) error {
 			if info.Model != "" {
 				device.Model = info.Model
 			}
-			if info.Name != "" {
-				device.Name = info.Name
-			}
+			// 不再自動更新 Name，保持用戶設定或 ADB 初次連接時的值
+			// if info.Name != "" {
+			// 	device.Name = info.Name
+			// }
 			if info.AndroidVersion != "" {
 				device.AndroidVersion = info.AndroidVersion
 			}

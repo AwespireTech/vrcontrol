@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { roomApi, deviceApi } from '@/services/quest-api'
 import type { QuestRoom, QuestDevice } from '@/services/quest-types'
 import RoomCard from '@/components/quest/room-card'
+import { getDisplayName } from '@/lib/utils/device'
 
 export default function RoomsPage() {
   const navigate = useNavigate()
@@ -24,7 +25,7 @@ export default function RoomsPage() {
       // 建立設備 ID 到名稱的映射
       const nameMap = new Map<string, string>()
       devicesData.forEach((device) => {
-        nameMap.set(device.device_id, device.name)
+        nameMap.set(device.device_id, getDisplayName(device))
       })
       setDeviceNameMap(nameMap)
     } catch (error) {

@@ -1,4 +1,5 @@
 import { type QuestDevice, QUEST_DEVICE_STATUS } from '@/services/quest-types'
+import { getDisplayName } from '@/lib/utils/device'
 
 interface DeviceCardProps {
   device: QuestDevice
@@ -58,7 +59,7 @@ export default function DeviceCard({
     <div className="rounded-lg border border-border bg-surface p-4 hover:border-primary transition-colors">
       {/* 設備名稱和狀態 */}
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-semibold text-foreground">{device.name}</h3>
+        <h3 className="text-lg font-semibold text-foreground">{getDisplayName(device)}</h3>
         <div className="flex items-center gap-2">
           <span className={`w-3 h-3 rounded-full ${getStatusColor(device.status)}`} />
           <span className="text-sm text-foreground/70">{getStatusText(device.status)}</span>

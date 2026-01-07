@@ -67,7 +67,7 @@ func (c *DeviceController) CreateDevice(ctx *gin.Context) {
 		return
 	}
 
-	log.Printf("[DeviceController] CreateDevice: 收到設備數據 - Name: %s, IP: %s\n", device.Name, device.IP)
+	log.Printf("[DeviceController] CreateDevice: 收到設備數據 - Name: %s, Alias: %s, IP: %s\n", device.Name, device.Alias, device.IP)
 	if err := c.deviceService.CreateDevice(&device); err != nil {
 		log.Printf("[DeviceController] CreateDevice: Service 創建失敗 - %v\n", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{

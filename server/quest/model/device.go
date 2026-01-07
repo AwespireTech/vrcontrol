@@ -34,3 +34,14 @@ const (
 	DeviceStatusError        = "error"
 	DeviceStatusDisconnected = "disconnected"
 )
+
+// GetDisplayName 獲取設備顯示名稱，優先使用 Alias，其次使用 Name，最後使用 DeviceID
+func (d *QuestDevice) GetDisplayName() string {
+	if d.Alias != "" {
+		return d.Alias
+	}
+	if d.Name != "" {
+		return d.Name
+	}
+	return d.DeviceID
+}

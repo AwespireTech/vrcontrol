@@ -11,6 +11,7 @@ interface DeviceFormProps {
 
 export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormProps) {
   const [formData, setFormData] = useState({
+    alias: device?.alias || '',
     name: device?.name || '',
     ip: device?.ip || '',
     port: device?.port || 5555,
@@ -44,17 +45,28 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
         <label className="block text-sm font-semibold text-foreground mb-2">
-          設備名稱 *
+          顯示名稱 *
         </label>
         <input
           type="text"
-          name="name"
-          value={formData.name}
+          name="alias"
+          value={formData.alias}
           onChange={handleChange}
           required
           className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           placeholder="例如: Quest 1"
         />
+        <p className="text-xs text-foreground/50 mt-1">設備的自訂顯示名稱</p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-foreground mb-2">
+          原始設備名稱
+        </label>
+        <div className="w-full px-4 py-2 border border-border rounded-lg bg-muted/30 text-foreground/70">
+          {device?.name || '(連接設備後自動填入)'}
+        </div>
+        <p className="text-xs text-foreground/50 mt-1">由 ADB 自動獲取的設備名稱，不可編輯</p>
       </div>
 
       <div>
