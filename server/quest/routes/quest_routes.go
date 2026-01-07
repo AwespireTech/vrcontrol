@@ -123,19 +123,19 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 			monitoring.POST("/stop", monitoringController.Stop)
 			monitoring.POST("/interval", monitoringController.SetInterval)
 			monitoring.POST("/run-once", monitoringController.RunOnce)
+		}
 
-			// Scrcpy 螢幕鏡像路由
-			scrcpyGroup := questAPI.Group("/scrcpy")
-			{
-				scrcpyGroup.GET("/system-info", scrcpyController.GetSystemInfo)
-				scrcpyGroup.POST("/start/:id", scrcpyController.StartScrcpy)
-				scrcpyGroup.POST("/stop/:id", scrcpyController.StopScrcpy)
-				scrcpyGroup.POST("/batch/start", scrcpyController.StartScrcpyBatch)
-				scrcpyGroup.GET("/sessions", scrcpyController.GetSessions)
-				scrcpyGroup.POST("/sessions/refresh", scrcpyController.RefreshSessions)
-				scrcpyGroup.GET("/config", scrcpyController.GetConfig)
-				scrcpyGroup.PUT("/config", scrcpyController.UpdateConfig)
-			}
+		// Scrcpy 螢幕鏡像路由
+		scrcpyGroup := questAPI.Group("/scrcpy")
+		{
+			scrcpyGroup.GET("/system-info", scrcpyController.GetSystemInfo)
+			scrcpyGroup.POST("/start/:id", scrcpyController.StartScrcpy)
+			scrcpyGroup.POST("/stop/:id", scrcpyController.StopScrcpy)
+			scrcpyGroup.POST("/batch/start", scrcpyController.StartScrcpyBatch)
+			scrcpyGroup.GET("/sessions", scrcpyController.GetSessions)
+			scrcpyGroup.POST("/sessions/refresh", scrcpyController.RefreshSessions)
+			scrcpyGroup.GET("/config", scrcpyController.GetConfig)
+			scrcpyGroup.PUT("/config", scrcpyController.UpdateConfig)
 		}
 	}
 }

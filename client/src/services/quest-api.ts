@@ -353,7 +353,8 @@ export const scrcpyApi = {
   // 獲取 scrcpy 系統信息（檢查是否已安裝）
   getSystemInfo: async (): Promise<ScrcpySystemInfo> => {
     const res = await fetch(`${QUEST_API_BASE}/scrcpy/system-info`)
-    return await res.json()
+    const data: ApiResponse<ScrcpySystemInfo> = await res.json()
+    return data.data!
   },
 
   // 啟動單個設備的 scrcpy
@@ -391,7 +392,8 @@ export const scrcpyApi = {
   // 獲取所有活躍的 scrcpy 會話
   getSessions: async (): Promise<ScrcpySession[]> => {
     const res = await fetch(`${QUEST_API_BASE}/scrcpy/sessions`)
-    return await res.json()
+    const data: ApiResponse<ScrcpySession[]> = await res.json()
+    return data.data || []
   },
 
   // 刷新會話狀態
@@ -399,13 +401,15 @@ export const scrcpyApi = {
     const res = await fetch(`${QUEST_API_BASE}/scrcpy/sessions/refresh`, {
       method: 'POST',
     })
-    return await res.json()
+    const data: ApiResponse<ScrcpySession[]> = await res.json()
+    return data.data || []
   },
 
   // 獲取 scrcpy 配置
   getConfig: async (): Promise<ScrcpyConfig> => {
     const res = await fetch(`${QUEST_API_BASE}/scrcpy/config`)
-    return await res.json()
+    const data: ApiResponse<ScrcpyConfig> = await res.json()
+    return data.data!
   },
 
   // 更新 scrcpy 配置
