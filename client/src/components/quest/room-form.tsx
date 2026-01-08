@@ -26,7 +26,7 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
       let parameters = {}
       try {
         parameters = JSON.parse(formData.parameters)
-      } catch (error) {
+      } catch {
         alert('參數格式錯誤，請輸入有效的 JSON')
         setSubmitting(false)
         return

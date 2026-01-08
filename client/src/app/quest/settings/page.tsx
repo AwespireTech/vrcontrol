@@ -3,6 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { monitoringApi, scrcpyApi, preferenceApi } from '@/services/quest-api'
 import { ScrcpyConfigForm } from '@/components/quest/scrcpy-config-form'
 import type { ScrcpyConfig, ScrcpySystemInfo, UserPreference } from '@/services/quest-types'
+import {
+  DEFAULT_BATCH_SIZE,
+  DEFAULT_MAX_CONCURRENCY,
+  DEFAULT_POLL_INTERVAL_SECONDS,
+} from '@/environment'
 
 export default function QuestSettingsPage() {
   const navigate = useNavigate()
@@ -110,7 +115,8 @@ export default function QuestSettingsPage() {
     if (!preference) return
     
     try {
-      await preferenceApi.update(preference)
+      const updated = await preferenceApi.update(preference)
+      setPreference(updated)
       setPreferenceChanged(false)
       alert('設備狀態設定已保存')
     } catch (error) {
@@ -154,7 +160,12 @@ export default function QuestSettingsPage() {
                       min="5"
                       max="300"
                       value={preference.poll_interval_sec}
-                      onChange={(e) => handlePreferenceChange('poll_interval_sec', parseInt(e.target.value) || 15)}
+                      onChange={(e) =>
+                        handlePreferenceChange(
+                          'poll_interval_sec',
+                          parseInt(e.target.value) || DEFAULT_POLL_INTERVAL_SECONDS
+                        )
+                      }
                       className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                     <span className="text-foreground/70">秒</span>
@@ -172,7 +183,12 @@ export default function QuestSettingsPage() {
                       min="1"
                       max="50"
                       value={preference.batch_size}
-                      onChange={(e) => handlePreferenceChange('batch_size', parseInt(e.target.value) || 8)}
+                      onChange={(e) =>
+                        handlePreferenceChange(
+                          'batch_size',
+                          parseInt(e.target.value) || DEFAULT_BATCH_SIZE
+                        )
+                      }
                       className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                     <span className="text-foreground/70">台</span>
@@ -190,7 +206,12 @@ export default function QuestSettingsPage() {
                       min="1"
                       max="20"
                       value={preference.max_concurrency}
-                      onChange={(e) => handlePreferenceChange('max_concurrency', parseInt(e.target.value) || 8)}
+                      onChange={(e) =>
+                        handlePreferenceChange(
+                          'max_concurrency',
+                          parseInt(e.target.value) || DEFAULT_MAX_CONCURRENCY
+                        )
+                      }
                       className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                     <span className="text-foreground/70">個</span>

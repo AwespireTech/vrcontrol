@@ -65,7 +65,7 @@ export interface QuestRoom {
   socket_ip: string
   socket_port: number
   socket_running: boolean
-  parameters: Record<string, any>
+  parameters: Record<string, unknown>
   created_at: string
   updated_at: string
 }
@@ -76,7 +76,7 @@ export interface QuestAction {
   name: string
   description: string
   action_type: string
-  params: Record<string, any>
+  params: Record<string, unknown>
   execution_count: number
   success_count: number
   failure_count: number
@@ -161,6 +161,15 @@ export interface ScrcpySystemInfo {
 export interface ScrcpyBatchStartRequest {
   device_ids: string[]
   config?: ScrcpyConfig
+}
+
+// Scrcpy 批量啟動響應（最小型別：目前 UI 只依賴 success_count / failed_count）
+export interface ScrcpyBatchStartResponse {
+  success: boolean
+  total?: number
+  success_count: number
+  failed_count: number
+  results?: unknown[]
 }
 
 // 使用者偏好

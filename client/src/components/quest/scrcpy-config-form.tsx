@@ -14,7 +14,7 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
     setConfig(value)
   }, [value])
 
-  const handleChange = (field: keyof ScrcpyConfig, fieldValue: any) => {
+  const handleChange = (field: keyof ScrcpyConfig, fieldValue: unknown) => {
     const newConfig = { ...config, [field]: fieldValue }
     setConfig(newConfig)
     onChange(newConfig)

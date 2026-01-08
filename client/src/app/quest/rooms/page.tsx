@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { roomApi, deviceApi } from '@/services/quest-api'
-import type { QuestRoom, QuestDevice } from '@/services/quest-types'
+import type { QuestRoom } from '@/services/quest-types'
 import RoomCard from '@/components/quest/room-card'
 import { getDisplayName } from '@/lib/utils/device'
 
 export default function RoomsPage() {
   const navigate = useNavigate()
   const [rooms, setRooms] = useState<QuestRoom[]>([])
-  const [devices, setDevices] = useState<QuestDevice[]>([])
   const [deviceNameMap, setDeviceNameMap] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
   const [countdown, setCountdown] = useState(5)
@@ -20,7 +19,6 @@ export default function RoomsPage() {
         deviceApi.getAll(),
       ])
       setRooms(roomsData)
-      setDevices(devicesData)
 
       // 建立設備 ID 到名稱的映射
       const nameMap = new Map<string, string>()

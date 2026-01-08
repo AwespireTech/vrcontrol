@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { roomApi, deviceApi } from '@/services/quest-api'
 import type { QuestRoom, QuestDevice } from '@/services/quest-types'
@@ -11,7 +11,7 @@ export default function RoomDevicesPage() {
   const [roomDevices, setRoomDevices] = useState<QuestDevice[]>([])
   const [loading, setLoading] = useState(true)
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!id) return
 
     try {
@@ -33,11 +33,11 @@ export default function RoomDevicesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [id])
 
   useEffect(() => {
     loadData()
-  }, [id])
+  }, [loadData])
 
   const handleAddDevice = async (deviceId: string) => {
     if (!id) return

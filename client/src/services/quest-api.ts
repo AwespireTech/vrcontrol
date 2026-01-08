@@ -13,6 +13,7 @@ import {
   type ScrcpySession,
   type ScrcpySystemInfo,
   type ScrcpyBatchStartRequest,
+  type ScrcpyBatchStartResponse,
   type UserPreference,
   type BatchStatusResponse,
 } from './quest-types'
@@ -392,7 +393,7 @@ export const scrcpyApi = {
   },
 
   // 批量啟動多個設備的 scrcpy
-  startBatch: async (request: ScrcpyBatchStartRequest): Promise<any> => {
+  startBatch: async (request: ScrcpyBatchStartRequest): Promise<ScrcpyBatchStartResponse> => {
     const res = await fetch(`${QUEST_API_BASE}/scrcpy/batch/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

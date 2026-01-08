@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import type { QuestDevice } from '@/services/quest-types'
 
 interface DeviceFormProps {

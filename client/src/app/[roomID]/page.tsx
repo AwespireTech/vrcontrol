@@ -40,7 +40,7 @@ export const RoomState = () => {
     return () => {
       ws.close()
     }
-  }, [roomID])
+  }, [roomID, host, wsProtocol])
 
   useEffect(() => {
     if (moveState !== "") {
