@@ -91,7 +91,7 @@ export default function RoomDevicesPage() {
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto">
         <button
-          onClick={() => navigate(`/quest/rooms/${id}`)}
+          onClick={() => navigate(`/quest/rooms`)}
           className="text-primary hover:text-primary/80 mb-4"
         >
           ← 返回
