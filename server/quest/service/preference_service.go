@@ -46,5 +46,21 @@ func (s *PreferenceService) Update(pref *model.UserPreference) error {
 		pref.MaxConcurrency = 20
 	}
 
+	// 自動重連冷卻（秒）
+	if pref.ReconnectCooldownSec < 5 {
+		pref.ReconnectCooldownSec = 5
+	}
+	if pref.ReconnectCooldownSec > 3600 {
+		pref.ReconnectCooldownSec = 3600
+	}
+
+	// 自動重連最大重試次數
+	if pref.ReconnectMaxRetries < 0 {
+		pref.ReconnectMaxRetries = 0
+	}
+	if pref.ReconnectMaxRetries > 20 {
+		pref.ReconnectMaxRetries = 20
+	}
+
 	return s.preferenceRepo.Update(pref)
 }

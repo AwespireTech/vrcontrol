@@ -13,6 +13,12 @@ type UserPreference struct {
 	// 最大併發數
 	MaxConcurrency int `json:"max_concurrency"`
 
+	// 自動重連冷卻時間（秒）
+	ReconnectCooldownSec int `json:"reconnect_cooldown_sec"`
+
+	// 自動重連最大重試次數
+	ReconnectMaxRetries int `json:"reconnect_max_retries"`
+
 	// 更新時間
 	UpdatedAt time.Time `json:"updated_at"`
 }
@@ -20,9 +26,11 @@ type UserPreference struct {
 // DefaultUserPreference 返回預設使用者偏好
 func DefaultUserPreference() *UserPreference {
 	return &UserPreference{
-		PollIntervalSec: 15,
-		BatchSize:       8,
-		MaxConcurrency:  8,
-		UpdatedAt:       time.Now(),
+		PollIntervalSec:      15,
+		BatchSize:            8,
+		MaxConcurrency:       8,
+		ReconnectCooldownSec: 30,
+		ReconnectMaxRetries:  5,
+		UpdatedAt:            time.Now(),
 	}
 }

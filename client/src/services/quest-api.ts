@@ -318,6 +318,7 @@ export const monitoringApi = {
   getStatus: async (): Promise<MonitoringStatus> => {
     const res = await fetch(`${QUEST_API_BASE}/monitoring/status`)
     const data: ApiResponse<MonitoringStatus> = await res.json()
+    if (!data?.success) return { running: false }
     return data.data || { running: false }
   },
 

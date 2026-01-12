@@ -4,22 +4,29 @@ import "time"
 
 // QuestDevice Quest 設備模型
 type QuestDevice struct {
-	DeviceID       string    `json:"device_id"`
-	Serial         string    `json:"serial"`
-	Alias          string    `json:"alias"`
-	Name           string    `json:"name"`
-	Model          string    `json:"model"`
-	AndroidVersion string    `json:"android_version"`
-	IP             string    `json:"ip"`
-	Port           int       `json:"port"`
-	Status         string    `json:"status"` // online, offline, connecting, error, disconnected
-	Battery        int       `json:"battery"`
-	Temperature    float64   `json:"temperature"`
-	IsCharging     bool      `json:"is_charging"`
-	PingMS         float64   `json:"ping_ms"`
-	RoomID         string    `json:"room_id"`
-	Notes          string    `json:"notes"`
-	SortOrder      int       `json:"sort_order"`
+	DeviceID       string  `json:"device_id"`
+	Serial         string  `json:"serial"`
+	Alias          string  `json:"alias"`
+	Name           string  `json:"name"`
+	Model          string  `json:"model"`
+	AndroidVersion string  `json:"android_version"`
+	IP             string  `json:"ip"`
+	Port           int     `json:"port"`
+	Status         string  `json:"status"` // online, offline, connecting, error, disconnected
+	Battery        int     `json:"battery"`
+	Temperature    float64 `json:"temperature"`
+	IsCharging     bool    `json:"is_charging"`
+	PingMS         float64 `json:"ping_ms"`
+	RoomID         string  `json:"room_id"`
+	Notes          string  `json:"notes"`
+	SortOrder      int     `json:"sort_order"`
+
+	// 自動重連狀態（供監控服務與 UI 顯示使用）
+	AutoReconnectDisabledReason string     `json:"auto_reconnect_disabled_reason,omitempty"` // manual_disconnect | max_retries_exhausted
+	AutoReconnectRetryCount     int        `json:"auto_reconnect_retry_count,omitempty"`
+	AutoReconnectNextAttemptAt  *time.Time `json:"auto_reconnect_next_attempt_at,omitempty"`
+	AutoReconnectLastError      string     `json:"auto_reconnect_last_error,omitempty"`
+
 	LastSeen       time.Time `json:"last_seen"`
 	FirstConnected time.Time `json:"first_connected"`
 	CreatedAt      time.Time `json:"created_at"`

@@ -8,7 +8,8 @@ export const QUEST_DEVICE_STATUS = {
   ONLINE: 'online',
   OFFLINE: 'offline',
   CONNECTING: 'connecting',
-  ERROR: 'error'
+  ERROR: 'error',
+  DISCONNECTED: 'disconnected'
 } as const
 
 // Quest 動作類型
@@ -49,6 +50,13 @@ export interface QuestDevice {
   room_id: string
   notes: string
   sort_order: number
+
+  // 自動重連狀態（由後端維護）
+  auto_reconnect_disabled_reason?: 'manual_disconnect' | 'max_retries_exhausted'
+  auto_reconnect_retry_count?: number
+  auto_reconnect_next_attempt_at?: string
+  auto_reconnect_last_error?: string
+
   last_seen: string
   first_connected: string
   created_at: string
@@ -177,6 +185,8 @@ export interface UserPreference {
   poll_interval_sec: number    // 輪詢間隔（秒）
   batch_size: number            // 批次大小
   max_concurrency: number       // 最大併發數
+  reconnect_cooldown_sec: number // 自動重連冷卻（秒）
+  reconnect_max_retries: number  // 自動重連最大重試次數
   updated_at: string            // 更新時間
 }
 

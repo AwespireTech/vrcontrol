@@ -44,7 +44,7 @@ func (r *PreferenceRepository) Load() error {
 		return nil
 	}
 
-	// 檢查是否為空（檔案不存在或為空）
+	// 檢查是否為空（檔案不存在或為空 / 缺必要欄位）
 	if pref.PollIntervalSec == 0 {
 		// 使用預設值並保存
 		log.Println("[PreferenceRepo] 偏好檔案為空，使用預設值")
@@ -57,9 +57,41 @@ func (r *PreferenceRepository) Load() error {
 		return nil
 	}
 
+	// 逐欄位補齊預設，支援舊版檔案缺新欄位
+	defaults := model.DefaultUserPreference()
+	changed := false
+	if pref.BatchSize == 0 {
+		pref.BatchSize = defaults.BatchSize
+		changed = true
+	}
+	if pref.MaxConcurrency == 0 {
+		pref.MaxConcurrency = defaults.MaxConcurrency
+		changed = true
+	}
+	if pref.ReconnectCooldownSec == 0 {
+		pref.ReconnectCooldownSec = defaults.ReconnectCooldownSec
+		changed = true
+	}
+	if pref.ReconnectMaxRetries == 0 {
+		pref.ReconnectMaxRetries = defaults.ReconnectMaxRetries
+		changed = true
+	}
+	if pref.UpdatedAt.IsZero() {
+		pref.UpdatedAt = time.Now()
+		changed = true
+	}
+
 	r.preference = &pref
-	log.Printf("[PreferenceRepo] 成功載入偏好: 輪詢=%ds, 批大小=%d, 併發=%d\n",
-		pref.PollIntervalSec, pref.BatchSize, pref.MaxConcurrency)
+	if changed {
+		if saveErr := r.save(); saveErr != nil {
+			log.Printf("[PreferenceRepo] 警告: 回寫補齊後的偏好失敗: %v\n", saveErr)
+		} else {
+			log.Println("[PreferenceRepo] 已補齊偏好缺失欄位並回寫")
+		}
+	}
+
+	log.Printf("[PreferenceRepo] 成功載入偏好: 輪詢=%ds, 批大小=%d, 併發=%d, 重連冷卻=%ds, 重連重試=%d\n",
+		pref.PollIntervalSec, pref.BatchSize, pref.MaxConcurrency, pref.ReconnectCooldownSec, pref.ReconnectMaxRetries)
 	return nil
 }
 

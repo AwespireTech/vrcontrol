@@ -56,6 +56,15 @@ export default function QuestPage() {
     }
   }
 
+  const runMonitoringOnce = async () => {
+    try {
+      await monitoringApi.runOnce()
+      await loadData()
+    } catch (error) {
+      console.error('Failed to run monitoring once:', error)
+    }
+  }
+
   const onlineDevices = devices.filter((d) => d.status === 'online').length
   const totalDevices = devices.length
 
@@ -70,9 +79,19 @@ export default function QuestPage() {
         </div>
         
         {/* 頁面標題 */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground">Quest 設備管理</h1>
-          <p className="text-foreground/70 mt-2">管理 Meta Quest 設備、房間和動作</p>
+        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Quest 設備管理</h1>
+            <p className="text-foreground/70 mt-2">管理 Meta Quest 設備、房間和動作</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link
+              to="/quest/settings"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors font-semibold"
+            >
+              ⚙️ 系統設置
+            </Link>
+          </div>
         </div>
 
         {/* 統計卡片 */}
@@ -119,7 +138,7 @@ export default function QuestPage() {
         </div>
 
         {/* 功能區塊 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Link
             to="/quest/devices"
             className="bg-surface rounded-lg p-8 border border-border hover:border-primary transition-colors cursor-pointer"
@@ -146,27 +165,27 @@ export default function QuestPage() {
             <h2 className="text-xl font-bold text-foreground mb-2">動作管理</h2>
             <p className="text-foreground/70">創建和執行設備動作，批量操作設備</p>
           </Link>
-        </div>
 
-        {/* 監控控制 */}
-        <div className="bg-surface rounded-lg p-6 border border-border">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-lg font-semibold text-foreground">網絡監控服務</h3>
-              <p className="text-sm text-foreground/70 mt-1">
-                自動監控設備連接狀態 · 下次更新: {countdown} 秒
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Link
-                to="/quest/settings"
-                className="px-6 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors font-semibold"
+          <div className="bg-surface rounded-lg p-8 border border-border">
+            <div className="text-5xl mb-4">🛰️</div>
+            <h2 className="text-xl font-bold text-foreground mb-2">網絡監控</h2>
+            <p className="text-foreground/70">
+              背景監控會定期 ping 設備 IP，並在設備恢復可達時嘗試 ADB 重連
+            </p>
+            <p className="text-xs text-foreground/50 mt-2">
+              此頁面資料刷新倒數：{countdown} 秒（僅影響畫面更新，不等於監控週期）
+            </p>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                onClick={runMonitoringOnce}
+                className="px-4 py-2 bg-accent text-foreground rounded-lg hover:bg-accent/80 transition-colors font-semibold"
               >
-                ⚙️ 系統設置
-              </Link>
+                手動執行一次
+              </button>
               <button
                 onClick={toggleMonitoring}
-                className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
+                className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
                   monitoringRunning
                     ? 'bg-danger hover:bg-danger/80 text-foreground'
                     : 'bg-success hover:bg-success/80 text-foreground'

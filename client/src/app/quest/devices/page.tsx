@@ -133,6 +133,8 @@ export default function DevicesPage() {
           poll_interval_sec: DEFAULT_POLL_INTERVAL_SECONDS,
           batch_size: DEFAULT_BATCH_SIZE,
           max_concurrency: DEFAULT_MAX_CONCURRENCY,
+          reconnect_cooldown_sec: 30,
+          reconnect_max_retries: 5,
           updated_at: '',
         })
       }

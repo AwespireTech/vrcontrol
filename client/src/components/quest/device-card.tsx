@@ -36,6 +36,8 @@ export default function DeviceCard({
         return 'bg-warning'
       case QUEST_DEVICE_STATUS.ERROR:
         return 'bg-danger'
+      case QUEST_DEVICE_STATUS.DISCONNECTED:
+        return 'bg-muted'
       default:
         return 'bg-muted'
     }
@@ -51,6 +53,8 @@ export default function DeviceCard({
         return '連接中'
       case QUEST_DEVICE_STATUS.ERROR:
         return '錯誤'
+      case QUEST_DEVICE_STATUS.DISCONNECTED:
+        return '手動斷開'
       default:
         return '未知'
     }
@@ -58,6 +62,7 @@ export default function DeviceCard({
 
   const isOnline = device.status === QUEST_DEVICE_STATUS.ONLINE
   const isConnecting = device.status === QUEST_DEVICE_STATUS.CONNECTING
+  const isAutoReconnectExhausted = device.auto_reconnect_disabled_reason === 'max_retries_exhausted'
 
   const renderStatusValue = (value: number | string, unit: string) => {
     if (statusErrorType === 'idle') {
@@ -85,6 +90,11 @@ export default function DeviceCard({
 
       {/* 設備信息 */}
       <div className="space-y-2 mb-4 text-sm">
+        {isAutoReconnectExhausted && (
+          <div className="rounded border border-warning/40 bg-warning/10 px-2 py-1 text-warning">
+            自動重連已停用
+          </div>
+        )}
         <div className="flex justify-between">
           <span className="text-foreground/70">IP 地址:</span>
           <span className="font-mono text-foreground">{device.ip}</span>

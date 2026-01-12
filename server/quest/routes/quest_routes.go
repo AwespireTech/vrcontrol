@@ -68,7 +68,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 	deviceService := service.NewDeviceService(deviceRepo, adbManager, pingManager)
 	roomService := service.NewRoomService(roomRepo, deviceRepo, socketManager)
 	actionService := service.NewActionService(actionRepo, deviceRepo, adbManager)
-	monitoringService := service.NewMonitoringService(deviceRepo, pingManager, adbManager)
+	monitoringService := service.NewMonitoringService(deviceRepo, pingManager, adbManager, preferenceRepo)
 	scrcpyService := service.NewScrcpyService(scrcpyManager, deviceRepo, scrcpyConfigRepo)
 	preferenceService := service.NewPreferenceService(preferenceRepo)
 

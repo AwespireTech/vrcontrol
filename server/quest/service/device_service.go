@@ -82,6 +82,12 @@ func (s *DeviceService) ConnectDevice(deviceID string) error {
 		return err
 	}
 
+	// 使用者手動連接：清除自動重連停用/重試狀態
+	device.AutoReconnectDisabledReason = ""
+	device.AutoReconnectRetryCount = 0
+	device.AutoReconnectNextAttemptAt = nil
+	device.AutoReconnectLastError = ""
+
 	// 更新狀態為連接中
 	device.Status = model.DeviceStatusConnecting
 	s.deviceRepo.Update(device)
@@ -163,6 +169,11 @@ func (s *DeviceService) DisconnectDevice(deviceID string) error {
 	}
 
 	device.Status = model.DeviceStatusDisconnected
+	// disconnected 代表使用者手動斷開：停用自動重連
+	device.AutoReconnectDisabledReason = "manual_disconnect"
+	device.AutoReconnectRetryCount = 0
+	device.AutoReconnectNextAttemptAt = nil
+	device.AutoReconnectLastError = ""
 	return s.deviceRepo.Update(device)
 }
 

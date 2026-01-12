@@ -11,7 +11,6 @@ import {
 
 export default function QuestSettingsPage() {
   const navigate = useNavigate()
-  const [monitoringRunning, setMonitoringRunning] = useState(false)
   const [monitoringInterval, setMonitoringInterval] = useState(10)
   const [loading, setLoading] = useState(true)
   
@@ -26,9 +25,6 @@ export default function QuestSettingsPage() {
 
   const loadSettings = async () => {
     try {
-      const status = await monitoringApi.getStatus()
-      setMonitoringRunning(status.running)
-      
       // 載入 scrcpy 系統信息
       const systemInfo = await scrcpyApi.getSystemInfo()
       setScrcpySystemInfo(systemInfo)
@@ -51,22 +47,6 @@ export default function QuestSettingsPage() {
     loadSettings()
   }, [])
 
-  const toggleMonitoring = async () => {
-    try {
-      if (monitoringRunning) {
-        await monitoringApi.stop()
-        alert('監控服務已停止')
-      } else {
-        await monitoringApi.start()
-        alert('監控服務已啟動')
-      }
-      await loadSettings()
-    } catch (error) {
-      console.error('Failed to toggle monitoring:', error)
-      alert('操作失敗')
-    }
-  }
-
   const handleSetInterval = async () => {
     try {
       await monitoringApi.setInterval(monitoringInterval)
@@ -74,16 +54,6 @@ export default function QuestSettingsPage() {
     } catch (error) {
       console.error('Failed to set interval:', error)
       alert('設置失敗')
-    }
-  }
-
-  const handleRunOnce = async () => {
-    try {
-      await monitoringApi.runOnce()
-      alert('手動監控已執行')
-    } catch (error) {
-      console.error('Failed to run monitoring:', error)
-      alert('執行失敗')
     }
   }
 
@@ -221,6 +191,54 @@ export default function QuestSettingsPage() {
                   </p>
                 </div>
 
+                <div className="p-4 bg-background rounded-lg">
+                  <p className="font-semibold text-foreground mb-3">自動重連冷卻時間</p>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min="5"
+                      max="3600"
+                      value={preference.reconnect_cooldown_sec}
+                      onChange={(e) => {
+                        const next = Number.parseInt(e.target.value, 10)
+                        handlePreferenceChange(
+                          'reconnect_cooldown_sec',
+                          Number.isNaN(next) ? preference.reconnect_cooldown_sec : next
+                        )
+                      }}
+                      className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <span className="text-foreground/70">秒</span>
+                  </div>
+                  <p className="text-xs text-foreground/50 mt-2">
+                    設備離線後，兩次自動重連嘗試之間的等待時間 (5-3600 秒)
+                  </p>
+                </div>
+
+                <div className="p-4 bg-background rounded-lg">
+                  <p className="font-semibold text-foreground mb-3">自動重連最大重試次數</p>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="number"
+                      min="0"
+                      max="20"
+                      value={preference.reconnect_max_retries}
+                      onChange={(e) => {
+                        const next = Number.parseInt(e.target.value, 10)
+                        handlePreferenceChange(
+                          'reconnect_max_retries',
+                          Number.isNaN(next) ? preference.reconnect_max_retries : next
+                        )
+                      }}
+                      className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                    <span className="text-foreground/70">次</span>
+                  </div>
+                  <p className="text-xs text-foreground/50 mt-2">
+                    0 代表不進行自動重連；達到上限後會標記為「自動重連已停用」(0-20 次)
+                  </p>
+                </div>
+
                 <div className="flex justify-end">
                   <button
                     onClick={handleSavePreference}
@@ -243,23 +261,11 @@ export default function QuestSettingsPage() {
             <h2 className="text-xl font-bold text-foreground mb-4">網絡監控服務</h2>
 
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 bg-background rounded-lg">
-                <div>
-                  <p className="font-semibold text-foreground">監控狀態</p>
-                  <p className="text-sm text-foreground/70">
-                    {monitoringRunning ? '服務正在運行' : '服務已停止'}
-                  </p>
-                </div>
-                <button
-                  onClick={toggleMonitoring}
-                  className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
-                    monitoringRunning
-                      ? 'bg-danger hover:bg-danger/80 text-white'
-                      : 'bg-success hover:bg-success/80 text-white'
-                  }`}
-                >
-                  {monitoringRunning ? '停止監控' : '啟動監控'}
-                </button>
+              <div className="p-4 bg-background rounded-lg">
+                <p className="font-semibold text-foreground mb-2">說明</p>
+                <p className="text-sm text-foreground/70">
+                  監控的啟動/停止與手動執行已移至 Quest 總覽頁；此頁僅保留監控相關設定。
+                </p>
               </div>
 
               <div className="p-4 bg-background rounded-lg">
@@ -284,19 +290,6 @@ export default function QuestSettingsPage() {
                 <p className="text-xs text-foreground/50 mt-2">
                   設置監控服務檢查設備連接狀態的時間間隔 (1-300 秒)
                 </p>
-              </div>
-
-              <div className="p-4 bg-background rounded-lg">
-                <p className="font-semibold text-foreground mb-2">手動監控</p>
-                <p className="text-sm text-foreground/70 mb-3">
-                  立即執行一次設備狀態檢查，不影響定時監控設置
-                </p>
-                <button
-                  onClick={handleRunOnce}
-                  className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/80 transition-colors"
-                >
-                  立即執行監控
-                </button>
               </div>
             </div>
           </div>
