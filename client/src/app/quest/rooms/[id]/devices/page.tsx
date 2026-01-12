@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { roomApi, deviceApi } from '@/services/quest-api'
 import type { QuestRoom, QuestDevice } from '@/services/quest-types'
+import { getDisplayName } from '@/lib/utils/device'
 
 export default function RoomDevicesPage() {
   const navigate = useNavigate()
@@ -120,7 +121,7 @@ export default function RoomDevicesPage() {
                     className="flex items-center justify-between p-4 border border-border rounded-lg hover:border-blue-300 transition-colors"
                   >
                     <div>
-                      <div className="font-semibold text-foreground">{device.name}</div>
+                      <div className="font-semibold text-foreground">{getDisplayName(device)}</div>
                       <div className="text-sm text-foreground/50">
                         {device.ip}:{device.port}
                       </div>
@@ -164,7 +165,7 @@ export default function RoomDevicesPage() {
                     className="flex items-center justify-between p-4 border border-border rounded-lg hover:border-green-300 transition-colors"
                   >
                     <div>
-                      <div className="font-semibold text-foreground">{device.name}</div>
+                      <div className="font-semibold text-foreground">{getDisplayName(device)}</div>
                       <div className="text-sm text-foreground/50">
                         {device.ip}:{device.port}
                       </div>

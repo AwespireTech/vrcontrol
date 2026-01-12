@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { getDisplayName } from '@/lib/utils/device'
 import { deviceApi, scrcpyApi, preferenceApi } from '@/services/quest-api'
 import type { QuestDevice, ScrcpySession, ScrcpySystemInfo, UserPreference } from '@/services/quest-types'
 import DeviceCard, { type StatusErrorType } from '@/components/quest/device-card'
@@ -494,7 +495,7 @@ export default function DevicesPage() {
                     return (
                       <tr key={session.device_id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
-                          {device?.name || session.device_id}
+                          {device ? getDisplayName(device) : session.device_id}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-foreground/70">
                           {session.process_id}
