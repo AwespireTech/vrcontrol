@@ -3,10 +3,12 @@ package main
 import (
 	"log"
 
-	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
+	questroutes "vrcontrol/server/quest/routes"
 	"vrcontrol/server/routes"
 	"vrcontrol/server/utilities"
+
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -32,5 +34,9 @@ func createRouter() *gin.Engine {
 	routes.SetSimpleControlRoutes(simple)
 	control := router.Group("/control")
 	routes.SetControlRoute(control)
+
+	// Quest 模組路由
+	questroutes.SetupQuestRoutes(router, "./data")
+
 	return router
 }

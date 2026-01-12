@@ -1,6 +1,6 @@
 import { FiRefreshCcw } from "react-icons/fi"
 
-import { SERVER } from "@/../environment"
+import { SERVER } from "@/environment"
 
 import AssignRoom from "./assign-room"
 

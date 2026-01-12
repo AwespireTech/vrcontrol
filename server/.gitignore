@@ -25,3 +25,6 @@ go.work
 
 sequence/assigned_room.json
 sequence/sequence/*.json
+
+data
+logs
