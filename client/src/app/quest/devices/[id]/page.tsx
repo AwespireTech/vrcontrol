@@ -71,6 +71,14 @@ export default function EditDevicePage() {
 
         <div className="bg-surface rounded-lg border border-border p-6">
           <h1 className="text-2xl font-bold text-foreground mb-6">編輯設備</h1>
+          <div className="mb-6 rounded-lg border border-border bg-background/40 p-4 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-foreground/70">Ping 狀態:</span>
+              <span className="text-foreground">
+                {device.ping_status || 'unknown'} ({device.ping_ms ?? 0} ms)
+              </span>
+            </div>
+          </div>
           <DeviceForm 
             device={device} 
             onSubmit={handleSubmit} 

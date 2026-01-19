@@ -189,8 +189,8 @@ func (r *DeviceRepository) Delete(deviceID string) error {
 	return r.save()
 }
 
-// UpdateStatus 更新設備狀態
-func (r *DeviceRepository) UpdateStatus(deviceID, status string, pingMS float64) error {
+// UpdateStatus 更新設備狀態（ADB 狀態）
+func (r *DeviceRepository) UpdateStatus(deviceID, status string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -200,6 +200,23 @@ func (r *DeviceRepository) UpdateStatus(deviceID, status string, pingMS float64)
 	}
 
 	device.Status = status
+	device.LastSeen = time.Now()
+	device.UpdatedAt = time.Now()
+
+	return r.save()
+}
+
+// UpdatePingStatus 更新設備 Ping 狀態（網路層信號）
+func (r *DeviceRepository) UpdatePingStatus(deviceID, pingStatus string, pingMS float64) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	device, exists := r.devices[deviceID]
+	if !exists {
+		return fmt.Errorf("device not found: %s", deviceID)
+	}
+
+	device.PingStatus = pingStatus
 	device.PingMS = pingMS
 	device.LastSeen = time.Now()
 	device.UpdatedAt = time.Now()

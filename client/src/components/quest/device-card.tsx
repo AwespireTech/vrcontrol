@@ -13,6 +13,7 @@ interface DeviceCardProps {
   onMonitor?: (deviceId: string) => void
   scrcpyInstalled?: boolean
   statusErrorType?: StatusErrorType
+  pingTooltipText?: string
 }
 
 export default function DeviceCard({
@@ -25,6 +26,7 @@ export default function DeviceCard({
   onMonitor,
   scrcpyInstalled = false,
   statusErrorType = 'idle',
+  pingTooltipText,
 }: DeviceCardProps) {
 
   const getAutoReconnectDisabledReasonText = (reason?: QuestDevice['auto_reconnect_disabled_reason']) => {
@@ -100,7 +102,7 @@ export default function DeviceCard({
       {/* 設備名稱和狀態 */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-lg font-semibold text-foreground">{getDisplayName(device)}</h3>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" title={pingTooltipText}>
           <span className={`w-3 h-3 rounded-full ${getStatusColor(device.status)}`} />
           <span className="text-sm text-foreground/70">{getStatusText(device.status)}</span>
         </div>
@@ -146,10 +148,6 @@ export default function DeviceCard({
             <div className="flex justify-between">
               <span className="text-foreground/70">溫度:</span>
               {renderStatusValue(device.temperature, '°C')}
-            </div>
-            <div className="flex justify-between">
-              <span className="text-foreground/70">延遲:</span>
-              <span className="text-foreground">{device.ping_ms} ms</span>
             </div>
           </>
         )}

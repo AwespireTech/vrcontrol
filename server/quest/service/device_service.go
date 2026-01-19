@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"log"
+	"strings"
 	"sync"
 	"time"
 
@@ -117,6 +118,9 @@ func (s *DeviceService) CreateDevice(device *model.QuestDevice) error {
 	}
 	if device.Status == "" {
 		device.Status = model.DeviceStatusDisconnected
+	}
+	if device.PingStatus == "" {
+		device.PingStatus = model.PingStatusUnknown
 	}
 	// 預設允許自動重連（概念與 disconnected 分離）
 	if !device.AutoReconnectEnabled {
@@ -393,17 +397,16 @@ func (s *DeviceService) PingDevice(deviceID string) (float64, error) {
 	}
 
 	result := s.pingManager.Ping(device.IP)
-
-	// 更新設備狀態
+	pingStatus := model.PingStatusFail
+	pingMS := 0.0
 	if result.Success {
-		device.Status = model.DeviceStatusOnline
-		device.PingMS = result.Latency
-	} else {
-		device.Status = model.DeviceStatusOffline
-		device.PingMS = 0
+		pingStatus = model.PingStatusOK
+		pingMS = result.Latency
+	} else if result.Error != nil && strings.Contains(strings.ToLower(result.Error.Error()), "timeout") {
+		pingStatus = model.PingStatusTimeout
 	}
 
-	s.deviceRepo.UpdateStatus(deviceID, device.Status, device.PingMS)
+	_ = s.deviceRepo.UpdatePingStatus(deviceID, pingStatus, pingMS)
 
 	if !result.Success {
 		return 0, result.Error
@@ -515,13 +518,16 @@ func (s *DeviceService) PingBatch(deviceIDs []string, maxWorkers int) map[string
 	results := make(map[string]float64)
 	for ip, result := range pingResults {
 		deviceID := ipToDeviceID[ip]
+		pingStatus := model.PingStatusFail
+		pingMS := 0.0
 		if result.Success {
-			results[deviceID] = result.Latency
-			s.deviceRepo.UpdateStatus(deviceID, model.DeviceStatusOnline, result.Latency)
-		} else {
-			results[deviceID] = 0
-			s.deviceRepo.UpdateStatus(deviceID, model.DeviceStatusOffline, 0)
+			pingStatus = model.PingStatusOK
+			pingMS = result.Latency
+		} else if result.Error != nil && strings.Contains(strings.ToLower(result.Error.Error()), "timeout") {
+			pingStatus = model.PingStatusTimeout
 		}
+		results[deviceID] = pingMS
+		_ = s.deviceRepo.UpdatePingStatus(deviceID, pingStatus, pingMS)
 	}
 
 	return results

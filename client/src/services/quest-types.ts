@@ -12,6 +12,14 @@ export const QUEST_DEVICE_STATUS = {
   DISCONNECTED: 'disconnected'
 } as const
 
+// Quest 設備 Ping 狀態
+export const QUEST_DEVICE_PING_STATUS = {
+  OK: 'ok',
+  FAIL: 'fail',
+  TIMEOUT: 'timeout',
+  UNKNOWN: 'unknown'
+} as const
+
 // Quest 動作類型
 export const QUEST_ACTION_TYPES = {
   WAKE_UP: 'wake_up',
@@ -47,6 +55,7 @@ export interface QuestDevice {
   temperature: number
   is_charging: boolean
   ping_ms: number
+  ping_status: string
   room_id: string
   notes: string
   sort_order: number
