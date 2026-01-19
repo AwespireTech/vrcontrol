@@ -105,6 +105,37 @@ func (c *ActionController) UpdateAction(ctx *gin.Context) {
 	})
 }
 
+// PatchAction 局部更新動作（嚴格白名單）
+// @Router /api/quest/actions/:id [patch]
+func (c *ActionController) PatchAction(ctx *gin.Context) {
+	actionID := ctx.Param("id")
+
+	var req service.ActionPatch
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request body",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	updated, err := c.actionService.PatchAction(actionID, req)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    updated,
+		"message": "Action updated successfully",
+	})
+}
+
 // DeleteAction 刪除動作
 func (c *ActionController) DeleteAction(ctx *gin.Context) {
 	actionID := ctx.Param("id")

@@ -26,6 +26,10 @@ func (c *MonitoringController) GetStatus(ctx *gin.Context) {
 	isRunning := c.monitoringService.IsRunning()
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
+		"data": gin.H{
+			"running": isRunning,
+		},
+		// Backward compatibility: keep legacy top-level `running` for older clients/scripts.
 		"running": isRunning,
 	})
 }

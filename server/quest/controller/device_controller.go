@@ -117,6 +117,56 @@ func (c *DeviceController) UpdateDevice(ctx *gin.Context) {
 	})
 }
 
+// PatchDevice 局部更新設備（嚴格白名單）
+// @Router /api/quest/devices/:id [patch]
+func (c *DeviceController) PatchDevice(ctx *gin.Context) {
+	deviceID := ctx.Param("id")
+
+	var req service.DevicePatch
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request body",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	if req.Port != nil {
+		if *req.Port < 1 || *req.Port > 65535 {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error":   "Invalid port value",
+			})
+			return
+		}
+	}
+	if req.SortOrder != nil {
+		if *req.SortOrder < 0 {
+			ctx.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"error":   "Invalid sort_order value",
+			})
+			return
+		}
+	}
+
+	updated, err := c.deviceService.PatchDevice(deviceID, req)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    updated,
+		"message": "Device updated successfully",
+	})
+}
+
 // DeleteDevice 刪除設備
 // @Router /api/quest/devices/:id [delete]
 func (c *DeviceController) DeleteDevice(ctx *gin.Context) {
@@ -175,6 +225,90 @@ func (c *DeviceController) DisconnectDevice(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Device disconnected successfully",
+	})
+}
+
+// SetAutoReconnectEnabledBatch 批次設定設備是否允許自動重連
+// @Router /api/quest/devices/batch/auto-reconnect [post]
+func (c *DeviceController) SetAutoReconnectEnabledBatch(ctx *gin.Context) {
+	var req struct {
+		DeviceIDs []string `json:"device_ids" binding:"required"`
+		Enabled   *bool    `json:"enabled"`
+	}
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request body",
+			"message": err.Error(),
+		})
+		return
+	}
+	if req.Enabled == nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Missing required field: enabled",
+		})
+		return
+	}
+
+	failed, successCount := c.deviceService.SetAutoReconnectEnabledBatch(req.DeviceIDs, *req.Enabled)
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"total":         len(req.DeviceIDs),
+			"success_count": successCount,
+			"failed_count":  len(req.DeviceIDs) - successCount,
+			"failed":        failed,
+		},
+	})
+}
+
+// ResetAutoReconnect 重置單台設備自動重連狀態
+// @Router /api/quest/devices/:id/auto-reconnect/reset [post]
+func (c *DeviceController) ResetAutoReconnect(ctx *gin.Context) {
+	deviceID := ctx.Param("id")
+
+	updated, err := c.deviceService.ResetAutoReconnect(deviceID)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    updated,
+	})
+}
+
+// ResetAutoReconnectBatch 批次重置自動重連狀態
+// @Router /api/quest/devices/batch/auto-reconnect/reset [post]
+func (c *DeviceController) ResetAutoReconnectBatch(ctx *gin.Context) {
+	var req struct {
+		DeviceIDs []string `json:"device_ids" binding:"required"`
+	}
+
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request body",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	failed, successCount := c.deviceService.ResetAutoReconnectBatch(req.DeviceIDs)
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"total":         len(req.DeviceIDs),
+			"success_count": successCount,
+			"failed_count":  len(req.DeviceIDs) - successCount,
+			"failed":        failed,
+		},
 	})
 }
 

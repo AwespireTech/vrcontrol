@@ -16,6 +16,13 @@ type RoomService struct {
 	socketManager *questsocket.SocketManager
 }
 
+// RoomPatch 房間局部更新（嚴格白名單）
+type RoomPatch struct {
+	Name        *string         `json:"name"`
+	Description *string         `json:"description"`
+	Parameters  *map[string]any `json:"parameters"`
+}
+
 // NewRoomService 創建新的房間服務
 func NewRoomService(roomRepo *repository.RoomRepository, deviceRepo *repository.DeviceRepository, socketManager *questsocket.SocketManager) *RoomService {
 	return &RoomService{
@@ -56,6 +63,30 @@ func (s *RoomService) CreateRoom(room *model.QuestRoom) error {
 // UpdateRoom 更新房間
 func (s *RoomService) UpdateRoom(room *model.QuestRoom) error {
 	return s.roomRepo.Update(room)
+}
+
+// PatchRoom 局部更新房間（嚴格白名單）
+func (s *RoomService) PatchRoom(roomID string, patch RoomPatch) (*model.QuestRoom, error) {
+	existing, err := s.roomRepo.GetByID(roomID)
+	if err != nil {
+		return nil, err
+	}
+
+	if patch.Name != nil {
+		existing.Name = *patch.Name
+	}
+	if patch.Description != nil {
+		existing.Description = *patch.Description
+	}
+	if patch.Parameters != nil {
+		existing.Parameters = *patch.Parameters
+	}
+
+	if err := s.roomRepo.Update(existing); err != nil {
+		return nil, err
+	}
+
+	return existing, nil
 }
 
 // DeleteRoom 刪除房間

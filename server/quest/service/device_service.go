@@ -28,6 +28,70 @@ func NewDeviceService(deviceRepo *repository.DeviceRepository, adbManager *adb.A
 	}
 }
 
+// SyncOnlineStatusFromADBAtStartup 啟動時用 ADB 裝置清單校正「在線」狀態（僅更新 Status）
+func (s *DeviceService) SyncOnlineStatusFromADBAtStartup() {
+	adbDevices, err := s.adbManager.GetDevices()
+	if err != nil {
+		log.Printf("[DeviceService] 啟動校正失敗: 取得 ADB 裝置清單錯誤 - %v\n", err)
+		return
+	}
+
+	onlineSerials := make(map[string]struct{}, len(adbDevices))
+	for _, d := range adbDevices {
+		if d.State == "device" {
+			onlineSerials[d.Serial] = struct{}{}
+		}
+	}
+
+	checked := 0
+	offlined := 0
+	devices := s.deviceRepo.GetAll()
+	for _, device := range devices {
+		if device.Status != model.DeviceStatusOnline {
+			continue
+		}
+
+		checked++
+		if s.isDeviceOnlineInADB(device, onlineSerials) {
+			continue
+		}
+
+		device.Status = model.DeviceStatusOffline
+		if err := s.deviceRepo.Update(device); err != nil {
+			log.Printf("[DeviceService] 啟動校正失敗: 更新裝置 %s 狀態錯誤 - %v\n", device.DeviceID, err)
+			continue
+		}
+		offlined++
+		log.Printf("[DeviceService] 啟動校正: 裝置 %s 不在 ADB 清單，已設為離線\n", device.GetDisplayName())
+	}
+
+	log.Printf("[DeviceService] 啟動校正完成: 檢查在線=%d, 轉離線=%d\n", checked, offlined)
+}
+
+func (s *DeviceService) isDeviceOnlineInADB(device *model.QuestDevice, onlineSerials map[string]struct{}) bool {
+	if device.Serial != "" {
+		if _, ok := onlineSerials[device.Serial]; ok {
+			return true
+		}
+	}
+
+	if device.IP == "" {
+		return false
+	}
+
+	port := device.Port
+	if port == 0 {
+		port = 5555
+	}
+
+	addr := fmt.Sprintf("%s:%d", device.IP, port)
+	if _, ok := onlineSerials[addr]; ok {
+		return true
+	}
+
+	return false
+}
+
 // GetAllDevices 獲取所有設備
 func (s *DeviceService) GetAllDevices() []*model.QuestDevice {
 	return s.deviceRepo.GetAll()
@@ -54,6 +118,10 @@ func (s *DeviceService) CreateDevice(device *model.QuestDevice) error {
 	if device.Status == "" {
 		device.Status = model.DeviceStatusDisconnected
 	}
+	// 預設允許自動重連（概念與 disconnected 分離）
+	if !device.AutoReconnectEnabled {
+		device.AutoReconnectEnabled = true
+	}
 
 	log.Println("[DeviceService] CreateDevice: 調用 Repository Create")
 	err := s.deviceRepo.Create(device)
@@ -63,6 +131,121 @@ func (s *DeviceService) CreateDevice(device *model.QuestDevice) error {
 		log.Println("[DeviceService] CreateDevice: Repository Create 成功")
 	}
 	return err
+}
+
+// DevicePatch 可局部更新的設備欄位（嚴格白名單）
+type DevicePatch struct {
+	Alias                *string `json:"alias"`
+	Name                 *string `json:"name"`
+	IP                   *string `json:"ip"`
+	Port                 *int    `json:"port"`
+	Notes                *string `json:"notes"`
+	RoomID               *string `json:"room_id"`
+	SortOrder            *int    `json:"sort_order"`
+	AutoReconnectEnabled *bool   `json:"auto_reconnect_enabled"`
+}
+
+// PatchDevice 嚴格白名單的局部更新（避免 partial PUT 清空欄位）
+func (s *DeviceService) PatchDevice(deviceID string, patch DevicePatch) (*model.QuestDevice, error) {
+	device, err := s.deviceRepo.GetByID(deviceID)
+	if err != nil {
+		return nil, err
+	}
+
+	if patch.Alias != nil {
+		device.Alias = *patch.Alias
+	}
+	if patch.Name != nil {
+		device.Name = *patch.Name
+	}
+	if patch.IP != nil {
+		device.IP = *patch.IP
+	}
+	if patch.Port != nil {
+		device.Port = *patch.Port
+	}
+	if patch.Notes != nil {
+		device.Notes = *patch.Notes
+	}
+	if patch.RoomID != nil {
+		device.RoomID = *patch.RoomID
+	}
+	if patch.SortOrder != nil {
+		device.SortOrder = *patch.SortOrder
+	}
+	if patch.AutoReconnectEnabled != nil {
+		device.AutoReconnectEnabled = *patch.AutoReconnectEnabled
+	}
+
+	if err := s.deviceRepo.Update(device); err != nil {
+		return nil, err
+	}
+	return device, nil
+}
+
+// SetAutoReconnectEnabledBatch 批次設定 auto_reconnect_enabled
+func (s *DeviceService) SetAutoReconnectEnabledBatch(deviceIDs []string, enabled bool) (map[string]string, int) {
+	failed := map[string]string{}
+	successCount := 0
+
+	for _, id := range deviceIDs {
+		_, err := s.PatchDevice(id, DevicePatch{AutoReconnectEnabled: &enabled})
+		if err != nil {
+			failed[id] = err.Error()
+			continue
+		}
+		successCount++
+	}
+
+	return failed, successCount
+}
+
+// ResetAutoReconnect 依規則重置自動重連狀態
+// 規則：
+// - 僅 error → offline
+// - disconnected 不改（包含不清除重連狀態）
+// - 其他狀態不改，只清 retry/disabled/next/last_error
+func (s *DeviceService) ResetAutoReconnect(deviceID string) (*model.QuestDevice, error) {
+	device, err := s.deviceRepo.GetByID(deviceID)
+	if err != nil {
+		return nil, err
+	}
+
+	if device.Status == model.DeviceStatusDisconnected {
+		return device, nil
+	}
+
+	if device.Status == model.DeviceStatusError {
+		device.Status = model.DeviceStatusOffline
+	}
+
+	device.AutoReconnectDisabledReason = ""
+	device.AutoReconnectRetryCount = 0
+	device.AutoReconnectNextAttemptAt = nil
+	device.AutoReconnectLastError = ""
+
+	if err := s.deviceRepo.Update(device); err != nil {
+		return nil, err
+	}
+
+	return device, nil
+}
+
+// ResetAutoReconnectBatch 批次重置自動重連狀態
+func (s *DeviceService) ResetAutoReconnectBatch(deviceIDs []string) (map[string]string, int) {
+	failed := map[string]string{}
+	successCount := 0
+
+	for _, id := range deviceIDs {
+		_, err := s.ResetAutoReconnect(id)
+		if err != nil {
+			failed[id] = err.Error()
+			continue
+		}
+		successCount++
+	}
+
+	return failed, successCount
 }
 
 // UpdateDevice 更新設備

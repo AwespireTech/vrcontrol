@@ -33,7 +33,7 @@ export default function EditRoomPage() {
     if (!id) return
     
     try {
-      await roomApi.update(id, updatedRoom)
+      await roomApi.patch(id, updatedRoom)
       alert('房間更新成功')
       navigate('/quest/rooms')
     } catch (error) {

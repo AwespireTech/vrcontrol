@@ -72,6 +72,9 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 	scrcpyService := service.NewScrcpyService(scrcpyManager, deviceRepo, scrcpyConfigRepo)
 	preferenceService := service.NewPreferenceService(preferenceRepo)
 
+	// 啟動時以 ADB 清單校正在線狀態（僅更新 Status）
+	deviceService.SyncOnlineStatusFromADBAtStartup()
+
 	// 初始化 Controllers
 	deviceController := controller.NewDeviceController(deviceService)
 	roomController := controller.NewRoomController(roomService)
@@ -90,12 +93,16 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 			devices.GET("/:id", deviceController.GetDevice)
 			devices.POST("", deviceController.CreateDevice)
 			devices.PUT("/:id", deviceController.UpdateDevice)
+			devices.PATCH("/:id", deviceController.PatchDevice)
 			devices.DELETE("/:id", deviceController.DeleteDevice)
 			devices.POST("/:id/connect", deviceController.ConnectDevice)
 			devices.POST("/:id/disconnect", deviceController.DisconnectDevice)
 			devices.GET("/:id/status", deviceController.GetDeviceStatus)
 			devices.POST("/:id/ping", deviceController.PingDevice)
 			devices.POST("/batch/connect", deviceController.ConnectBatch)
+			devices.POST("/batch/auto-reconnect", deviceController.SetAutoReconnectEnabledBatch)
+			devices.POST("/:id/auto-reconnect/reset", deviceController.ResetAutoReconnect)
+			devices.POST("/batch/auto-reconnect/reset", deviceController.ResetAutoReconnectBatch)
 			devices.POST("/batch/status", deviceController.GetDeviceStatusBatch)
 			devices.POST("/batch/ping", deviceController.PingBatch)
 		}
@@ -107,6 +114,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 			rooms.GET("/:id", roomController.GetRoom)
 			rooms.POST("", roomController.CreateRoom)
 			rooms.PUT("/:id", roomController.UpdateRoom)
+			rooms.PATCH("/:id", roomController.PatchRoom)
 			rooms.DELETE("/:id", roomController.DeleteRoom)
 			rooms.POST("/:id/devices/:deviceId", roomController.AddDevice)
 			rooms.DELETE("/:id/devices/:deviceId", roomController.RemoveDevice)
@@ -123,6 +131,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 			actions.GET("/:id", actionController.GetAction)
 			actions.POST("", actionController.CreateAction)
 			actions.PUT("/:id", actionController.UpdateAction)
+			actions.PATCH("/:id", actionController.PatchAction)
 			actions.DELETE("/:id", actionController.DeleteAction)
 			actions.POST("/:id/execute", actionController.ExecuteAction)
 			actions.POST("/batch/execute", actionController.ExecuteBatch)
