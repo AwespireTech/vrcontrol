@@ -26,6 +26,23 @@ export default function DeviceCard({
   scrcpyInstalled = false,
   statusErrorType = 'idle',
 }: DeviceCardProps) {
+
+  const getAutoReconnectDisabledReasonText = (reason?: QuestDevice['auto_reconnect_disabled_reason']) => {
+    switch (reason) {
+      case 'manual_disconnect':
+        return '手動斷開（不自動重連）'
+      case 'max_retries_exhausted':
+        return '自動重連已達上限'
+      case 'adb_not_found':
+        return '找不到 ADB（請確認已安裝並加入 PATH）'
+      case 'adb_connect_failed':
+        return 'ADB 連線失敗（重試後停止）'
+      case 'unknown':
+        return '未知錯誤（重試後停止）'
+      default:
+        return ''
+    }
+  }
   const getStatusColor = (status: string) => {
     switch (status) {
       case QUEST_DEVICE_STATUS.ONLINE:
@@ -62,7 +79,8 @@ export default function DeviceCard({
 
   const isOnline = device.status === QUEST_DEVICE_STATUS.ONLINE
   const isConnecting = device.status === QUEST_DEVICE_STATUS.CONNECTING
-  const isAutoReconnectExhausted = device.auto_reconnect_disabled_reason === 'max_retries_exhausted'
+  const disabledReasonText = getAutoReconnectDisabledReasonText(device.auto_reconnect_disabled_reason)
+  const shouldShowAutoReconnectDisabled = Boolean(device.auto_reconnect_disabled_reason)
 
   const renderStatusValue = (value: number | string, unit: string) => {
     if (statusErrorType === 'idle') {
@@ -90,9 +108,17 @@ export default function DeviceCard({
 
       {/* 設備信息 */}
       <div className="space-y-2 mb-4 text-sm">
-        {isAutoReconnectExhausted && (
+        {shouldShowAutoReconnectDisabled && (
           <div className="rounded border border-warning/40 bg-warning/10 px-2 py-1 text-warning">
-            自動重連已停用
+            {disabledReasonText || '自動重連已停用'}
+            {device.auto_reconnect_last_error ? (
+              <span
+                className="ml-2 text-foreground/70"
+                title={device.auto_reconnect_last_error}
+              >
+                （詳情）
+              </span>
+            ) : null}
           </div>
         )}
         <div className="flex justify-between">

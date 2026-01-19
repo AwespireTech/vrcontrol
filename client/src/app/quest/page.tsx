@@ -8,7 +8,6 @@ export default function QuestPage() {
   const [rooms, setRooms] = useState<QuestRoom[]>([])
   const [actions, setActions] = useState<QuestAction[]>([])
   const [monitoringRunning, setMonitoringRunning] = useState(false)
-  const [countdown, setCountdown] = useState(5)
 
   const loadData = async () => {
     try {
@@ -29,41 +28,7 @@ export default function QuestPage() {
 
   useEffect(() => {
     loadData()
-
-    const intervalId = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev === 1) {
-          loadData()
-          return 5
-        }
-        return prev - 1
-      })
-    }, 1000)
-
-    return () => clearInterval(intervalId)
   }, [])
-
-  const toggleMonitoring = async () => {
-    try {
-      if (monitoringRunning) {
-        await monitoringApi.stop()
-      } else {
-        await monitoringApi.start()
-      }
-      setMonitoringRunning(!monitoringRunning)
-    } catch (error) {
-      console.error('Failed to toggle monitoring:', error)
-    }
-  }
-
-  const runMonitoringOnce = async () => {
-    try {
-      await monitoringApi.runOnce()
-      await loadData()
-    } catch (error) {
-      console.error('Failed to run monitoring once:', error)
-    }
-  }
 
   const onlineDevices = devices.filter((d) => d.status === 'online').length
   const totalDevices = devices.length
@@ -166,35 +131,19 @@ export default function QuestPage() {
             <p className="text-foreground/70">創建和執行設備動作，批量操作設備</p>
           </Link>
 
-          <div className="bg-surface rounded-lg p-8 border border-border">
+          <Link
+            to="/quest/monitoring"
+            className="bg-surface rounded-lg p-8 border border-border hover:border-primary transition-colors cursor-pointer"
+          >
             <div className="text-5xl mb-4">🛰️</div>
             <h2 className="text-xl font-bold text-foreground mb-2">網絡監控</h2>
             <p className="text-foreground/70">
               背景監控會定期 ping 設備 IP，並在設備恢復可達時嘗試 ADB 重連
             </p>
             <p className="text-xs text-foreground/50 mt-2">
-              此頁面資料刷新倒數：{countdown} 秒（僅影響畫面更新，不等於監控週期）
+              目前狀態：{monitoringRunning ? '運行中' : '已停止'}（詳情與控制請到監控頁）
             </p>
-
-            <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                onClick={runMonitoringOnce}
-                className="px-4 py-2 bg-accent text-foreground rounded-lg hover:bg-accent/80 transition-colors font-semibold"
-              >
-                手動執行一次
-              </button>
-              <button
-                onClick={toggleMonitoring}
-                className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                  monitoringRunning
-                    ? 'bg-danger hover:bg-danger/80 text-foreground'
-                    : 'bg-success hover:bg-success/80 text-foreground'
-                }`}
-              >
-                {monitoringRunning ? '停止監控' : '啟動監控'}
-              </button>
-            </div>
-          </div>
+          </Link>
         </div>
       </div>
     </div>

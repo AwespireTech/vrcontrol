@@ -12,6 +12,7 @@ import QuestRoomDevicesPage from "./app/quest/rooms/[id]/devices/page"
 import QuestActionsPage from "./app/quest/actions/page"
 import QuestNewActionPage from "./app/quest/actions/new/page"
 import QuestEditActionPage from "./app/quest/actions/[id]/page"
+import QuestMonitoringPage from "./app/quest/monitoring/page"
 import QuestSettingsPage from "./app/quest/settings/page"
 import "./app/globals.css"
 
@@ -33,6 +34,7 @@ function App() {
           <Route path="/quest/actions" element={<QuestActionsPage />} />
           <Route path="/quest/actions/new" element={<QuestNewActionPage />} />
           <Route path="/quest/actions/:id" element={<QuestEditActionPage />} />
+          <Route path="/quest/monitoring" element={<QuestMonitoringPage />} />
           <Route path="/quest/settings" element={<QuestSettingsPage />} />
         </Routes>
       </div>

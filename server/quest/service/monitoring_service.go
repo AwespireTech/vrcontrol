@@ -12,6 +12,36 @@ import (
 	"vrcontrol/server/quest/repository"
 )
 
+func classifyAdbErrorMessage(message string) string {
+	lower := strings.ToLower(message)
+
+	// adb binary missing / not found
+	if strings.Contains(lower, "executable file not found") ||
+		strings.Contains(lower, "not recognized") ||
+		strings.Contains(lower, "no such file or directory") ||
+		strings.Contains(lower, "system cannot find the file") {
+		return "adb_not_found"
+	}
+
+	// common connect/transport failures
+	if strings.Contains(lower, "failed to connect") ||
+		strings.Contains(lower, "connection failed") ||
+		strings.Contains(lower, "cannot connect") ||
+		strings.Contains(lower, "unable to connect") ||
+		strings.Contains(lower, "unable") && strings.Contains(lower, "connect") {
+		return "adb_connect_failed"
+	}
+
+	return "unknown"
+}
+
+func classifyAdbError(err error) string {
+	if err == nil {
+		return "unknown"
+	}
+	return classifyAdbErrorMessage(err.Error())
+}
+
 // MonitoringService 監控服務
 type MonitoringService struct {
 	deviceRepo     *repository.DeviceRepository
@@ -181,8 +211,12 @@ func (s *MonitoringService) performMonitoring() {
 					_ = s.deviceRepo.UpdateStatus(deviceID, device.Status, result.Latency)
 				} else if device.AutoReconnectRetryCount >= maxRetries {
 					// 觸頂：轉為 error，停止後續自動重連
+					reason := classifyAdbErrorMessage(device.AutoReconnectLastError)
+					if reason == "unknown" {
+						reason = "max_retries_exhausted"
+					}
 					device.Status = model.DeviceStatusError
-					device.AutoReconnectDisabledReason = "max_retries_exhausted"
+					device.AutoReconnectDisabledReason = reason
 					device.AutoReconnectNextAttemptAt = nil
 					_ = s.deviceRepo.Update(device)
 				} else if device.AutoReconnectNextAttemptAt != nil && now.Before(*device.AutoReconnectNextAttemptAt) {
@@ -190,13 +224,27 @@ func (s *MonitoringService) performMonitoring() {
 				} else {
 					log.Printf("[MonitoringService] Device %s reachable, attempting reconnect\n", device.GetDisplayName())
 					if err := s.tryReconnectDevice(device); err != nil {
+						reason := classifyAdbError(err)
 						device.AutoReconnectRetryCount++
 						device.AutoReconnectLastError = err.Error()
+
+						// adb 不存在：直接轉 error 並停用後續自動重連
+						if reason == "adb_not_found" {
+							device.Status = model.DeviceStatusError
+							device.AutoReconnectDisabledReason = reason
+							device.AutoReconnectNextAttemptAt = nil
+							_ = s.deviceRepo.Update(device)
+							continue
+						}
+
 						next := now.Add(cooldown)
 						device.AutoReconnectNextAttemptAt = &next
 						if device.AutoReconnectRetryCount >= maxRetries {
 							device.Status = model.DeviceStatusError
-							device.AutoReconnectDisabledReason = "max_retries_exhausted"
+							if reason == "unknown" {
+								reason = "max_retries_exhausted"
+							}
+							device.AutoReconnectDisabledReason = reason
 							device.AutoReconnectNextAttemptAt = nil
 						} else {
 							device.Status = model.DeviceStatusOffline
