@@ -2,6 +2,16 @@
 
 完整的VR控制系統，集成Go後端 + Vite + React前端。
 
+## 關於本專案
+
+本專案是基於以下開源項目修改而來：
+
+- **[QQQuest](https://github.com/jinyaolin/QQQuest)** - 原始業務邏輯和架構
+- **[vrcontrol-client](https://github.com/chenyunwen/vrcontrol-client)** - 前端 React 組件
+- **[vrcontrol-server](https://github.com/timothychen1999/vrcontrol-server)** - 後端 Go 服務
+
+感謝原始作者的開源貢獻！
+
 ## 專案結構
 
 ```
