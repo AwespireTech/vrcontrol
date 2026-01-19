@@ -17,6 +17,7 @@ type QuestDevice struct {
 	Temperature    float64 `json:"temperature"`
 	IsCharging     bool    `json:"is_charging"`
 	PingMS         float64 `json:"ping_ms"`
+	PingStatus     string  `json:"ping_status"` // ok, fail, timeout, unknown
 	RoomID         string  `json:"room_id"`
 	Notes          string  `json:"notes"`
 	SortOrder      int     `json:"sort_order"`
@@ -43,6 +44,14 @@ const (
 	DeviceStatusConnecting   = "connecting"
 	DeviceStatusError        = "error"
 	DeviceStatusDisconnected = "disconnected"
+)
+
+// PingStatus 網路層 ping 狀態常量
+const (
+	PingStatusOK      = "ok"
+	PingStatusFail    = "fail"
+	PingStatusTimeout = "timeout"
+	PingStatusUnknown = "unknown"
 )
 
 // GetDisplayName 獲取設備顯示名稱，優先使用 Alias，其次使用 Name，最後使用 DeviceID

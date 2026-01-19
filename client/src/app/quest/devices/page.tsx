@@ -253,6 +253,12 @@ export default function DevicesPage() {
     }
   }
 
+  const formatPingTooltip = (device: QuestDevice) => {
+    const status = device.ping_status || 'unknown'
+    const msText = Number.isFinite(device.ping_ms) ? `${device.ping_ms} ms` : '0 ms'
+    return `ping_status: ${status} (${msText})`
+  }
+
   const handleDelete = async (deviceId: string) => {
     if (!confirm('確定要刪除這個設備嗎？')) return
 
@@ -451,6 +457,7 @@ export default function DevicesPage() {
                   onMonitor={handleMonitor}
                   scrcpyInstalled={scrcpySystemInfo?.installed}
                   statusErrorType={statusErrors[device.device_id] || 'idle'}
+                  pingTooltipText={formatPingTooltip(device)}
                 />
               </div>
             ))}
