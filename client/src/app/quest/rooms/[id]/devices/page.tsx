@@ -90,12 +90,20 @@ export default function RoomDevicesPage() {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-6xl mx-auto">
-        <button
-          onClick={() => navigate(`/quest/rooms`)}
-          className="text-primary hover:text-primary/80 mb-4"
-        >
-          ← 返回
-        </button>
+        <div className="flex flex-wrap items-center gap-3 mb-4">
+          <button
+            onClick={() => navigate(`/quest/rooms`)}
+            className="text-primary hover:text-primary/80"
+          >
+            ← 返回
+          </button>
+          <button
+            onClick={() => navigate(`/quest/rooms/${id}/control`)}
+            className="text-primary hover:text-primary/80"
+          >
+            前往控制
+          </button>
+        </div>
 
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-foreground">管理房間設備</h1>

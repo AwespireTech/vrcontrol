@@ -18,6 +18,9 @@ import {
   type BatchStatusResponse,
 } from './quest-types'
 
+const QUEST_CONTROL_BASE = `${QUEST_API_BASE}/control`
+const QUEST_SIMPLE_BASE = `${QUEST_API_BASE}/simple`
+
 // ============ 設備 API ============
 
 export const deviceApi = {
@@ -309,6 +312,54 @@ export const roomApi = {
     })
     const data: ApiResponse<void> = await res.json()
     if (!data.success) throw new Error(data.error || 'Failed to sync parameters')
+  },
+}
+
+// ============ 控制 API（鏡像 /control） ============
+
+export const controlApi = {
+  // 獲取未分配玩家清單
+  getPlayerList: async (): Promise<string[]> => {
+    const res = await fetch(`${QUEST_CONTROL_BASE}/playerlist`)
+    const data = await res.json()
+    return data?.unassignedPlayers || []
+  },
+
+  // 獲取房間清單
+  getRoomList: async (): Promise<string[]> => {
+    const res = await fetch(`${QUEST_CONTROL_BASE}/roomlist`)
+    const data = await res.json()
+    return data?.rooms || []
+  },
+
+  // 指派玩家房間與序列
+  assignRoomAndSeq: async (clientId: string, roomId: string, seq: number): Promise<void> => {
+    await fetch(`${QUEST_CONTROL_BASE}/assignroomandseq/${clientId}/${roomId}/${seq}`, {
+      method: 'POST',
+    })
+  },
+
+  // 指派序列
+  assignSeq: async (roomId: string, clientId: string, seq: number): Promise<void> => {
+    await fetch(`${QUEST_CONTROL_BASE}/assignseq/${roomId}/${clientId}/${seq}`, {
+      method: 'POST',
+    })
+  },
+
+  // 建立控制房間
+  createRoom: async (roomId: string): Promise<void> => {
+    await fetch(`${QUEST_CONTROL_BASE}/createroom/${roomId}`, {
+      method: 'POST',
+    })
+  },
+}
+
+// ============ 簡化控制 API（鏡像 /simple） ============
+
+export const simpleApi = {
+  // 強制所有玩家移動
+  forceAllMove: async (roomId: string, dest: string): Promise<void> => {
+    await fetch(`${QUEST_SIMPLE_BASE}/forceallmove/${roomId}/${dest}`)
   },
 }
 

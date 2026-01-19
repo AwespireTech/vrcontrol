@@ -86,6 +86,24 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 	// Quest API 路由群組
 	questAPI := router.Group("/api/quest")
 	{
+		// 控制 API 路由（Quest 內部副本）
+		control := questAPI.Group("/control")
+		{
+			SetQuestControlRoutes(control)
+		}
+
+		// 簡化控制 API 路由（Quest 內部副本）
+		simple := questAPI.Group("/simple")
+		{
+			SetQuestSimpleRoutes(simple)
+		}
+
+		// WebSocket 控制路由（Quest 內部副本）
+		socket := questAPI.Group("/socket")
+		{
+			SetQuestSocketRoutes(socket)
+		}
+
 		// 設備管理路由
 		devices := questAPI.Group("/devices")
 		{
