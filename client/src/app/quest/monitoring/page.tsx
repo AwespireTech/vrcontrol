@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { deviceApi, monitoringApi } from '@/services/quest-api'
 import { QUEST_DEVICE_STATUS, type QuestDevice } from '@/services/quest-types'
 import { getDisplayName } from '@/lib/utils/device'
+import { useMonitoringStatus } from '@/hooks/useMonitoringStatus'
 
 type StatusFilter = 'all' | QuestDevice['status']
 type AutoReconnectFilter = 'all' | 'enabled' | 'disabled'
@@ -44,7 +45,7 @@ function getReasonText(reason?: QuestDevice['auto_reconnect_disabled_reason']) {
 export default function QuestMonitoringPage() {
   const [devices, setDevices] = useState<QuestDevice[]>([])
   const [loading, setLoading] = useState(true)
-  const [monitoringRunning, setMonitoringRunning] = useState(false)
+  const monitoring = useMonitoringStatus()
 
   const [batchResult, setBatchResult] = useState<{
     title: string
@@ -60,9 +61,8 @@ export default function QuestMonitoringPage() {
 
   const load = async () => {
     try {
-      const [devicesData, status] = await Promise.all([deviceApi.getAll(), monitoringApi.getStatus()])
+      const [devicesData] = await Promise.all([deviceApi.getAll()])
       setDevices(devicesData)
-      setMonitoringRunning(status.running)
     } catch (error) {
       console.error('Failed to load monitoring data:', error)
       alert('載入監控資料失敗')
@@ -92,13 +92,17 @@ export default function QuestMonitoringPage() {
 
   const toggleMonitoring = async () => {
     try {
-      if (monitoringRunning) {
+      if (!monitoring.known) {
+        await monitoring.refresh()
+        return
+      }
+
+      if (monitoring.running) {
         await monitoringApi.stop()
       } else {
         await monitoringApi.start()
       }
-      const next = !monitoringRunning
-      setMonitoringRunning(next)
+      await monitoring.refresh()
     } catch (error) {
       console.error('Failed to toggle monitoring:', error)
       alert('操作失敗')
@@ -199,13 +203,16 @@ export default function QuestMonitoringPage() {
             </button>
             <button
               onClick={toggleMonitoring}
+              disabled={!monitoring.known || monitoring.loading}
               className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                monitoringRunning
-                  ? 'bg-danger hover:bg-danger/80 text-foreground'
-                  : 'bg-success hover:bg-success/80 text-foreground'
-              }`}
+                !monitoring.known
+                  ? 'bg-muted hover:bg-muted/80 text-foreground'
+                  : monitoring.running
+                    ? 'bg-danger hover:bg-danger/80 text-foreground'
+                    : 'bg-success hover:bg-success/80 text-foreground'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              {monitoringRunning ? '停止監控' : '啟動監控'}
+              {!monitoring.known ? '狀態未知' : monitoring.running ? '停止監控' : '啟動監控'}
             </button>
           </div>
         </div>

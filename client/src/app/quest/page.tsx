@@ -1,26 +1,25 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { deviceApi, roomApi, actionApi, monitoringApi } from '@/services/quest-api'
+import { deviceApi, roomApi, actionApi } from '@/services/quest-api'
 import type { QuestDevice, QuestRoom, QuestAction } from '@/services/quest-types'
+import { useMonitoringStatus } from '@/hooks/useMonitoringStatus'
 
 export default function QuestPage() {
   const [devices, setDevices] = useState<QuestDevice[]>([])
   const [rooms, setRooms] = useState<QuestRoom[]>([])
   const [actions, setActions] = useState<QuestAction[]>([])
-  const [monitoringRunning, setMonitoringRunning] = useState(false)
+  const monitoring = useMonitoringStatus()
 
   const loadData = async () => {
     try {
-      const [devicesData, roomsData, actionsData, monitoringStatus] = await Promise.all([
+      const [devicesData, roomsData, actionsData] = await Promise.all([
         deviceApi.getAll(),
         roomApi.getAll(),
         actionApi.getAll(),
-        monitoringApi.getStatus(),
       ])
       setDevices(devicesData)
       setRooms(roomsData)
       setActions(actionsData)
-      setMonitoringRunning(monitoringStatus.running)
     } catch (error) {
       console.error('Failed to load Quest data:', error)
     }
@@ -141,7 +140,8 @@ export default function QuestPage() {
               背景監控會定期 ping 設備 IP，並在設備恢復可達時嘗試 ADB 重連
             </p>
             <p className="text-xs text-foreground/50 mt-2">
-              目前狀態：{monitoringRunning ? '運行中' : '已停止'}（詳情與控制請到監控頁）
+              目前狀態：
+              {!monitoring.known ? '未知' : monitoring.running ? '運行中' : '已停止'}（詳情與控制請到監控頁）
             </p>
           </Link>
         </div>

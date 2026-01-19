@@ -402,9 +402,20 @@ export const monitoringApi = {
   // 獲取監控狀態
   getStatus: async (): Promise<MonitoringStatus> => {
     const res = await fetch(`${QUEST_API_BASE}/monitoring/status`)
-    const data: ApiResponse<MonitoringStatus> = await res.json()
-    if (!data?.success) return { running: false }
-    return data.data || { running: false }
+    const payload: any = await res.json()
+
+    if (!payload?.success) {
+      throw new Error(payload?.error || 'Failed to get monitoring status')
+    }
+
+    // New format: { success: true, data: { running: boolean } }
+    // Legacy format: { success: true, running: boolean }
+    const running = payload?.data?.running ?? payload?.running
+    if (typeof running !== 'boolean') {
+      throw new Error('Invalid monitoring status response')
+    }
+
+    return { running }
   },
 
   // 啟動監控
