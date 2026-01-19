@@ -17,6 +17,14 @@ type ActionService struct {
 	adbManager *adb.ADBManager
 }
 
+// ActionPatch 動作局部更新（嚴格白名單）
+type ActionPatch struct {
+	Name        *string                 `json:"name"`
+	Description *string                 `json:"description"`
+	ActionType  *string                 `json:"action_type"`
+	Params      *map[string]interface{} `json:"params"`
+}
+
 // NewActionService 創建新的動作服務
 func NewActionService(actionRepo *repository.ActionRepository, deviceRepo *repository.DeviceRepository, adbManager *adb.ADBManager) *ActionService {
 	return &ActionService{
@@ -49,6 +57,33 @@ func (s *ActionService) CreateAction(action *model.QuestAction) error {
 // UpdateAction 更新動作
 func (s *ActionService) UpdateAction(action *model.QuestAction) error {
 	return s.actionRepo.Update(action)
+}
+
+// PatchAction 局部更新動作（嚴格白名單）
+func (s *ActionService) PatchAction(actionID string, patch ActionPatch) (*model.QuestAction, error) {
+	existing, err := s.actionRepo.GetByID(actionID)
+	if err != nil {
+		return nil, err
+	}
+
+	if patch.Name != nil {
+		existing.Name = *patch.Name
+	}
+	if patch.Description != nil {
+		existing.Description = *patch.Description
+	}
+	if patch.ActionType != nil {
+		existing.ActionType = *patch.ActionType
+	}
+	if patch.Params != nil {
+		existing.Params = *patch.Params
+	}
+
+	if err := s.actionRepo.Update(existing); err != nil {
+		return nil, err
+	}
+
+	return existing, nil
 }
 
 // DeleteAction 刪除動作

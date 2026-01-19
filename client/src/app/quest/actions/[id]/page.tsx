@@ -33,7 +33,7 @@ export default function EditActionPage() {
     if (!id) return
     
     try {
-      await actionApi.update(id, updatedAction)
+      await actionApi.patch(id, updatedAction)
       alert('動作更新成功')
       navigate('/quest/actions')
     } catch (error) {

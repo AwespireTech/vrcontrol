@@ -135,7 +135,7 @@ func (s *MonitoringService) performMonitoring() {
 	// 過濾需要監控的設備
 	var monitorDevices []*model.QuestDevice
 	for _, device := range devices {
-		// 跳過連接中與手動斷開的設備（disconnected 不做自動重連）
+		// 跳過連接中與手動斷開的設備（disconnected 完全不 ping、不自動重連）
 		if device.Status == model.DeviceStatusConnecting || device.Status == model.DeviceStatusDisconnected {
 			continue
 		}
@@ -171,13 +171,17 @@ func (s *MonitoringService) performMonitoring() {
 
 		if result.Success {
 			// Ping 成功
-			if device.Status == model.DeviceStatusOffline || device.Status == model.DeviceStatusError {
-				// 若已停用自動重連，僅更新 ping 值
-				if device.AutoReconnectDisabledReason != "" {
+			if device.Status == model.DeviceStatusOffline {
+				// auto_reconnect_enabled=false：僅更新 ping 值，不做自動重連
+				if !device.AutoReconnectEnabled {
+					_ = s.deviceRepo.UpdateStatus(deviceID, device.Status, result.Latency)
+				} else if device.AutoReconnectDisabledReason != "" {
 					_ = s.deviceRepo.UpdateStatus(deviceID, device.Status, result.Latency)
 				} else if maxRetries == 0 {
 					_ = s.deviceRepo.UpdateStatus(deviceID, device.Status, result.Latency)
 				} else if device.AutoReconnectRetryCount >= maxRetries {
+					// 觸頂：轉為 error，停止後續自動重連
+					device.Status = model.DeviceStatusError
 					device.AutoReconnectDisabledReason = "max_retries_exhausted"
 					device.AutoReconnectNextAttemptAt = nil
 					_ = s.deviceRepo.Update(device)
@@ -191,10 +195,12 @@ func (s *MonitoringService) performMonitoring() {
 						next := now.Add(cooldown)
 						device.AutoReconnectNextAttemptAt = &next
 						if device.AutoReconnectRetryCount >= maxRetries {
+							device.Status = model.DeviceStatusError
 							device.AutoReconnectDisabledReason = "max_retries_exhausted"
 							device.AutoReconnectNextAttemptAt = nil
+						} else {
+							device.Status = model.DeviceStatusOffline
 						}
-						device.Status = model.DeviceStatusOffline
 						_ = s.deviceRepo.Update(device)
 					} else {
 						// 連線成功，清除重試狀態
@@ -205,13 +211,19 @@ func (s *MonitoringService) performMonitoring() {
 						_ = s.deviceRepo.Update(device)
 					}
 				}
+			} else if device.Status == model.DeviceStatusError {
+				// error 狀態：不再自動重連，但允許更新 ping 值
+				_ = s.deviceRepo.UpdateStatus(deviceID, device.Status, result.Latency)
 			} else {
 				// 更新 ping 值
 				_ = s.deviceRepo.UpdateStatus(deviceID, device.Status, result.Latency)
 			}
 		} else {
 			// Ping 失敗
-			if device.Status != model.DeviceStatusOffline {
+			if device.Status == model.DeviceStatusError {
+				// 保留 error 狀態（不覆寫為 offline）
+				_ = s.deviceRepo.UpdateStatus(deviceID, device.Status, 0)
+			} else if device.Status != model.DeviceStatusOffline {
 				log.Printf("[MonitoringService] Device %s offline (ping failed)\n", device.GetDisplayName())
 				_ = s.deviceRepo.UpdateStatus(deviceID, model.DeviceStatusOffline, 0)
 			}

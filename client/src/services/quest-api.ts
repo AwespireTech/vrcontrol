@@ -47,8 +47,8 @@ export const deviceApi = {
     return data.data!
   },
 
-  // 更新設備
-  update: async (deviceId: string, device: Partial<QuestDevice>): Promise<QuestDevice> => {
+  // 取代設備（PUT = replace）
+  replace: async (deviceId: string, device: QuestDevice): Promise<QuestDevice> => {
     const res = await fetch(`${QUEST_API_BASE}/devices/${deviceId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -56,6 +56,18 @@ export const deviceApi = {
     })
     const data: ApiResponse<QuestDevice> = await res.json()
     if (!data.success) throw new Error(data.error || 'Failed to update device')
+    return data.data!
+  },
+
+  // 局部更新設備（PATCH = strict whitelist on server）
+  patch: async (deviceId: string, patch: Partial<QuestDevice>): Promise<QuestDevice> => {
+    const res = await fetch(`${QUEST_API_BASE}/devices/${deviceId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    })
+    const data: ApiResponse<QuestDevice> = await res.json()
+    if (!data.success) throw new Error(data.error || 'Failed to patch device')
     return data.data!
   },
 
@@ -132,6 +144,55 @@ export const deviceApi = {
     })
     return await res.json()
   },
+
+  // 批次設定是否允許自動重連（依前端篩選後的 device_ids 為準）
+  setAutoReconnectEnabledBatch: async (
+    deviceIds: string[],
+    enabled: boolean,
+  ): Promise<{ total: number; success_count: number; failed_count: number; failed: Record<string, string> }> => {
+    const res = await fetch(`${QUEST_API_BASE}/devices/batch/auto-reconnect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device_ids: deviceIds, enabled }),
+    })
+    const data: ApiResponse<{
+      total: number
+      success_count: number
+      failed_count: number
+      failed: Record<string, string>
+    }> = await res.json()
+    if (!data.success) throw new Error(data.error || 'Failed to update auto-reconnect settings')
+    return data.data!
+  },
+
+  // 重置單台設備自動重連狀態
+  resetAutoReconnect: async (deviceId: string): Promise<QuestDevice> => {
+    const res = await fetch(`${QUEST_API_BASE}/devices/${deviceId}/auto-reconnect/reset`, {
+      method: 'POST',
+    })
+    const data: ApiResponse<QuestDevice> = await res.json()
+    if (!data.success) throw new Error(data.error || 'Failed to reset auto-reconnect status')
+    return data.data!
+  },
+
+  // 批次重置自動重連狀態
+  resetAutoReconnectBatch: async (
+    deviceIds: string[],
+  ): Promise<{ total: number; success_count: number; failed_count: number; failed: Record<string, string> }> => {
+    const res = await fetch(`${QUEST_API_BASE}/devices/batch/auto-reconnect/reset`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device_ids: deviceIds }),
+    })
+    const data: ApiResponse<{
+      total: number
+      success_count: number
+      failed_count: number
+      failed: Record<string, string>
+    }> = await res.json()
+    if (!data.success) throw new Error(data.error || 'Failed to reset auto-reconnect status (batch)')
+    return data.data!
+  },
 }
 
 // ============ 房間 API ============
@@ -163,8 +224,8 @@ export const roomApi = {
     return data.data!
   },
 
-  // 更新房間
-  update: async (roomId: string, room: Partial<QuestRoom>): Promise<QuestRoom> => {
+  // 取代房間（PUT = replace）
+  replace: async (roomId: string, room: QuestRoom): Promise<QuestRoom> => {
     const res = await fetch(`${QUEST_API_BASE}/rooms/${roomId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -172,6 +233,18 @@ export const roomApi = {
     })
     const data: ApiResponse<QuestRoom> = await res.json()
     if (!data.success) throw new Error(data.error || 'Failed to update room')
+    return data.data!
+  },
+
+  // 局部更新房間（PATCH = strict whitelist on server）
+  patch: async (roomId: string, patch: Partial<QuestRoom>): Promise<QuestRoom> => {
+    const res = await fetch(`${QUEST_API_BASE}/rooms/${roomId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    })
+    const data: ApiResponse<QuestRoom> = await res.json()
+    if (!data.success) throw new Error(data.error || 'Failed to patch room')
     return data.data!
   },
 
@@ -268,8 +341,8 @@ export const actionApi = {
     return data.data!
   },
 
-  // 更新動作
-  update: async (actionId: string, action: Partial<QuestAction>): Promise<QuestAction> => {
+  // 取代動作（PUT = replace）
+  replace: async (actionId: string, action: QuestAction): Promise<QuestAction> => {
     const res = await fetch(`${QUEST_API_BASE}/actions/${actionId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -277,6 +350,18 @@ export const actionApi = {
     })
     const data: ApiResponse<QuestAction> = await res.json()
     if (!data.success) throw new Error(data.error || 'Failed to update action')
+    return data.data!
+  },
+
+  // 局部更新動作（PATCH = strict whitelist on server）
+  patch: async (actionId: string, patch: Partial<QuestAction>): Promise<QuestAction> => {
+    const res = await fetch(`${QUEST_API_BASE}/actions/${actionId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    })
+    const data: ApiResponse<QuestAction> = await res.json()
+    if (!data.success) throw new Error(data.error || 'Failed to patch action')
     return data.data!
   },
 

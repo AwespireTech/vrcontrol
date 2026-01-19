@@ -33,7 +33,7 @@ export default function EditDevicePage() {
     if (!id) return
     
     try {
-      await deviceApi.update(id, updatedDevice)
+      await deviceApi.patch(id, updatedDevice)
       alert('設備更新成功')
       navigate('/quest/devices')
     } catch (error) {

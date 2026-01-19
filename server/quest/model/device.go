@@ -21,8 +21,11 @@ type QuestDevice struct {
 	Notes          string  `json:"notes"`
 	SortOrder      int     `json:"sort_order"`
 
+	// 是否允許監控服務進行自動重連（概念與 disconnected 分離）
+	AutoReconnectEnabled bool `json:"auto_reconnect_enabled"`
+
 	// 自動重連狀態（供監控服務與 UI 顯示使用）
-	AutoReconnectDisabledReason string     `json:"auto_reconnect_disabled_reason,omitempty"` // manual_disconnect | max_retries_exhausted
+	AutoReconnectDisabledReason string     `json:"auto_reconnect_disabled_reason,omitempty"` // manual_disconnect | max_retries_exhausted | adb_not_found | adb_connect_failed | unknown
 	AutoReconnectRetryCount     int        `json:"auto_reconnect_retry_count,omitempty"`
 	AutoReconnectNextAttemptAt  *time.Time `json:"auto_reconnect_next_attempt_at,omitempty"`
 	AutoReconnectLastError      string     `json:"auto_reconnect_last_error,omitempty"`

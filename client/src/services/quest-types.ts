@@ -51,6 +51,9 @@ export interface QuestDevice {
   notes: string
   sort_order: number
 
+  // 是否允許自動重連（由使用者控制，預設 true）
+  auto_reconnect_enabled: boolean
+
   // 自動重連狀態（由後端維護）
   auto_reconnect_disabled_reason?: 'manual_disconnect' | 'max_retries_exhausted'
   auto_reconnect_retry_count?: number

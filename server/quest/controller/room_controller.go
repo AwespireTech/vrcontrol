@@ -105,6 +105,37 @@ func (c *RoomController) UpdateRoom(ctx *gin.Context) {
 	})
 }
 
+// PatchRoom 局部更新房間（嚴格白名單）
+// @Router /api/quest/rooms/:id [patch]
+func (c *RoomController) PatchRoom(ctx *gin.Context) {
+	roomID := ctx.Param("id")
+
+	var req service.RoomPatch
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request body",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	updated, err := c.roomService.PatchRoom(roomID, req)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    updated,
+		"message": "Room updated successfully",
+	})
+}
+
 // DeleteRoom 刪除房間
 func (c *RoomController) DeleteRoom(ctx *gin.Context) {
 	roomID := ctx.Param("id")
