@@ -72,6 +72,9 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 	scrcpyService := service.NewScrcpyService(scrcpyManager, deviceRepo, scrcpyConfigRepo)
 	preferenceService := service.NewPreferenceService(preferenceRepo)
 
+	// 啟動時以 ADB 清單校正在線狀態（僅更新 Status）
+	deviceService.SyncOnlineStatusFromADBAtStartup()
+
 	// 初始化 Controllers
 	deviceController := controller.NewDeviceController(deviceService)
 	roomController := controller.NewRoomController(roomService)

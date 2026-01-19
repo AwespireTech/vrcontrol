@@ -28,6 +28,70 @@ func NewDeviceService(deviceRepo *repository.DeviceRepository, adbManager *adb.A
 	}
 }
 
+// SyncOnlineStatusFromADBAtStartup 啟動時用 ADB 裝置清單校正「在線」狀態（僅更新 Status）
+func (s *DeviceService) SyncOnlineStatusFromADBAtStartup() {
+	adbDevices, err := s.adbManager.GetDevices()
+	if err != nil {
+		log.Printf("[DeviceService] 啟動校正失敗: 取得 ADB 裝置清單錯誤 - %v\n", err)
+		return
+	}
+
+	onlineSerials := make(map[string]struct{}, len(adbDevices))
+	for _, d := range adbDevices {
+		if d.State == "device" {
+			onlineSerials[d.Serial] = struct{}{}
+		}
+	}
+
+	checked := 0
+	offlined := 0
+	devices := s.deviceRepo.GetAll()
+	for _, device := range devices {
+		if device.Status != model.DeviceStatusOnline {
+			continue
+		}
+
+		checked++
+		if s.isDeviceOnlineInADB(device, onlineSerials) {
+			continue
+		}
+
+		device.Status = model.DeviceStatusOffline
+		if err := s.deviceRepo.Update(device); err != nil {
+			log.Printf("[DeviceService] 啟動校正失敗: 更新裝置 %s 狀態錯誤 - %v\n", device.DeviceID, err)
+			continue
+		}
+		offlined++
+		log.Printf("[DeviceService] 啟動校正: 裝置 %s 不在 ADB 清單，已設為離線\n", device.GetDisplayName())
+	}
+
+	log.Printf("[DeviceService] 啟動校正完成: 檢查在線=%d, 轉離線=%d\n", checked, offlined)
+}
+
+func (s *DeviceService) isDeviceOnlineInADB(device *model.QuestDevice, onlineSerials map[string]struct{}) bool {
+	if device.Serial != "" {
+		if _, ok := onlineSerials[device.Serial]; ok {
+			return true
+		}
+	}
+
+	if device.IP == "" {
+		return false
+	}
+
+	port := device.Port
+	if port == 0 {
+		port = 5555
+	}
+
+	addr := fmt.Sprintf("%s:%d", device.IP, port)
+	if _, ok := onlineSerials[addr]; ok {
+		return true
+	}
+
+	return false
+}
+
 // GetAllDevices 獲取所有設備
 func (s *DeviceService) GetAllDevices() []*model.QuestDevice {
 	return s.deviceRepo.GetAll()
