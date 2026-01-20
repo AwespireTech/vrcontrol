@@ -4,7 +4,7 @@ import { SERVER } from '@/environment'
 import Button from '@/components/button'
 import PlayerInfo from '@/components/player-info'
 import AssignRoom from '@/components/assign-room'
-import { controlApi, simpleApi } from '@/services/quest-api'
+import { controlApi, roomApi, simpleApi } from '@/services/quest-api'
 import type { PlayerData, RoomInfoData } from '@/interfaces/room.interface'
 
 const TotalChapters = 11
@@ -39,12 +39,17 @@ export default function RoomControlPage() {
 
   const loadControlData = async () => {
     try {
-      const [players, rooms] = await Promise.all([
+      const [players, questRooms, controlRooms] = await Promise.all([
         controlApi.getPlayerList(),
+        roomApi.getAll(),
         controlApi.getRoomList(),
       ])
       setPlayerList(players.slice().sort((a, b) => a.localeCompare(b, undefined, { numeric: true })))
-      setRoomList(rooms.slice().sort((a, b) => a.localeCompare(b)))
+      const questRoomIds = questRooms.map((room) => room.room_id)
+      const mergedRooms = questRoomIds.length > 0
+        ? Array.from(new Set([...questRoomIds, ...controlRooms]))
+        : controlRooms
+      setRoomList(mergedRooms.slice().sort((a, b) => a.localeCompare(b)))
     } catch (error) {
       console.error('Failed to load control data:', error)
     }

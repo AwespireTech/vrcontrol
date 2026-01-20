@@ -82,6 +82,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 	monitoringController := controller.NewMonitoringController(monitoringService)
 	scrcpyController := controller.NewScrcpyController(scrcpyService)
 	preferenceController := controller.NewPreferenceController(preferenceService)
+	controller.SetQuestRoomService(roomService)
 
 	// Quest API 路由群組
 	questAPI := router.Group("/api/quest")
