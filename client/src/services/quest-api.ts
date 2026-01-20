@@ -345,13 +345,6 @@ export const controlApi = {
       method: 'POST',
     })
   },
-
-  // 建立控制房間
-  createRoom: async (roomId: string): Promise<void> => {
-    await fetch(`${QUEST_CONTROL_BASE}/createroom/${roomId}`, {
-      method: 'POST',
-    })
-  },
 }
 
 // ============ 簡化控制 API（鏡像 /simple） ============

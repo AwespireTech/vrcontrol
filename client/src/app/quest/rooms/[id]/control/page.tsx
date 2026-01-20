@@ -1,4 +1,4 @@
-import { type ChangeEvent, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { SERVER } from '@/environment'
 import Button from '@/components/button'
@@ -29,9 +29,6 @@ export default function RoomControlPage() {
   const [roomList, setRoomList] = useState<string[]>([])
   const [countdown, setCountdown] = useState(5)
 
-  const [createRoomName, setCreateRoomName] = useState('')
-  const [createRoomError, setCreateRoomError] = useState('')
-  const [creatingRoom, setCreatingRoom] = useState(false)
 
   const sortedRoomPlayers = useMemo(() => {
     return playerData.slice().sort((a, b) => (a.sequence >= b.sequence ? 1 : -1))
@@ -143,35 +140,6 @@ export default function RoomControlPage() {
     }
   }
 
-  const handleCreateRoomChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    const regex = /^[a-zA-Z0-9]*$/
-
-    if (!regex.test(value)) {
-      setCreateRoomError('Letters and numbers only')
-    } else if (value.length > 10) {
-      setCreateRoomError('Max 10 characters')
-    } else {
-      setCreateRoomError('')
-    }
-
-    setCreateRoomName(value.slice(0, 11))
-  }
-
-  const handleCreateRoom = async () => {
-    if (!createRoomName || createRoomError) return
-
-    try {
-      setCreatingRoom(true)
-      await controlApi.createRoom(createRoomName)
-      setCreateRoomName('')
-      await loadControlData()
-    } catch (error) {
-      console.error('Failed to create room:', error)
-    } finally {
-      setCreatingRoom(false)
-    }
-  }
 
   const options = Array.from({ length: TotalChapters }, (_, i) => i.toString())
 
@@ -340,22 +308,6 @@ export default function RoomControlPage() {
               </div>
             </div>
 
-            <div className="bg-surface rounded-lg border border-border p-6">
-              <h2 className="text-xl font-bold text-foreground mb-4">建立控制房間</h2>
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  type="text"
-                  className="flex-1 min-w-[140px] rounded border border-border bg-surface px-2 py-1 text-foreground"
-                  value={createRoomName}
-                  onChange={handleCreateRoomChange}
-                  placeholder="Enter room ID"
-                />
-                <Button onClick={handleCreateRoom} disabled={!createRoomName || !!createRoomError || creatingRoom}>
-                  {creatingRoom ? 'Creating...' : 'Create'}
-                </Button>
-              </div>
-              {createRoomError && <div className="mt-2 text-danger text-sm">{createRoomError}</div>}
-            </div>
           </div>
         </div>
       </div>

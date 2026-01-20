@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	questconsts "vrcontrol/server/quest/consts"
-	"vrcontrol/server/quest/model"
 	"vrcontrol/server/quest/service"
 	"vrcontrol/server/quest/sockets"
 	"vrcontrol/server/utilities"
@@ -99,38 +98,6 @@ func AssignRoomAndSeq(c *gin.Context) {
 		"sequence": seq,
 	})
 
-}
-func CreateRoom(c *gin.Context) {
-	roomId := c.Param("roomId")
-	if roomId == "" {
-		c.JSON(400, gin.H{"error": "Room ID is required"})
-		return
-	}
-
-	if questRoomService != nil {
-		if _, err := questRoomService.GetRoom(roomId); err != nil {
-			questRoom := &model.QuestRoom{
-				RoomID: roomId,
-				Name:   roomId,
-			}
-			if err := questRoomService.CreateRoom(questRoom); err != nil {
-				c.JSON(500, gin.H{"error": "Failed to create Quest room"})
-				return
-			}
-		}
-	}
-
-	if _, exists := RoomList[roomId]; exists {
-		c.JSON(400, gin.H{"error": "Room already exists"})
-		return
-	}
-
-	room := sockets.NewRoom(roomId)
-	room.AssignedSequence = questconsts.LoadAssignedSequence(roomId)
-	RoomList[roomId] = room
-	go room.Run()
-
-	c.JSON(200, gin.H{"message": "Room created successfully", "roomId": roomId})
 }
 func GetUnassignedPlayers(c *gin.Context) {
 
