@@ -34,6 +34,7 @@ func AssignSequence(c *gin.Context) {
 		Type:   sockets.ControlSignalTypeSeqUpdate,
 		Target: p,
 	}
+	updateQuestAssignedSequence(c.Param("roomId"), p.DeiviceID, seq)
 	c.JSON(http.StatusOK, gin.H{
 		"message":  "Sequence assigned successfully",
 		"sequence": seq,

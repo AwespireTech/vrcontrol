@@ -4,17 +4,18 @@ import "time"
 
 // QuestRoom Quest 房間模型
 type QuestRoom struct {
-	RoomID        string         `json:"room_id"`
-	Name          string         `json:"name"`
-	Description   string         `json:"description"`
-	MaxDevices    int            `json:"max_devices"`
-	DeviceIDs     []string       `json:"device_ids"`
-	SocketIP      string         `json:"socket_ip"`
-	SocketPort    int            `json:"socket_port"`
-	SocketRunning bool           `json:"socket_running"`
-	Parameters    map[string]any `json:"parameters"`
-	CreatedAt     time.Time      `json:"created_at"`
-	UpdatedAt     time.Time      `json:"updated_at"`
+	RoomID            string         `json:"room_id"`
+	Name              string         `json:"name"`
+	Description       string         `json:"description"`
+	MaxDevices        int            `json:"max_devices"`
+	DeviceIDs         []string       `json:"device_ids"`
+	AssignedSequences map[string]int `json:"assigned_sequences"`
+	SocketIP          string         `json:"socket_ip"`
+	SocketPort        int            `json:"socket_port"`
+	SocketRunning     bool           `json:"socket_running"`
+	Parameters        map[string]any `json:"parameters"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
 }
 
 // RoomParameter 房間參數

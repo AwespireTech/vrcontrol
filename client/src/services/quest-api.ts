@@ -6,7 +6,6 @@ import {
   type QuestAction,
   type BatchExecuteRequest,
   type BatchExecuteResponse,
-  type SocketInfo,
   type MonitoringStatus,
   type ExecutionResult,
   type ScrcpyConfig,
@@ -278,41 +277,6 @@ export const roomApi = {
     if (!data.success) throw new Error(data.error || 'Failed to remove device from room')
   },
 
-  // 啟動 Socket Server
-  startSocket: async (roomId: string): Promise<number> => {
-    const res = await fetch(`${QUEST_API_BASE}/rooms/${roomId}/socket/start`, {
-      method: 'POST',
-    })
-    const data: ApiResponse<{ port: number }> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to start socket server')
-    return data.data!.port
-  },
-
-  // 停止 Socket Server
-  stopSocket: async (roomId: string): Promise<void> => {
-    const res = await fetch(`${QUEST_API_BASE}/rooms/${roomId}/socket/stop`, {
-      method: 'POST',
-    })
-    const data: ApiResponse<void> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to stop socket server')
-  },
-
-  // 獲取 Socket 信息
-  getSocketInfo: async (roomId: string): Promise<SocketInfo> => {
-    const res = await fetch(`${QUEST_API_BASE}/rooms/${roomId}/socket/info`)
-    const data: ApiResponse<SocketInfo> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to get socket info')
-    return data.data!
-  },
-
-  // 同步參數
-  syncParameters: async (roomId: string): Promise<void> => {
-    const res = await fetch(`${QUEST_API_BASE}/rooms/${roomId}/parameters/sync`, {
-      method: 'POST',
-    })
-    const data: ApiResponse<void> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to sync parameters')
-  },
 }
 
 // ============ 控制 API（鏡像 /control） ============
@@ -323,13 +287,6 @@ export const controlApi = {
     const res = await fetch(`${QUEST_CONTROL_BASE}/playerlist`)
     const data = await res.json()
     return data?.unassignedPlayers || []
-  },
-
-  // 獲取房間清單
-  getRoomList: async (): Promise<string[]> => {
-    const res = await fetch(`${QUEST_CONTROL_BASE}/roomlist`)
-    const data = await res.json()
-    return data?.rooms || []
   },
 
   // 指派玩家房間與序列

@@ -87,6 +87,7 @@ export interface QuestRoom {
   description: string
   max_devices: number
   device_ids: string[]
+  assigned_sequences: Record<string, number>
   socket_ip: string
   socket_port: number
   socket_running: boolean

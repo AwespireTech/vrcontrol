@@ -6,7 +6,6 @@ import (
 
 	"vrcontrol/server/quest/adb"
 	"vrcontrol/server/quest/controller"
-	"vrcontrol/server/quest/questsocket"
 	"vrcontrol/server/quest/repository"
 	"vrcontrol/server/quest/scrcpy"
 	"vrcontrol/server/quest/service"
@@ -19,7 +18,6 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 	// 初始化 Managers
 	adbManager := adb.NewADBManager("", 30*time.Second)
 	pingManager := adb.NewPingManager(2 * time.Second)
-	socketManager := questsocket.NewSocketManager()
 	scrcpyManager := scrcpy.NewManager()
 
 	// 初始化 Repositories
@@ -66,7 +64,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 
 	// 初始化 Services
 	deviceService := service.NewDeviceService(deviceRepo, adbManager, pingManager)
-	roomService := service.NewRoomService(roomRepo, deviceRepo, socketManager)
+	roomService := service.NewRoomService(roomRepo, deviceRepo)
 	actionService := service.NewActionService(actionRepo, deviceRepo, adbManager)
 	monitoringService := service.NewMonitoringService(deviceRepo, pingManager, adbManager, preferenceRepo)
 	scrcpyService := service.NewScrcpyService(scrcpyManager, deviceRepo, scrcpyConfigRepo)
@@ -137,10 +135,6 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 			rooms.DELETE("/:id", roomController.DeleteRoom)
 			rooms.POST("/:id/devices/:deviceId", roomController.AddDevice)
 			rooms.DELETE("/:id/devices/:deviceId", roomController.RemoveDevice)
-			rooms.POST("/:id/socket/start", roomController.StartSocket)
-			rooms.POST("/:id/socket/stop", roomController.StopSocket)
-			rooms.GET("/:id/socket/info", roomController.GetSocketInfo)
-			rooms.POST("/:id/parameters/sync", roomController.SyncParameters)
 		}
 
 		// 動作管理路由

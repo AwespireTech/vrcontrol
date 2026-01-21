@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"vrcontrol/server/model"
-	questconsts "vrcontrol/server/quest/consts"
 )
 
 type MessageType string
@@ -66,7 +65,7 @@ func NewRoom(roomID string) *Room {
 		MoveControl:      make(chan Movement),
 		Signals:          make(chan ControlSignal),
 	}
-	room.AssignedSequence = questconsts.LoadAssignedSequence(roomID)
+	room.AssignedSequence = make(map[string]int)
 	return room
 }
 func (r *Room) Run() {

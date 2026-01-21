@@ -86,8 +86,11 @@ func AssignRoomAndSeq(c *gin.Context) {
 	// Record settings
 	DeviceRoomMap[deviceId] = roomId
 	go questconsts.SaveAssignedRoom(DeviceRoomMap)
+	if room.AssignedSequence == nil {
+		room.AssignedSequence = make(map[string]int)
+	}
 	room.AssignedSequence[player.DeiviceID] = seq
-	go questconsts.SaveAssignedSequence(roomId, room.AssignedSequence)
+	updateQuestAssignedSequence(roomId, player.DeiviceID, seq)
 
 	player.Room = room
 	room.PlayerRegister <- player
@@ -98,6 +101,36 @@ func AssignRoomAndSeq(c *gin.Context) {
 		"sequence": seq,
 	})
 
+}
+
+func updateQuestAssignedSequence(roomId string, deviceId string, seq int) {
+	if questRoomService == nil {
+		return
+	}
+	room, err := questRoomService.GetRoom(roomId)
+	if err != nil || room == nil {
+		return
+	}
+	if room.AssignedSequences == nil {
+		room.AssignedSequences = make(map[string]int)
+	}
+	room.AssignedSequences[deviceId] = seq
+	_ = questRoomService.UpdateRoom(room)
+}
+
+func getQuestAssignedSequences(roomId string) map[string]int {
+	if questRoomService == nil {
+		return make(map[string]int)
+	}
+	room, err := questRoomService.GetRoom(roomId)
+	if err != nil || room == nil || room.AssignedSequences == nil {
+		return make(map[string]int)
+	}
+	sequences := make(map[string]int, len(room.AssignedSequences))
+	for key, value := range room.AssignedSequences {
+		sequences[key] = value
+	}
+	return sequences
 }
 func GetUnassignedPlayers(c *gin.Context) {
 

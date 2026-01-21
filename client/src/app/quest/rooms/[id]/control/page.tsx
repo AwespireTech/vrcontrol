@@ -36,17 +36,13 @@ export default function RoomControlPage() {
 
   const loadControlData = async () => {
     try {
-      const [players, questRooms, controlRooms] = await Promise.all([
+      const [players, questRooms] = await Promise.all([
         controlApi.getPlayerList(),
         roomApi.getAll(),
-        controlApi.getRoomList(),
       ])
       setPlayerList(players.slice().sort((a, b) => a.localeCompare(b, undefined, { numeric: true })))
       const questRoomIds = questRooms.map((room) => room.room_id)
-      const mergedRooms = questRoomIds.length > 0
-        ? Array.from(new Set([...questRoomIds, ...controlRooms]))
-        : controlRooms
-      setRoomList(mergedRooms.slice().sort((a, b) => a.localeCompare(b)))
+      setRoomList(questRoomIds.slice().sort((a, b) => a.localeCompare(b)))
     } catch (error) {
       console.error('Failed to load control data:', error)
     }

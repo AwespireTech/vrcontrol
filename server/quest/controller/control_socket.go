@@ -4,7 +4,6 @@ import (
 	"log"
 	"net/http"
 
-	questconsts "vrcontrol/server/quest/consts"
 	"vrcontrol/server/quest/sockets"
 
 	"github.com/gin-gonic/gin"
@@ -45,7 +44,7 @@ func ConnectToRoomSocket(c *gin.Context) {
 				return
 			}
 			room = sockets.NewRoom(roomId)
-			room.AssignedSequence = questconsts.LoadAssignedSequence(roomId)
+			room.AssignedSequence = getQuestAssignedSequences(roomId)
 			RoomList[roomId] = room
 			go room.Run()
 			log.Println("Room Created: ", roomId)
@@ -66,7 +65,7 @@ func ConnectToRoomControlSocket(c *gin.Context) {
 			return
 		}
 		room = sockets.NewRoom(roomId)
-		room.AssignedSequence = questconsts.LoadAssignedSequence(roomId)
+		room.AssignedSequence = getQuestAssignedSequences(roomId)
 		RoomList[roomId] = room
 		go room.Run()
 		log.Println("Room Created: ", roomId)
