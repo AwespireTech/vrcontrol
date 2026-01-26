@@ -98,9 +98,9 @@ export default function DeviceCard({
   }
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4 hover:border-primary transition-colors">
+    <div className="rounded-2xl border border-border/70 bg-surface/60 p-5 transition hover:border-primary/60">
       {/* 設備名稱和狀態 */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="mb-3 flex items-center justify-between">
         <h3 className="text-lg font-semibold text-foreground">{getDisplayName(device)}</h3>
         <div className="flex items-center gap-2" title={pingTooltipText}>
           <span className={`w-3 h-3 rounded-full ${getStatusColor(device.status)}`} />
@@ -109,9 +109,9 @@ export default function DeviceCard({
       </div>
 
       {/* 設備信息 */}
-      <div className="space-y-2 mb-4 text-sm">
+      <div className="mb-4 space-y-2 text-sm">
         {shouldShowAutoReconnectDisabled && (
-          <div className="rounded border border-warning/40 bg-warning/10 px-2 py-1 text-warning">
+          <div className="rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-warning">
             {disabledReasonText || '自動重連已停用'}
             {device.auto_reconnect_last_error ? (
               <span
@@ -154,11 +154,11 @@ export default function DeviceCard({
       </div>
 
       {/* 操作按鈕 */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex flex-wrap gap-2">
         {!isOnline && !isConnecting && onConnect && (
           <button
             onClick={() => onConnect(device.device_id)}
-            className="px-3 py-1 text-sm bg-primary text-foreground rounded hover:bg-primary/80 transition-colors"
+            className="rounded-full bg-primary px-3 py-1 text-xs text-foreground transition hover:bg-primary/80"
           >
             連接
           </button>
@@ -166,7 +166,7 @@ export default function DeviceCard({
         {isOnline && onDisconnect && (
           <button
             onClick={() => onDisconnect(device.device_id)}
-            className="px-3 py-1 text-sm bg-danger text-foreground rounded hover:bg-danger/80 transition-colors"
+            className="rounded-full bg-danger px-3 py-1 text-xs text-foreground transition hover:bg-danger/80"
           >
             斷開
           </button>
@@ -174,7 +174,7 @@ export default function DeviceCard({
         {isOnline && onPing && (
           <button
             onClick={() => onPing(device.device_id)}
-            className="px-3 py-1 text-sm bg-success text-foreground rounded hover:bg-success/80 transition-colors"
+            className="rounded-full bg-success px-3 py-1 text-xs text-foreground transition hover:bg-success/80"
           >
             Ping
           </button>
@@ -183,7 +183,7 @@ export default function DeviceCard({
           <button
             onClick={() => onMonitor(device.device_id)}
             disabled={!scrcpyInstalled}
-            className={`px-3 py-1 text-sm rounded transition-colors ${
+            className={`rounded-full px-3 py-1 text-xs transition ${
               scrcpyInstalled
                 ? 'bg-accent text-foreground hover:bg-accent/80'
                 : 'bg-muted/50 text-foreground/50 cursor-not-allowed'
@@ -196,7 +196,7 @@ export default function DeviceCard({
         {onEdit && (
           <button
             onClick={() => onEdit(device.device_id)}
-            className="px-3 py-1 text-sm bg-muted text-foreground rounded hover:bg-muted/80 transition-colors"
+            className="rounded-full bg-muted px-3 py-1 text-xs text-foreground transition hover:bg-muted/80"
           >
             編輯
           </button>
@@ -204,7 +204,7 @@ export default function DeviceCard({
         {onDelete && (
           <button
             onClick={() => onDelete(device.device_id)}
-            className="px-3 py-1 text-sm bg-danger text-foreground rounded hover:bg-danger/80 transition-colors"
+            className="rounded-full bg-danger px-3 py-1 text-xs text-foreground transition hover:bg-danger/80"
           >
             刪除
           </button>

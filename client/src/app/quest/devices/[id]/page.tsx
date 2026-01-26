@@ -75,7 +75,7 @@ export default function EditDevicePage() {
       }
     >
       <div className="rounded-2xl border border-border/70 bg-surface/60 p-6">
-        <div className="mb-6 rounded-lg border border-border bg-background/40 p-4 text-sm">
+        <div className="mb-6 rounded-2xl border border-border/70 bg-background/40 p-4 text-sm">
           <div className="flex items-center justify-between">
             <span className="text-foreground/70">Ping 狀態:</span>
             <span className="text-foreground">

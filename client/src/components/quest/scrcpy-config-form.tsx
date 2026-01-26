@@ -29,16 +29,16 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
     <div className="space-y-6">
       {/* 視訊品質設定 */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">視訊品質</h3>
+        <h3 className="text-lg font-semibold text-foreground">視訊品質</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">位元率</label>
+            <label className="block text-sm font-medium text-foreground mb-1">位元率</label>
             <select
               value={config.bitrate}
               onChange={(e) => handleChange('bitrate', e.target.value)}
               disabled={disabled}
-              className="w-full px-3 py-2 border rounded-md"
+              className="w-full rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
             >
               <option value="2M">2M (低畫質)</option>
               <option value="4M">4M (中畫質)</option>
@@ -49,26 +49,26 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">最大解析度 (px)</label>
+            <label className="block text-sm font-medium text-foreground mb-1">最大解析度 (px)</label>
             <input
               type="number"
               value={config.max_size}
               onChange={(e) => handleChange('max_size', parseInt(e.target.value))}
               disabled={disabled}
-              className="w-full px-3 py-2 border rounded-md"
+              className="w-full rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
               min="720"
               max="2560"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">最大幀率 (FPS)</label>
+            <label className="block text-sm font-medium text-foreground mb-1">最大幀率 (FPS)</label>
             <input
               type="number"
               value={config.max_fps}
               onChange={(e) => handleChange('max_fps', parseInt(e.target.value))}
               disabled={disabled}
-              className="w-full px-3 py-2 border rounded-md"
+              className="w-full rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
               min="15"
               max="120"
             />
@@ -78,53 +78,53 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
 
       {/* 視窗設定 */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">視窗設定</h3>
+        <h3 className="text-lg font-semibold text-foreground">視窗設定</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">視窗寬度 (選填)</label>
+            <label className="block text-sm font-medium text-foreground mb-1">視窗寬度 (選填)</label>
             <input
               type="number"
               value={config.window_width ?? ''}
               onChange={(e) => handleNumberChange('window_width', e.target.value)}
               disabled={disabled}
-              className="w-full px-3 py-2 border rounded-md"
+              className="w-full rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
               placeholder="自動"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">視窗高度 (選填)</label>
+            <label className="block text-sm font-medium text-foreground mb-1">視窗高度 (選填)</label>
             <input
               type="number"
               value={config.window_height ?? ''}
               onChange={(e) => handleNumberChange('window_height', e.target.value)}
               disabled={disabled}
-              className="w-full px-3 py-2 border rounded-md"
+              className="w-full rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
               placeholder="自動"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">視窗 X 位置 (選填)</label>
+            <label className="block text-sm font-medium text-foreground mb-1">視窗 X 位置 (選填)</label>
             <input
               type="number"
               value={config.window_x ?? ''}
               onChange={(e) => handleNumberChange('window_x', e.target.value)}
               disabled={disabled}
-              className="w-full px-3 py-2 border rounded-md"
+              className="w-full rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
               placeholder="自動"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">視窗 Y 位置 (選填)</label>
+            <label className="block text-sm font-medium text-foreground mb-1">視窗 Y 位置 (選填)</label>
             <input
               type="number"
               value={config.window_y ?? ''}
               onChange={(e) => handleNumberChange('window_y', e.target.value)}
               disabled={disabled}
-              className="w-full px-3 py-2 border rounded-md"
+              className="w-full rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
               placeholder="自動"
             />
           </div>
@@ -133,10 +133,10 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
 
       {/* 顯示選項 */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">顯示選項</h3>
+        <h3 className="text-lg font-semibold text-foreground">顯示選項</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <label className="flex items-center space-x-2 cursor-pointer">
+          <label className="flex items-center space-x-2 cursor-pointer text-foreground/80">
             <input
               type="checkbox"
               checked={config.fullscreen}
@@ -147,7 +147,7 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
             <span className="text-sm">全螢幕模式</span>
           </label>
 
-          <label className="flex items-center space-x-2 cursor-pointer">
+          <label className="flex items-center space-x-2 cursor-pointer text-foreground/80">
             <input
               type="checkbox"
               checked={config.always_on_top}
@@ -158,7 +158,7 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
             <span className="text-sm">視窗置頂</span>
           </label>
 
-          <label className="flex items-center space-x-2 cursor-pointer">
+          <label className="flex items-center space-x-2 cursor-pointer text-foreground/80">
             <input
               type="checkbox"
               checked={config.show_touches}
@@ -169,7 +169,7 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
             <span className="text-sm">顯示觸控點</span>
           </label>
 
-          <label className="flex items-center space-x-2 cursor-pointer">
+          <label className="flex items-center space-x-2 cursor-pointer text-foreground/80">
             <input
               type="checkbox"
               checked={config.turn_screen_off}
@@ -184,10 +184,10 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
 
       {/* 設備選項 */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">設備選項</h3>
+        <h3 className="text-lg font-semibold text-foreground">設備選項</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <label className="flex items-center space-x-2 cursor-pointer">
+          <label className="flex items-center space-x-2 cursor-pointer text-foreground/80">
             <input
               type="checkbox"
               checked={config.stay_awake}
@@ -198,7 +198,7 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
             <span className="text-sm">保持設備清醒</span>
           </label>
 
-          <label className="flex items-center space-x-2 cursor-pointer">
+          <label className="flex items-center space-x-2 cursor-pointer text-foreground/80">
             <input
               type="checkbox"
               checked={config.enable_audio}
@@ -210,8 +210,8 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
           </label>
         </div>
 
-        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-          <p className="text-sm text-yellow-800">
+        <div className="rounded-xl border border-warning/40 bg-warning/10 p-3">
+          <p className="text-sm text-warning">
             ⚠️ 建議關閉「啟用音訊轉發」以保留 Quest 設備的內建音訊功能
           </p>
         </div>
@@ -219,16 +219,16 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
 
       {/* 進階設定 */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold">進階設定</h3>
+        <h3 className="text-lg font-semibold text-foreground">進階設定</h3>
         
         <div>
-          <label className="block text-sm font-medium mb-1">渲染驅動 (選填)</label>
+          <label className="block text-sm font-medium text-foreground mb-1">渲染驅動 (選填)</label>
           <input
             type="text"
             value={config.render_driver}
             onChange={(e) => handleChange('render_driver', e.target.value)}
             disabled={disabled}
-            className="w-full px-3 py-2 border rounded-md"
+            className="w-full rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
             placeholder="預設 (opengl, metal, direct3d)"
           />
           <p className="text-xs text-foreground/50 mt-1">

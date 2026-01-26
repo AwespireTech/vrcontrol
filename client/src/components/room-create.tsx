@@ -47,7 +47,7 @@ const RoomCreate = () => {
 
       <input
         type="text"
-        className="mr-3 rounded border border-border bg-surface px-2 py-1 text-foreground"
+        className="mr-3 rounded-xl border border-border/70 bg-background/40 px-2 py-1 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
         value={roomName}
         onChange={handleChange}
         placeholder="Enter room ID"

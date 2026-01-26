@@ -112,7 +112,7 @@ export default function RoomDevicesPage() {
     >
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* 房間中的設備 */}
-          <div className="bg-surface rounded-lg  border border-border p-6">
+          <div className="rounded-2xl border border-border/70 bg-surface/60 p-6">
             <h2 className="text-xl font-bold text-foreground mb-4">
               房間中的設備 ({roomDevices.length})
             </h2>
@@ -126,7 +126,7 @@ export default function RoomDevicesPage() {
                 {roomDevices.map((device) => (
                   <div
                     key={device.device_id}
-                    className="flex items-center justify-between p-4 border border-border rounded-lg hover:border-blue-300 transition-colors"
+                    className="flex items-center justify-between rounded-xl border border-border/70 bg-background/40 p-4 transition hover:border-primary/60"
                   >
                     <div>
                       <div className="font-semibold text-foreground">{getDisplayName(device)}</div>
@@ -134,10 +134,10 @@ export default function RoomDevicesPage() {
                         {device.ip}:{device.port}
                       </div>
                       <div className="mt-1">
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          device.status === 'online' 
-                            ? 'bg-green-100 text-success'
-                            : 'bg-surface text-foreground'
+                        <span className={`rounded-full px-2 py-1 text-xs ${
+                          device.status === 'online'
+                            ? 'bg-success/20 text-success'
+                            : 'bg-muted/40 text-foreground/70'
                         }`}>
                           {device.status}
                         </span>
@@ -145,7 +145,7 @@ export default function RoomDevicesPage() {
                     </div>
                     <button
                       onClick={() => handleRemoveDevice(device.device_id)}
-                      className="px-4 py-2 bg-danger text-white rounded-lg hover:bg-danger/80 transition-colors"
+                      className="rounded-full bg-danger px-4 py-2 text-sm text-white transition hover:bg-danger/80"
                     >
                       移除
                     </button>
@@ -156,7 +156,7 @@ export default function RoomDevicesPage() {
           </div>
 
           {/* 可添加的設備 */}
-          <div className="bg-surface rounded-lg  border border-border p-6">
+          <div className="rounded-2xl border border-border/70 bg-surface/60 p-6">
             <h2 className="text-xl font-bold text-foreground mb-4">
               可添加的設備 ({availableDevices.length})
             </h2>
@@ -170,7 +170,7 @@ export default function RoomDevicesPage() {
                 {availableDevices.map((device) => (
                   <div
                     key={device.device_id}
-                    className="flex items-center justify-between p-4 border border-border rounded-lg hover:border-green-300 transition-colors"
+                    className="flex items-center justify-between rounded-xl border border-border/70 bg-background/40 p-4 transition hover:border-primary/60"
                   >
                     <div>
                       <div className="font-semibold text-foreground">{getDisplayName(device)}</div>
@@ -178,10 +178,10 @@ export default function RoomDevicesPage() {
                         {device.ip}:{device.port}
                       </div>
                       <div className="mt-1">
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          device.status === 'online' 
-                            ? 'bg-green-100 text-success'
-                            : 'bg-surface text-foreground'
+                        <span className={`rounded-full px-2 py-1 text-xs ${
+                          device.status === 'online'
+                            ? 'bg-success/20 text-success'
+                            : 'bg-muted/40 text-foreground/70'
                         }`}>
                           {device.status}
                         </span>
@@ -189,7 +189,7 @@ export default function RoomDevicesPage() {
                     </div>
                     <button
                       onClick={() => handleAddDevice(device.device_id)}
-                      className="px-4 py-2 bg-success/100 text-white rounded-lg hover:bg-success/80 transition-colors"
+                      className="rounded-full bg-success px-4 py-2 text-sm text-white transition hover:bg-success/80"
                     >
                       添加
                     </button>

@@ -63,7 +63,7 @@ export default function Home() {
         </Button>
       </div>
       <main className="grid w-full grid-cols-1 gap-8 lg:grid-cols-2">
-        <div className="flex w-full flex-col items-center gap-8 rounded-lg border border-border p-3 text-xs sm:text-base">
+        <div className="flex w-full flex-col items-center gap-8 rounded-2xl border border-border/70 bg-surface/60 p-4 text-xs sm:text-base">
           <PlayerList
             playerList={playerList}
             roomList={roomList}
@@ -71,7 +71,7 @@ export default function Home() {
             refresh={getPlayer}
           />
         </div>
-        <div className="flex w-full flex-col items-center gap-8 rounded-lg border border-border p-3 sm:items-start">
+        <div className="flex w-full flex-col items-center gap-8 rounded-2xl border border-border/70 bg-surface/60 p-4 sm:items-start">
           <RoomCreate />
           <div className="m-1 w-full border-b border-border"></div>
           <RoomList roomList={roomList} countdown={countdown} refresh={getRoom} />

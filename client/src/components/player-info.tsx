@@ -27,7 +27,9 @@ const PlayerInfo = ({
 
   return (
     <div
-      className={`${player.ready_to_move ? "border-primary" : "border-muted"} w-[400px] rounded-lg border-2 p-2`}
+      className={`w-[400px] rounded-2xl border border-border/70 bg-surface/60 p-3 ${
+        player.ready_to_move ? "border-primary/80" : "border-muted"
+      }`}
     >
       <table className="player-table">
         <tbody>
@@ -58,7 +60,7 @@ const PlayerInfo = ({
               {" ⭢ "}
               <input
                 type="number"
-                className="w-14 place-self-center rounded border border-border bg-surface px-2 py-1 text-foreground"
+                className="w-14 place-self-center rounded-xl border border-border/70 bg-background/40 px-2 py-1 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
                 value={numberInput}
                 onChange={handleNumberChange}
                 min={0}
