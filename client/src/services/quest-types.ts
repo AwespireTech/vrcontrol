@@ -58,7 +58,6 @@ export interface QuestDevice {
   ping_status: string
   room_id: string
   notes: string
-  sort_order: number
 
   // 是否允許自動重連（由使用者控制，預設 true）
   auto_reconnect_enabled: boolean

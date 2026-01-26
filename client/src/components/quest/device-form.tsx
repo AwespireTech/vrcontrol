@@ -15,7 +15,6 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
     name: device?.name || '',
     ip: device?.ip || '',
     port: device?.port || 5555,
-    sort_order: device?.sort_order || 0,
   })
   const [submitting, setSubmitting] = useState(false)
 
@@ -100,20 +99,6 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
           className="ui-input w-full px-4 py-2"
         />
         <p className="text-xs text-foreground/50 mt-1">預設: 5555</p>
-      </div>
-
-      <div>
-        <label className="block text-sm font-semibold text-foreground mb-2">
-          排序順序
-        </label>
-        <input
-          type="number"
-          name="sort_order"
-          value={formData.sort_order}
-          onChange={handleChange}
-          className="ui-input w-full px-4 py-2"
-        />
-        <p className="text-xs text-foreground/50 mt-1">數字越小越靠前</p>
       </div>
 
       <div className="flex justify-end gap-3 border-t border-border/70 pt-4">

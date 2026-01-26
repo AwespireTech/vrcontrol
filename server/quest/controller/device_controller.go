@@ -141,15 +141,6 @@ func (c *DeviceController) PatchDevice(ctx *gin.Context) {
 			return
 		}
 	}
-	if req.SortOrder != nil {
-		if *req.SortOrder < 0 {
-			ctx.JSON(http.StatusBadRequest, gin.H{
-				"success": false,
-				"error":   "Invalid sort_order value",
-			})
-			return
-		}
-	}
 
 	updated, err := c.deviceService.PatchDevice(deviceID, req)
 	if err != nil {
