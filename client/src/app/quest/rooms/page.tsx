@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { roomApi, deviceApi } from '@/services/quest-api'
 import type { QuestRoom } from '@/services/quest-types'
-import RoomCard from '@/components/quest/room-card'
 import { getDisplayName } from '@/lib/utils/device'
 import QuestPageShell from '@/components/quest/quest-page-shell'
 
@@ -84,23 +83,79 @@ export default function RoomsPage() {
       }
     >
       {rooms.length === 0 ? (
-        <div className="rounded-2xl border border-border/70 bg-surface/50 p-10 text-center">
+        <div className="surface-card p-10 text-center">
           <div className="text-5xl">🏠</div>
           <div className="mt-4 text-lg font-semibold text-foreground">還沒有房間</div>
           <div className="mt-2 text-sm text-foreground/70">點擊上方按鈕創建您的第一個房間</div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="surface-card overflow-hidden">
+          <div className="grid grid-cols-12 gap-3 border-b border-border bg-surface/50 px-4 py-3 text-xs text-foreground/60">
+            <div className="col-span-4">房間</div>
+            <div className="col-span-4">設備</div>
+            <div className="col-span-1">數量</div>
+            <div className="col-span-3 text-right">操作</div>
+          </div>
           {rooms.map((room) => (
-            <RoomCard
+            <div
               key={room.room_id}
-              room={room}
-              deviceNames={deviceNameMap}
-              onDelete={handleDelete}
-              onEdit={(roomId) => navigate(`/quest/rooms/${roomId}`)}
-              onManageDevices={(roomId) => navigate(`/quest/rooms/${roomId}/devices`)}
-              onControl={(roomId) => navigate(`/quest/rooms/${roomId}/control`)}
-            />
+              className="grid grid-cols-12 items-start gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-surface/40 last:border-b-0"
+            >
+              <div className="col-span-4">
+                <div className="font-semibold text-foreground">{room.name}</div>
+                <div className="text-xs text-foreground/50 font-mono">{room.room_id}</div>
+                {room.description ? (
+                  <div className="text-xs text-foreground/70 mt-1">{room.description}</div>
+                ) : null}
+              </div>
+              <div className="col-span-4">
+                {room.device_ids.length === 0 ? (
+                  <div className="text-xs text-foreground/50">尚未分配設備</div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {room.device_ids.slice(0, 3).map((deviceId) => (
+                      <span key={deviceId} className="ui-badge ui-badge-primary">
+                        {deviceNameMap.get(deviceId) || deviceId}
+                      </span>
+                    ))}
+                    {room.device_ids.length > 3 && (
+                      <span className="ui-badge ui-badge-muted">
+                        +{room.device_ids.length - 3} 更多
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="col-span-1 text-sm text-foreground/80">
+                {room.device_ids.length}
+              </div>
+              <div className="col-span-3 flex flex-wrap items-start justify-end gap-2">
+                <button
+                  onClick={() => navigate(`/quest/rooms/${room.room_id}/control`)}
+                  className="ui-btn ui-btn-xs ui-btn-primary"
+                >
+                  控制
+                </button>
+                <button
+                  onClick={() => navigate(`/quest/rooms/${room.room_id}/devices`)}
+                  className="ui-btn ui-btn-xs ui-btn-muted"
+                >
+                  管理設備
+                </button>
+                <button
+                  onClick={() => navigate(`/quest/rooms/${room.room_id}`)}
+                  className="ui-btn ui-btn-xs ui-btn-muted"
+                >
+                  編輯
+                </button>
+                <button
+                  onClick={() => handleDelete(room.room_id)}
+                  className="ui-btn ui-btn-xs ui-btn-danger"
+                >
+                  刪除
+                </button>
+              </div>
+            </div>
           ))}
         </div>
       )}

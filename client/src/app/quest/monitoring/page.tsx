@@ -310,7 +310,7 @@ export default function QuestMonitoringPage() {
         ) : null}
 
         <div className="surface-card overflow-hidden">
-          <div className="grid grid-cols-12 gap-3 px-4 py-3 border-b border-border text-xs text-foreground/60">
+          <div className="grid grid-cols-12 gap-3 border-b border-border bg-surface/50 px-4 py-3 text-xs text-foreground/60">
             <div className="col-span-4">設備</div>
             <div className="col-span-2">狀態</div>
             <div className="col-span-2">自動重連</div>
@@ -325,15 +325,30 @@ export default function QuestMonitoringPage() {
               const reason = getReasonText(d.auto_reconnect_disabled_reason)
               const lastError = d.auto_reconnect_last_error || ''
               return (
-                <div key={d.device_id} className="grid grid-cols-12 gap-3 px-4 py-3 border-b border-border last:border-b-0">
+                <div
+                  key={d.device_id}
+                  className="grid grid-cols-12 items-start gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-surface/40 last:border-b-0"
+                >
                   <div className="col-span-4">
                     <div className="font-semibold text-foreground">{getDisplayName(d)}</div>
                     <div className="text-xs text-foreground/60 font-mono">{d.ip}:{d.port}</div>
                     <div className="text-xs text-foreground/50 font-mono">{d.device_id}</div>
                   </div>
 
-                  <div className="col-span-2 text-sm text-foreground/80">
-                    {getStatusText(d.status)}
+                  <div className="col-span-2">
+                    <span
+                      className={`ui-badge ${
+                        d.status === QUEST_DEVICE_STATUS.ONLINE
+                          ? 'ui-badge-success'
+                          : d.status === QUEST_DEVICE_STATUS.ERROR
+                            ? 'ui-badge-danger'
+                            : d.status === QUEST_DEVICE_STATUS.CONNECTING
+                              ? 'ui-badge-warning'
+                              : 'ui-badge-muted'
+                      }`}
+                    >
+                      {getStatusText(d.status)}
+                    </span>
                   </div>
 
                   <div className="col-span-2">
