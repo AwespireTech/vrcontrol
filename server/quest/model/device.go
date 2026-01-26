@@ -20,7 +20,6 @@ type QuestDevice struct {
 	PingStatus     string  `json:"ping_status"` // ok, fail, timeout, unknown
 	RoomID         string  `json:"room_id"`
 	Notes          string  `json:"notes"`
-	SortOrder      int     `json:"sort_order"`
 
 	// 是否允許監控服務進行自動重連（概念與 disconnected 分離）
 	AutoReconnectEnabled bool `json:"auto_reconnect_enabled"`

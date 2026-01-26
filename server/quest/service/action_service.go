@@ -2,6 +2,8 @@ package service
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -36,7 +38,16 @@ func NewActionService(actionRepo *repository.ActionRepository, deviceRepo *repos
 
 // GetAllActions 獲取所有動作
 func (s *ActionService) GetAllActions() []*model.QuestAction {
-	return s.actionRepo.GetAll()
+	actions := s.actionRepo.GetAll()
+	sort.SliceStable(actions, func(i, j int) bool {
+		nameI := strings.ToLower(actions[i].Name)
+		nameJ := strings.ToLower(actions[j].Name)
+		if nameI == nameJ {
+			return actions[i].ActionID < actions[j].ActionID
+		}
+		return nameI < nameJ
+	})
+	return actions
 }
 
 // GetAction 獲取單個動作

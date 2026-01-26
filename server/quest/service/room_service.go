@@ -2,6 +2,8 @@ package service
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"vrcontrol/server/quest/model"
@@ -31,7 +33,16 @@ func NewRoomService(roomRepo *repository.RoomRepository, deviceRepo *repository.
 
 // GetAllRooms 獲取所有房間
 func (s *RoomService) GetAllRooms() []*model.QuestRoom {
-	return s.roomRepo.GetAll()
+	rooms := s.roomRepo.GetAll()
+	sort.SliceStable(rooms, func(i, j int) bool {
+		nameI := strings.ToLower(rooms[i].Name)
+		nameJ := strings.ToLower(rooms[j].Name)
+		if nameI == nameJ {
+			return rooms[i].RoomID < rooms[j].RoomID
+		}
+		return nameI < nameJ
+	})
+	return rooms
 }
 
 // GetRoom 獲取單個房間

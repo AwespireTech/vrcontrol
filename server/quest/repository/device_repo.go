@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -50,10 +51,7 @@ func (r *DeviceRepository) save() error {
 		devices = append(devices, device)
 	}
 
-	// 按 SortOrder 排序
-	sort.Slice(devices, func(i, j int) bool {
-		return devices[i].SortOrder < devices[j].SortOrder
-	})
+	r.sortDevices(devices)
 
 	return r.repo.Save(devices)
 }
@@ -75,12 +73,20 @@ func (r *DeviceRepository) GetAll() []*model.QuestDevice {
 		devices = append(devices, device)
 	}
 
-	// 按 SortOrder 排序
-	sort.Slice(devices, func(i, j int) bool {
-		return devices[i].SortOrder < devices[j].SortOrder
-	})
+	r.sortDevices(devices)
 
 	return devices
+}
+
+func (r *DeviceRepository) sortDevices(devices []*model.QuestDevice) {
+	sort.SliceStable(devices, func(i, j int) bool {
+		aliasI := strings.ToLower(devices[i].Alias)
+		aliasJ := strings.ToLower(devices[j].Alias)
+		if aliasI == aliasJ {
+			return devices[i].DeviceID < devices[j].DeviceID
+		}
+		return aliasI < aliasJ
+	})
 }
 
 // GetByID 根據 ID 獲取設備
@@ -142,11 +148,6 @@ func (r *DeviceRepository) Create(device *model.QuestDevice) error {
 	device.UpdatedAt = now
 	device.FirstConnected = now
 	device.LastSeen = now
-
-	// 設置 SortOrder
-	if device.SortOrder == 0 {
-		device.SortOrder = len(r.devices) + 1
-	}
 
 	r.devices[device.DeviceID] = device
 

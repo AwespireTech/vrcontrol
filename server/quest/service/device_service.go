@@ -145,7 +145,6 @@ type DevicePatch struct {
 	Port                 *int    `json:"port"`
 	Notes                *string `json:"notes"`
 	RoomID               *string `json:"room_id"`
-	SortOrder            *int    `json:"sort_order"`
 	AutoReconnectEnabled *bool   `json:"auto_reconnect_enabled"`
 }
 
@@ -173,9 +172,6 @@ func (s *DeviceService) PatchDevice(deviceID string, patch DevicePatch) (*model.
 	}
 	if patch.RoomID != nil {
 		device.RoomID = *patch.RoomID
-	}
-	if patch.SortOrder != nil {
-		device.SortOrder = *patch.SortOrder
 	}
 	if patch.AutoReconnectEnabled != nil {
 		device.AutoReconnectEnabled = *patch.AutoReconnectEnabled
