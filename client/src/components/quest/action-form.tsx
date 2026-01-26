@@ -206,7 +206,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
           value={formData.name}
           onChange={handleChange}
           required
-          className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+          className="ui-input w-full px-4 py-2"
           placeholder="例如: 喚醒所有設備"
         />
       </div>
@@ -220,7 +220,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
           value={formData.action_type}
           onChange={handleActionTypeChange}
           required
-          className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+          className="ui-select w-full px-4 py-2"
         >
           <option value={QUEST_ACTION_TYPES.WAKE_UP}>☀️ 喚醒設備</option>
           <option value={QUEST_ACTION_TYPES.SLEEP}>🌙 休眠設備</option>
@@ -242,7 +242,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
           value={formData.description}
           onChange={handleChange}
           rows={3}
-          className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+          className="ui-input w-full px-4 py-2"
           placeholder="描述這個動作的用途..."
         />
       </div>
@@ -256,26 +256,26 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
           value={formData.params}
           onChange={handleChange}
           rows={8}
-          className="w-full px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
+          className="ui-input w-full px-4 py-2 font-mono text-sm"
           placeholder='{"key": "value"}'
         />
         <p className="text-xs text-foreground/50 mt-1">
-          根據動作類型輸入對應的參數，系統會自動提供模板
+          依動作類型填入參數，格式為 JSON。
         </p>
       </div>
 
-      <div className="flex gap-3 justify-end pt-4 border-t border-border">
+      <div className="flex justify-end gap-3 border-t border-border/70 pt-4">
         <button
           type="button"
           onClick={onCancel}
-          className="px-6 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/50 transition-colors"
+          className="ui-btn ui-btn-md ui-btn-muted"
         >
           取消
         </button>
         <button
           type="submit"
           disabled={submitting}
-          className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="ui-btn ui-btn-md ui-btn-primary"
         >
           {submitting ? '提交中...' : action ? '更新' : '創建'}
         </button>

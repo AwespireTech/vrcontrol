@@ -6,6 +6,7 @@ import PlayerInfo from '@/components/player-info'
 import AssignRoom from '@/components/assign-room'
 import { controlApi, roomApi, simpleApi } from '@/services/quest-api'
 import type { PlayerData, RoomInfoData } from '@/interfaces/room.interface'
+import QuestPageShell from '@/components/quest/quest-page-shell'
 
 const TotalChapters = 11
 
@@ -26,13 +27,18 @@ export default function RoomControlPage() {
   const [moveState, setMoveState] = useState('')
 
   const [playerList, setPlayerList] = useState<string[]>([])
-  const [roomList, setRoomList] = useState<string[]>([])
+  const [roomList, setRoomList] = useState<{ value: string; label: string }[]>([])
   const [countdown, setCountdown] = useState(5)
 
 
   const sortedRoomPlayers = useMemo(() => {
     return playerData.slice().sort((a, b) => (a.sequence >= b.sequence ? 1 : -1))
   }, [playerData])
+
+  const currentRoomName = useMemo(() => {
+    const found = roomList.find((room) => room.value === roomId)
+    return found?.label || roomId
+  }, [roomId, roomList])
 
   const loadControlData = async () => {
     try {
@@ -41,8 +47,10 @@ export default function RoomControlPage() {
         roomApi.getAll(),
       ])
       setPlayerList(players.slice().sort((a, b) => a.localeCompare(b, undefined, { numeric: true })))
-      const questRoomIds = questRooms.map((room) => room.room_id)
-      setRoomList(questRoomIds.slice().sort((a, b) => a.localeCompare(b)))
+      const roomOptions = questRooms
+        .map((room) => ({ value: room.room_id, label: room.name }))
+        .sort((a, b) => a.label.localeCompare(b.label))
+      setRoomList(roomOptions)
     } catch (error) {
       console.error('Failed to load control data:', error)
     }
@@ -148,56 +156,50 @@ export default function RoomControlPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
-          <div>
-            <div className="flex flex-wrap items-center gap-3 mb-2">
-              <button
-                onClick={() => navigate('/quest/rooms')}
-                className="text-primary hover:text-primary/80"
-              >
-                ← 返回
-              </button>
-              <button
-                onClick={() => navigate(`/quest/rooms/${roomId}/devices`)}
-                className="text-primary hover:text-primary/80"
-              >
-                前往設備
-              </button>
-              <button
-                onClick={() => navigate(`/quest/rooms/${roomId}`)}
-                className="text-primary hover:text-primary/80"
-              >
-                編輯房間
-              </button>
-            </div>
-            <h1 className="text-3xl font-bold text-foreground">房間控制</h1>
-            <p className="text-foreground/70 mt-2">房間: {roomId}</p>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-foreground/70">連線狀態</span>
-            <span
-              className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                connectionStatus === 'connected'
-                  ? 'bg-success/20 text-success'
-                  : connectionStatus === 'connecting'
-                    ? 'bg-muted text-foreground'
-                    : 'bg-danger/20 text-danger'
-              }`}
-            >
-              {connectionStatus === 'connected'
-                ? '已連線'
+    <QuestPageShell
+      title="房間控制"
+      subtitle={`房間: ${currentRoomName}`}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={`ui-badge text-xs font-semibold ${
+              connectionStatus === 'connected'
+                ? 'ui-badge-success'
                 : connectionStatus === 'connecting'
-                  ? '連線中'
-                  : '已中斷'}
-            </span>
-          </div>
+                  ? 'ui-badge-muted'
+                  : 'ui-badge-danger'
+            }`}
+          >
+            {connectionStatus === 'connected'
+              ? '已連線'
+              : connectionStatus === 'connecting'
+                ? '連線中'
+                : '已中斷'}
+          </span>
+          <button
+            onClick={() => navigate('/quest/rooms')}
+            className="ui-btn ui-btn-md ui-btn-muted"
+          >
+            回到房間列表
+          </button>
+          <button
+            onClick={() => navigate(`/quest/rooms/${roomId}`)}
+            className="ui-btn ui-btn-md ui-btn-primary"
+          >
+            編輯房間
+          </button>
+          <button
+            onClick={() => navigate(`/quest/rooms/${roomId}/devices`)}
+            className="ui-btn ui-btn-md ui-btn-accent"
+          >
+            前往設備
+          </button>
         </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      }
+    >
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
-            <div className="bg-surface rounded-lg border border-border p-6">
+            <div className="surface-card p-6">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-xl font-bold text-foreground">即時狀態</h2>
@@ -216,13 +218,15 @@ export default function RoomControlPage() {
               </div>
             </div>
 
-            <div className="bg-surface rounded-lg border border-border p-6">
+            <div className="surface-card p-6">
               <h2 className="text-xl font-bold text-foreground mb-4">強制移動</h2>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-foreground/70">Force all move to chapter</span>
                 <select
                   id="moveSelect"
-                  className={`mx-2 place-self-center overflow-y-auto rounded border border-border bg-surface px-2 py-1 text-center text-foreground ${selectedOption === '' && 'text-foreground/50'}`}
+                  className={`mx-2 place-self-center max-h-40 overflow-y-auto ui-select px-2 py-1 text-center ${
+                    selectedOption === '' ? 'text-foreground/50' : ''
+                  }`}
                   value={selectedOption}
                   onChange={(e) => setSelectedOption(e.target.value)}
                 >
@@ -243,7 +247,7 @@ export default function RoomControlPage() {
               </div>
             </div>
 
-            <div className="bg-surface rounded-lg border border-border p-6">
+            <div className="surface-card p-6">
               <h2 className="text-xl font-bold text-foreground mb-4">房間內玩家</h2>
               <div className="flex flex-wrap gap-4 py-1">
                 {sortedRoomPlayers.map((player) => (
@@ -258,14 +262,14 @@ export default function RoomControlPage() {
           </div>
 
           <div className="space-y-6">
-            <div className="bg-surface rounded-lg border border-border p-6">
+            <div className="surface-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-foreground">未分配玩家</h2>
                 <div className="text-xs text-foreground/60">Refreshing in {countdown}s</div>
               </div>
               <div className="grid grid-cols-4 items-center gap-2 border-b border-border p-2 text-xs font-medium text-foreground/60">
                 <span>Player ID</span>
-                <span className="text-center">Room ID</span>
+                <span className="text-center">Room</span>
                 <span className="text-center">Seq</span>
                 <span></span>
               </div>
@@ -281,32 +285,8 @@ export default function RoomControlPage() {
               </div>
             </div>
 
-            <div className="bg-surface rounded-lg border border-border p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-foreground">控制房間清單</h2>
-                <button
-                  onClick={loadControlData}
-                  className="text-xs text-primary hover:text-primary/80"
-                >
-                  重新整理
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {roomList.map((room) => (
-                  <Button
-                    key={room}
-                    onClick={() => navigate(`/quest/rooms/${room}/control`)}
-                    className="w-28"
-                  >
-                    {room}
-                  </Button>
-                ))}
-              </div>
-            </div>
-
           </div>
-        </div>
       </div>
-    </div>
+    </QuestPageShell>
   )
 }

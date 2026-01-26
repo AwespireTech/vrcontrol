@@ -80,7 +80,9 @@ export const RoomState = () => {
         <span>Force all move to chapter</span>
         <select
           id="mySelect"
-          className={`mx-2 place-self-center overflow-y-auto rounded border border-border bg-surface px-2 py-1 text-center text-foreground ${selectedOption === "" && "text-foreground/50"}`}
+          className={`mx-2 place-self-center max-h-40 overflow-y-auto ui-select px-2 py-1 text-center ${
+            selectedOption === "" ? "text-foreground/50" : ""
+          }`}
           value={selectedOption}
           onChange={(e) => setSelectedOption(e.target.value)}
         >

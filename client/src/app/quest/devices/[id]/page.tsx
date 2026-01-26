@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { deviceApi } from '@/services/quest-api'
 import DeviceForm from '@/components/quest/device-form'
 import type { QuestDevice } from '@/services/quest-types'
+import QuestPageShell from '@/components/quest/quest-page-shell'
 
 export default function EditDevicePage() {
   const navigate = useNavigate()
@@ -60,32 +61,34 @@ export default function EditDevicePage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-2xl mx-auto">
+    <QuestPageShell
+      title="編輯設備"
+      subtitle="更新設備資訊與連線狀態"
+      maxWidth="sm"
+      actions={
         <button
           onClick={() => navigate('/quest/devices')}
-          className="text-primary hover:text-primary/80 mb-4"
+          className="ui-btn ui-btn-md ui-btn-muted"
         >
-          ← 返回
+          回到設備列表
         </button>
-
-        <div className="bg-surface rounded-lg border border-border p-6">
-          <h1 className="text-2xl font-bold text-foreground mb-6">編輯設備</h1>
-          <div className="mb-6 rounded-lg border border-border bg-background/40 p-4 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-foreground/70">Ping 狀態:</span>
-              <span className="text-foreground">
-                {device.ping_status || 'unknown'} ({device.ping_ms ?? 0} ms)
-              </span>
-            </div>
+      }
+    >
+      <div className="surface-card p-6">
+        <div className="surface-panel mb-6 p-4 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-foreground/70">Ping 狀態:</span>
+            <span className="text-foreground">
+              {device.ping_status || 'unknown'} ({device.ping_ms ?? 0} ms)
+            </span>
           </div>
-          <DeviceForm 
-            device={device} 
-            onSubmit={handleSubmit} 
-            onCancel={() => navigate('/quest/devices')} 
-          />
         </div>
+        <DeviceForm
+          device={device}
+          onSubmit={handleSubmit}
+          onCancel={() => navigate('/quest/devices')}
+        />
       </div>
-    </div>
+    </QuestPageShell>
   )
 }

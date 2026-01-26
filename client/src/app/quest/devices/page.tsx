@@ -2,13 +2,15 @@ import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getDisplayName } from '@/lib/utils/device'
 import { deviceApi, scrcpyApi, preferenceApi } from '@/services/quest-api'
-import type { QuestDevice, ScrcpySession, ScrcpySystemInfo, UserPreference } from '@/services/quest-types'
-import DeviceCard, { type StatusErrorType } from '@/components/quest/device-card'
+import { QUEST_DEVICE_STATUS, type QuestDevice, ScrcpySession, ScrcpySystemInfo, UserPreference } from '@/services/quest-types'
+import QuestPageShell from '@/components/quest/quest-page-shell'
 import {
   DEFAULT_BATCH_SIZE,
   DEFAULT_MAX_CONCURRENCY,
   DEFAULT_POLL_INTERVAL_SECONDS,
 } from '@/environment'
+
+type StatusErrorType = 'idle' | 'ok' | 'timeout' | 'adb-error'
 
 export default function DevicesPage() {
   const navigate = useNavigate()
@@ -199,6 +201,88 @@ export default function DevicesPage() {
     }
   }, [preference, refreshOnlineStatuses])
 
+  const getStatusText = (status: QuestDevice['status']) => {
+    switch (status) {
+      case QUEST_DEVICE_STATUS.ONLINE:
+        return '在線'
+      case QUEST_DEVICE_STATUS.OFFLINE:
+        return '離線'
+      case QUEST_DEVICE_STATUS.CONNECTING:
+        return '連接中'
+      case QUEST_DEVICE_STATUS.ERROR:
+        return '錯誤'
+      case QUEST_DEVICE_STATUS.DISCONNECTED:
+        return '手動斷開'
+      default:
+        return '未知'
+    }
+  }
+
+  const getStatusColor = (status: QuestDevice['status']) => {
+    switch (status) {
+      case QUEST_DEVICE_STATUS.ONLINE:
+        return 'bg-success'
+      case QUEST_DEVICE_STATUS.OFFLINE:
+        return 'bg-muted'
+      case QUEST_DEVICE_STATUS.CONNECTING:
+        return 'bg-warning'
+      case QUEST_DEVICE_STATUS.ERROR:
+        return 'bg-danger'
+      case QUEST_DEVICE_STATUS.DISCONNECTED:
+        return 'bg-muted'
+      default:
+        return 'bg-muted'
+    }
+  }
+
+  const getAutoReconnectDisabledReasonText = (
+    reason?: QuestDevice['auto_reconnect_disabled_reason'],
+  ) => {
+    switch (reason) {
+      case 'manual_disconnect':
+        return '手動斷開（不自動重連）'
+      case 'max_retries_exhausted':
+        return '自動重連已達上限'
+      case 'adb_not_found':
+        return '找不到 ADB（請確認已安裝並加入 PATH）'
+      case 'adb_connect_failed':
+        return 'ADB 連線失敗（重試後停止）'
+      case 'unknown':
+        return '未知錯誤（重試後停止）'
+      default:
+        return ''
+    }
+  }
+
+  const renderStatusValue = (
+    status: StatusErrorType,
+    value?: number | string,
+    unit?: string,
+  ) => {
+    if (status === 'idle') return <span className="text-foreground/50">-</span>
+    if (status === 'timeout') {
+      return (
+        <span className="text-foreground/50" title="狀態查詢逾時">
+          ?
+        </span>
+      )
+    }
+    if (status === 'adb-error') {
+      return (
+        <span className="text-foreground/50" title="ADB 查詢失敗">
+          X
+        </span>
+      )
+    }
+    if (value === undefined || value === null) return <span className="text-foreground/50">-</span>
+    return (
+      <span className="text-foreground">
+        {value}
+        {unit ?? ''}
+      </span>
+    )
+  }
+
   const handleConnect = async (deviceId: string) => {
     try {
       await deviceApi.connect(deviceId)
@@ -241,22 +325,6 @@ export default function DevicesPage() {
       console.error('Failed to disconnect device:', error)
       alert('斷開失敗')
     }
-  }
-
-  const handlePing = async (deviceId: string) => {
-    try {
-      await deviceApi.ping(deviceId)
-      await loadDevices()
-    } catch (error) {
-      console.error('Failed to ping device:', error)
-      alert('Ping 失敗')
-    }
-  }
-
-  const formatPingTooltip = (device: QuestDevice) => {
-    const status = device.ping_status || 'unknown'
-    const msText = Number.isFinite(device.ping_ms) ? `${device.ping_ms} ms` : '0 ms'
-    return `ping_status: ${status} (${msText})`
   }
 
   const handleDelete = async (deviceId: string) => {
@@ -386,162 +454,229 @@ export default function DevicesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* 頁面標題和操作 */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
+    <QuestPageShell
+      title="設備管理"
+      subtitle={`下次更新: ${countdown} 秒`}
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleConnectAll}
+            className="ui-btn ui-btn-md ui-btn-primary"
+          >
+            批量連接
+          </button>
+          <button
+            onClick={handlePingAll}
+            className="ui-btn ui-btn-md ui-btn-success"
+          >
+            批量 Ping
+          </button>
+          {scrcpySystemInfo?.installed && selectedDeviceIds.length > 0 && (
             <button
-              onClick={() => navigate('/quest')}
-              className="text-primary hover:text-primary/80 mb-2"
+              onClick={handleMonitorBatch}
+              className="ui-btn ui-btn-md ui-btn-accent"
             >
-              ← 返回
+              批量監看 ({selectedDeviceIds.length})
             </button>
-            <h1 className="text-3xl font-bold text-foreground">設備管理</h1>
-            <p className="text-foreground/70 mt-2">下次更新: {countdown} 秒</p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleConnectAll}
-              className="px-4 py-2 bg-primary text-foreground rounded-lg hover:bg-primary/80 transition-colors"
-            >
-              批量連接
-            </button>
-            <button
-              onClick={handlePingAll}
-              className="px-4 py-2 bg-success text-foreground rounded-lg hover:bg-success/80 transition-colors"
-            >
-              批量 Ping
-            </button>
-            {scrcpySystemInfo?.installed && selectedDeviceIds.length > 0 && (
-              <button
-                onClick={handleMonitorBatch}
-                className="px-4 py-2 bg-accent text-foreground rounded-lg hover:bg-accent/80 transition-colors"
-              >
-                批量監看 ({selectedDeviceIds.length})
-              </button>
-            )}
-            <button
-              onClick={() => navigate('/quest/devices/new')}
-              className="px-4 py-2 bg-primary text-foreground rounded-lg hover:bg-primary/80 transition-colors"
-            >
-              + 添加設備
-            </button>
-          </div>
+          )}
+          <button
+            onClick={() => navigate('/quest/devices/new')}
+            className="ui-btn ui-btn-md ui-btn-primary"
+          >
+            + 添加設備
+          </button>
         </div>
-
-        {/* 設備列表 */}
-        {devices.length === 0 ? (
-          <div className="text-center py-12 bg-surface rounded-lg border border-border">
-            <p className="text-foreground/70">尚無設備</p>
+      }
+    >
+      {devices.length === 0 ? (
+        <div className="surface-card p-10 text-center text-foreground/70">尚無設備</div>
+      ) : (
+        <div className="surface-card overflow-hidden">
+          <div className="grid grid-cols-12 gap-3 border-b border-border bg-surface/50 px-4 py-3 text-xs text-foreground/60">
+            <div className="col-span-1">選取</div>
+            <div className="col-span-4">設備</div>
+            <div className="col-span-2">狀態</div>
+            <div className="col-span-2">電量 / 溫度</div>
+            <div className="col-span-3 text-right">操作</div>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {devices.map((device) => (
-              <div key={device.device_id} className="relative">
-                {device.status === 'online' && scrcpySystemInfo?.installed && (
+          {devices.map((device) => {
+            const isOnline = device.status === QUEST_DEVICE_STATUS.ONLINE
+            const isConnecting = device.status === QUEST_DEVICE_STATUS.CONNECTING
+            const statusErrorType = statusErrors[device.device_id] || 'idle'
+            const disabledReasonText = getAutoReconnectDisabledReasonText(
+              device.auto_reconnect_disabled_reason,
+            )
+            const canSelect = Boolean(scrcpySystemInfo?.installed) && isOnline
+
+            return (
+              <div
+                key={device.device_id}
+                className="grid grid-cols-12 items-start gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-surface/40 last:border-b-0"
+              >
+                <div className="col-span-1 flex items-start pt-1">
                   <input
                     type="checkbox"
                     checked={selectedDeviceIds.includes(device.device_id)}
                     onChange={() => toggleDeviceSelection(device.device_id)}
-                    className="absolute top-2 left-2 w-5 h-5 z-10"
+                    disabled={!canSelect}
+                    className="h-4 w-4"
                   />
-                )}
-                <DeviceCard
-                  device={device}
-                  onConnect={handleConnect}
-                  onDisconnect={handleDisconnect}
-                  onPing={handlePing}
-                  onDelete={handleDelete}
-                  onEdit={(deviceId) => navigate(`/quest/devices/${deviceId}`)}
-                  onMonitor={handleMonitor}
-                  scrcpyInstalled={scrcpySystemInfo?.installed}
-                  statusErrorType={statusErrors[device.device_id] || 'idle'}
-                  pingTooltipText={formatPingTooltip(device)}
-                />
+                </div>
+                <div className="col-span-4">
+                  <div className="font-semibold text-foreground">
+                    {getDisplayName(device)}
+                  </div>
+                  <div className="text-xs text-foreground/60 font-mono">
+                    {device.ip}:{device.port}
+                  </div>
+                  <div className="text-xs text-foreground/50 font-mono">
+                    {device.device_id}
+                  </div>
+                  {disabledReasonText ? (
+                    <div className="mt-1 text-xs text-warning">
+                      {disabledReasonText}
+                      {device.auto_reconnect_last_error ? (
+                        <span
+                          className="ml-2 text-foreground/60"
+                          title={device.auto_reconnect_last_error}
+                        >
+                          （詳情）
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="col-span-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`h-2.5 w-2.5 rounded-full ${getStatusColor(device.status)}`} />
+                    <span className="text-sm text-foreground/80">
+                      {getStatusText(device.status)}
+                    </span>
+                  </div>
+                  {device.alias ? (
+                    <div className="text-xs text-foreground/50">{device.alias}</div>
+                  ) : null}
+                </div>
+                <div className="col-span-2 text-xs text-foreground/70">
+                  <div>
+                    電量：{renderStatusValue(statusErrorType, device.battery, '%')}
+                  </div>
+                  <div>
+                    溫度：{renderStatusValue(statusErrorType, device.temperature, '°C')}
+                  </div>
+                </div>
+                <div className="col-span-3 flex flex-wrap items-start justify-end gap-2">
+                  {!isOnline && !isConnecting && (
+                    <button
+                      onClick={() => handleConnect(device.device_id)}
+                      className="ui-btn ui-btn-xs ui-btn-primary"
+                    >
+                      連接
+                    </button>
+                  )}
+                  {isOnline && (
+                    <>
+                      <button
+                        onClick={() => handleDisconnect(device.device_id)}
+                        className="ui-btn ui-btn-xs ui-btn-danger"
+                      >
+                        斷開
+                      </button>
+                    </>
+                  )}
+                  {isOnline && (
+                    <button
+                      onClick={() => handleMonitor(device.device_id)}
+                      disabled={!scrcpySystemInfo?.installed}
+                      className={`ui-btn ui-btn-xs ${
+                        scrcpySystemInfo?.installed
+                          ? 'ui-btn-accent'
+                          : 'bg-muted/50 text-foreground/50 cursor-not-allowed'
+                      }`}
+                      title={scrcpySystemInfo?.installed ? '啟動螢幕監看' : 'Scrcpy 未安裝'}
+                    >
+                      監看
+                    </button>
+                  )}
+                  <button
+                    onClick={() => navigate(`/quest/devices/${device.device_id}`)}
+                    className="ui-btn ui-btn-xs ui-btn-muted"
+                  >
+                    編輯
+                  </button>
+                  <button
+                    onClick={() => handleDelete(device.device_id)}
+                    className="ui-btn ui-btn-xs ui-btn-danger"
+                  >
+                    刪除
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
-        )}
+            )
+          })}
+        </div>
+      )}
 
-        {/* Scrcpy 會話列表 */}
-        {scrcpySystemInfo?.installed && scrcpySessions.length > 0 && (
-          <div className="mt-8 bg-surface rounded-lg border border-border p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-foreground">監看會話</h2>
-              <button
-                onClick={handleRefreshSessions}
-                className="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors"
-              >
-                刷新狀態
-              </button>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-border">
-                <thead className="bg-surface">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider">
-                      設備
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider">
-                      PID
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider">
-                      啟動時間
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider">
-                      狀態
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider">
-                      操作
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-surface divide-y divide-border">
-                  {scrcpySessions.map((session) => {
-                    const device = devices.find((d) => d.device_id === session.device_id)
-                    return (
-                      <tr key={session.device_id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
-                          {device ? getDisplayName(device) : session.device_id}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-foreground/70">
-                          {session.process_id}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground/70">
-                          {new Date(session.started_at).toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              session.is_running
-                                ? 'bg-success/20 text-success'
-                                : 'bg-muted/50 text-foreground/70'
-                            }`}
-                          >
-                            {session.is_running ? '運行中' : '已停止'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {session.is_running && (
-                            <button
-                              onClick={() => handleStopScrcpy(session.device_id)}
-                              className="text-danger hover:text-danger/80"
-                            >
-                              停止
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+      {scrcpySystemInfo?.installed && scrcpySessions.length > 0 && (
+        <div className="surface-card p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-foreground">監看會話</h2>
+            <button
+              onClick={handleRefreshSessions}
+              className="ui-btn ui-btn-md ui-btn-muted"
+            >
+              刷新狀態
+            </button>
           </div>
-        )}
-      </div>
-    </div>
+          <div className="surface-card overflow-hidden">
+            <div className="grid grid-cols-12 gap-3 border-b border-border bg-surface/50 px-4 py-3 text-xs text-foreground/60">
+              <div className="col-span-4">設備</div>
+              <div className="col-span-2">PID</div>
+              <div className="col-span-3">啟動時間</div>
+              <div className="col-span-2">狀態</div>
+              <div className="col-span-1 text-right">操作</div>
+            </div>
+            {scrcpySessions.map((session) => {
+              const device = devices.find((d) => d.device_id === session.device_id)
+              return (
+                <div
+                  key={session.device_id}
+                  className="grid grid-cols-12 items-start gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-surface/40 last:border-b-0"
+                >
+                  <div className="col-span-4 text-sm text-foreground">
+                    {device ? getDisplayName(device) : session.device_id}
+                  </div>
+                  <div className="col-span-2 text-sm font-mono text-foreground/70">
+                    {session.process_id}
+                  </div>
+                  <div className="col-span-3 text-sm text-foreground/70">
+                    {new Date(session.started_at).toLocaleString()}
+                  </div>
+                  <div className="col-span-2">
+                    <span
+                      className={`ui-badge inline-flex leading-5 font-semibold ${
+                        session.is_running ? 'ui-badge-success' : 'ui-badge-muted'
+                      }`}
+                    >
+                      {session.is_running ? '運行中' : '已停止'}
+                    </span>
+                  </div>
+                  <div className="col-span-1 flex justify-end">
+                    {session.is_running && (
+                      <button
+                        onClick={() => handleStopScrcpy(session.device_id)}
+                        className="ui-btn ui-btn-xs ui-btn-danger"
+                      >
+                        停止
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+    </QuestPageShell>
   )
 }

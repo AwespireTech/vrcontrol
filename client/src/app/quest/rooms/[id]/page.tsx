@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { roomApi } from '@/services/quest-api'
 import RoomForm from '@/components/quest/room-form'
 import type { QuestRoom } from '@/services/quest-types'
+import QuestPageShell from '@/components/quest/quest-page-shell'
 
 export default function EditRoomPage() {
   const navigate = useNavigate()
@@ -60,38 +61,40 @@ export default function EditRoomPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-2xl mx-auto">
-        <div className="flex flex-wrap items-center gap-3 mb-4">
+    <QuestPageShell
+      title="編輯房間"
+      subtitle={`房間 ID: ${id}`}
+      maxWidth="sm"
+      actions={
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => navigate('/quest/rooms')}
-            className="text-primary hover:text-primary/80"
+            className="ui-btn ui-btn-md ui-btn-muted"
           >
-            ← 返回
-          </button>
-          <button
-            onClick={() => navigate(`/quest/rooms/${id}/control`)}
-            className="text-primary hover:text-primary/80"
-          >
-            前往控制
+            回到房間列表
           </button>
           <button
             onClick={() => navigate(`/quest/rooms/${id}/devices`)}
-            className="text-primary hover:text-primary/80"
+            className="ui-btn ui-btn-md ui-btn-primary"
           >
             管理設備
           </button>
+          <button
+            onClick={() => navigate(`/quest/rooms/${id}/control`)}
+            className="ui-btn ui-btn-md ui-btn-accent"
+          >
+            前往控制
+          </button>
         </div>
-
-        <div className="bg-surface rounded-lg border border-border p-6">
-          <h1 className="text-2xl font-bold text-foreground mb-6">編輯房間</h1>
-          <RoomForm 
-            room={room} 
-            onSubmit={handleSubmit} 
-            onCancel={() => navigate('/quest/rooms')} 
-          />
-        </div>
+      }
+    >
+      <div className="surface-card p-6">
+        <RoomForm
+          room={room}
+          onSubmit={handleSubmit}
+          onCancel={() => navigate('/quest/rooms')}
+        />
       </div>
-    </div>
+    </QuestPageShell>
   )
 }

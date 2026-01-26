@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { roomApi, deviceApi } from '@/services/quest-api'
 import type { QuestRoom, QuestDevice } from '@/services/quest-types'
 import { getDisplayName } from '@/lib/utils/device'
+import QuestPageShell from '@/components/quest/quest-page-shell'
 
 export default function RoomDevicesPage() {
   const navigate = useNavigate()
@@ -88,31 +89,30 @@ export default function RoomDevicesPage() {
   )
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex flex-wrap items-center gap-3 mb-4">
+    <QuestPageShell
+      title="管理房間設備"
+      subtitle={`房間: ${room.name}`}
+      maxWidth="lg"
+      actions={
+        <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => navigate(`/quest/rooms`)}
-            className="text-primary hover:text-primary/80"
+            onClick={() => navigate('/quest/rooms')}
+            className="ui-btn ui-btn-md ui-btn-muted"
           >
-            ← 返回
+            回到房間列表
           </button>
           <button
             onClick={() => navigate(`/quest/rooms/${id}/control`)}
-            className="text-primary hover:text-primary/80"
+            className="ui-btn ui-btn-md ui-btn-accent"
           >
             前往控制
           </button>
         </div>
-
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">管理房間設備</h1>
-          <p className="text-foreground/70 mt-2">房間: {room.name}</p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      }
+    >
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* 房間中的設備 */}
-          <div className="bg-surface rounded-lg  border border-border p-6">
+          <div className="surface-card p-6">
             <h2 className="text-xl font-bold text-foreground mb-4">
               房間中的設備 ({roomDevices.length})
             </h2>
@@ -126,7 +126,7 @@ export default function RoomDevicesPage() {
                 {roomDevices.map((device) => (
                   <div
                     key={device.device_id}
-                    className="flex items-center justify-between p-4 border border-border rounded-lg hover:border-blue-300 transition-colors"
+                    className="surface-panel surface-card-hover flex items-center justify-between p-4"
                   >
                     <div>
                       <div className="font-semibold text-foreground">{getDisplayName(device)}</div>
@@ -134,18 +134,18 @@ export default function RoomDevicesPage() {
                         {device.ip}:{device.port}
                       </div>
                       <div className="mt-1">
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          device.status === 'online' 
-                            ? 'bg-green-100 text-success'
-                            : 'bg-surface text-foreground'
-                        }`}>
+                        <span
+                          className={`ui-badge ${
+                            device.status === 'online' ? 'ui-badge-success' : 'ui-badge-muted'
+                          }`}
+                        >
                           {device.status}
                         </span>
                       </div>
                     </div>
                     <button
                       onClick={() => handleRemoveDevice(device.device_id)}
-                      className="px-4 py-2 bg-danger text-white rounded-lg hover:bg-danger/80 transition-colors"
+                      className="ui-btn ui-btn-md ui-btn-danger"
                     >
                       移除
                     </button>
@@ -156,7 +156,7 @@ export default function RoomDevicesPage() {
           </div>
 
           {/* 可添加的設備 */}
-          <div className="bg-surface rounded-lg  border border-border p-6">
+          <div className="surface-card p-6">
             <h2 className="text-xl font-bold text-foreground mb-4">
               可添加的設備 ({availableDevices.length})
             </h2>
@@ -170,7 +170,7 @@ export default function RoomDevicesPage() {
                 {availableDevices.map((device) => (
                   <div
                     key={device.device_id}
-                    className="flex items-center justify-between p-4 border border-border rounded-lg hover:border-green-300 transition-colors"
+                    className="surface-panel surface-card-hover flex items-center justify-between p-4"
                   >
                     <div>
                       <div className="font-semibold text-foreground">{getDisplayName(device)}</div>
@@ -178,18 +178,18 @@ export default function RoomDevicesPage() {
                         {device.ip}:{device.port}
                       </div>
                       <div className="mt-1">
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          device.status === 'online' 
-                            ? 'bg-green-100 text-success'
-                            : 'bg-surface text-foreground'
-                        }`}>
+                        <span
+                          className={`ui-badge ${
+                            device.status === 'online' ? 'ui-badge-success' : 'ui-badge-muted'
+                          }`}
+                        >
                           {device.status}
                         </span>
                       </div>
                     </div>
                     <button
                       onClick={() => handleAddDevice(device.device_id)}
-                      className="px-4 py-2 bg-success/100 text-white rounded-lg hover:bg-success/80 transition-colors"
+                      className="ui-btn ui-btn-md ui-btn-success"
                     >
                       添加
                     </button>
@@ -198,8 +198,7 @@ export default function RoomDevicesPage() {
               </div>
             )}
           </div>
-        </div>
       </div>
-    </div>
+    </QuestPageShell>
   )
 }

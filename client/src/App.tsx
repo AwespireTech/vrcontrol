@@ -15,6 +15,7 @@ import QuestNewActionPage from "./app/quest/actions/new/page"
 import QuestEditActionPage from "./app/quest/actions/[id]/page"
 import QuestMonitoringPage from "./app/quest/monitoring/page"
 import QuestSettingsPage from "./app/quest/settings/page"
+import QuestLayout from "./components/quest/quest-layout"
 import "./app/globals.css"
 
 function App() {
@@ -24,20 +25,22 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/:roomID" element={<RoomState />} />
-          <Route path="/quest" element={<QuestPage />} />
-          <Route path="/quest/devices" element={<QuestDevicesPage />} />
-          <Route path="/quest/devices/new" element={<QuestNewDevicePage />} />
-          <Route path="/quest/devices/:id" element={<QuestEditDevicePage />} />
-          <Route path="/quest/rooms" element={<QuestRoomsPage />} />
-          <Route path="/quest/rooms/new" element={<QuestNewRoomPage />} />
-          <Route path="/quest/rooms/:id" element={<QuestEditRoomPage />} />
-          <Route path="/quest/rooms/:id/devices" element={<QuestRoomDevicesPage />} />
-          <Route path="/quest/rooms/:id/control" element={<QuestRoomControlPage />} />
-          <Route path="/quest/actions" element={<QuestActionsPage />} />
-          <Route path="/quest/actions/new" element={<QuestNewActionPage />} />
-          <Route path="/quest/actions/:id" element={<QuestEditActionPage />} />
-          <Route path="/quest/monitoring" element={<QuestMonitoringPage />} />
-          <Route path="/quest/settings" element={<QuestSettingsPage />} />
+          <Route path="/quest" element={<QuestLayout />}>
+            <Route index element={<QuestPage />} />
+            <Route path="devices" element={<QuestDevicesPage />} />
+            <Route path="devices/new" element={<QuestNewDevicePage />} />
+            <Route path="devices/:id" element={<QuestEditDevicePage />} />
+            <Route path="rooms" element={<QuestRoomsPage />} />
+            <Route path="rooms/new" element={<QuestNewRoomPage />} />
+            <Route path="rooms/:id" element={<QuestEditRoomPage />} />
+            <Route path="rooms/:id/devices" element={<QuestRoomDevicesPage />} />
+            <Route path="rooms/:id/control" element={<QuestRoomControlPage />} />
+            <Route path="actions" element={<QuestActionsPage />} />
+            <Route path="actions/new" element={<QuestNewActionPage />} />
+            <Route path="actions/:id" element={<QuestEditActionPage />} />
+            <Route path="monitoring" element={<QuestMonitoringPage />} />
+            <Route path="settings" element={<QuestSettingsPage />} />
+          </Route>
         </Routes>
       </div>
     </BrowserRouter>

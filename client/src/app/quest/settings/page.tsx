@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { monitoringApi, scrcpyApi, preferenceApi } from '@/services/quest-api'
 import { ScrcpyConfigForm } from '@/components/quest/scrcpy-config-form'
 import type { ScrcpyConfig, ScrcpySystemInfo, UserPreference } from '@/services/quest-types'
+import QuestPageShell from '@/components/quest/quest-page-shell'
 import {
   DEFAULT_BATCH_SIZE,
   DEFAULT_MAX_CONCURRENCY,
@@ -10,7 +10,6 @@ import {
 } from '@/environment'
 
 export default function QuestSettingsPage() {
-  const navigate = useNavigate()
   const [monitoringInterval, setMonitoringInterval] = useState(10)
   const [loading, setLoading] = useState(true)
   
@@ -104,25 +103,19 @@ export default function QuestSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-4xl mx-auto">
-        <button
-          onClick={() => navigate('/quest')}
-          className="text-primary hover:text-primary/80 mb-4"
-        >
-          ← 返回
-        </button>
-
-        <h1 className="text-3xl font-bold text-foreground mb-6">Quest 系統設置</h1>
-
-        <div className="space-y-6">
+    <QuestPageShell
+      title="Quest 系統設置"
+      subtitle="偏好、監控與 Scrcpy 設定總覽"
+      maxWidth="md"
+    >
+      <div className="space-y-6">
           {/* 設備狀態設定 */}
-          <div className="bg-surface rounded-lg border border-border p-6">
+          <div className="surface-card p-6">
             <h2 className="text-xl font-bold text-foreground mb-4">設備狀態設定</h2>
             
             {preference && (
               <div className="space-y-4">
-                <div className="p-4 bg-background rounded-lg">
+                <div className="surface-panel p-4">
                   <p className="font-semibold text-foreground mb-3">狀態輪詢間隔</p>
                   <div className="flex items-center gap-3">
                     <input
@@ -136,7 +129,7 @@ export default function QuestSettingsPage() {
                           parseInt(e.target.value) || DEFAULT_POLL_INTERVAL_SECONDS
                         )
                       }
-                      className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="ui-input w-full px-4 py-2"
                     />
                     <span className="text-foreground/70">秒</span>
                   </div>
@@ -145,7 +138,7 @@ export default function QuestSettingsPage() {
                   </p>
                 </div>
 
-                <div className="p-4 bg-background rounded-lg">
+                <div className="surface-panel p-4">
                   <p className="font-semibold text-foreground mb-3">批次大小</p>
                   <div className="flex items-center gap-3">
                     <input
@@ -159,7 +152,7 @@ export default function QuestSettingsPage() {
                           parseInt(e.target.value) || DEFAULT_BATCH_SIZE
                         )
                       }
-                      className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="ui-input w-full px-4 py-2"
                     />
                     <span className="text-foreground/70">台</span>
                   </div>
@@ -168,7 +161,7 @@ export default function QuestSettingsPage() {
                   </p>
                 </div>
 
-                <div className="p-4 bg-background rounded-lg">
+                <div className="surface-panel p-4">
                   <p className="font-semibold text-foreground mb-3">最大併發數</p>
                   <div className="flex items-center gap-3">
                     <input
@@ -182,7 +175,7 @@ export default function QuestSettingsPage() {
                           parseInt(e.target.value) || DEFAULT_MAX_CONCURRENCY
                         )
                       }
-                      className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="ui-input w-full px-4 py-2"
                     />
                     <span className="text-foreground/70">個</span>
                   </div>
@@ -191,7 +184,7 @@ export default function QuestSettingsPage() {
                   </p>
                 </div>
 
-                <div className="p-4 bg-background rounded-lg">
+                <div className="surface-panel p-4">
                   <p className="font-semibold text-foreground mb-3">自動重連冷卻時間</p>
                   <div className="flex items-center gap-3">
                     <input
@@ -206,7 +199,7 @@ export default function QuestSettingsPage() {
                           Number.isNaN(next) ? preference.reconnect_cooldown_sec : next
                         )
                       }}
-                      className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="ui-input w-full px-4 py-2"
                     />
                     <span className="text-foreground/70">秒</span>
                   </div>
@@ -215,7 +208,7 @@ export default function QuestSettingsPage() {
                   </p>
                 </div>
 
-                <div className="p-4 bg-background rounded-lg">
+                <div className="surface-panel p-4">
                   <p className="font-semibold text-foreground mb-3">自動重連最大重試次數</p>
                   <div className="flex items-center gap-3">
                     <input
@@ -230,7 +223,7 @@ export default function QuestSettingsPage() {
                           Number.isNaN(next) ? preference.reconnect_max_retries : next
                         )
                       }}
-                      className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                      className="ui-input w-full px-4 py-2"
                     />
                     <span className="text-foreground/70">次</span>
                   </div>
@@ -243,9 +236,9 @@ export default function QuestSettingsPage() {
                   <button
                     onClick={handleSavePreference}
                     disabled={!preferenceChanged}
-                    className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
+                    className={`ui-btn ui-btn-md transition-colors ${
                       preferenceChanged
-                        ? 'bg-primary hover:bg-primary/80 text-white'
+                        ? 'ui-btn-primary'
                         : 'bg-muted/50 text-foreground/50 cursor-not-allowed'
                     }`}
                   >
@@ -257,18 +250,18 @@ export default function QuestSettingsPage() {
           </div>
 
           {/* 監控服務設置 */}
-          <div className="bg-surface rounded-lg  border border-border p-6">
+          <div className="surface-card p-6">
             <h2 className="text-xl font-bold text-foreground mb-4">網絡監控服務</h2>
 
             <div className="space-y-4">
-              <div className="p-4 bg-background rounded-lg">
+              <div className="surface-panel p-4">
                 <p className="font-semibold text-foreground mb-2">說明</p>
                 <p className="text-sm text-foreground/70">
                   監控的啟動/停止與手動執行已移至 Quest 總覽頁；此頁僅保留監控相關設定。
                 </p>
               </div>
 
-              <div className="p-4 bg-background rounded-lg">
+              <div className="surface-panel p-4">
                 <p className="font-semibold text-foreground mb-3">監控間隔</p>
                 <div className="flex items-center gap-3">
                   <input
@@ -277,12 +270,12 @@ export default function QuestSettingsPage() {
                     max="300"
                     value={monitoringInterval}
                     onChange={(e) => setMonitoringInterval(parseInt(e.target.value) || 10)}
-                    className="px-4 py-2 border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="ui-input px-4 py-2"
                   />
                   <span className="text-foreground/70">秒</span>
                   <button
                     onClick={handleSetInterval}
-                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/80 transition-colors"
+                    className="ui-btn ui-btn-md ui-btn-primary"
                   >
                     應用
                   </button>
@@ -295,15 +288,15 @@ export default function QuestSettingsPage() {
           </div>
 
           {/* Scrcpy 螢幕鏡像設置 */}
-          <div className="bg-surface rounded-lg  border border-border p-6">
+          <div className="surface-card p-6">
             <h2 className="text-xl font-bold text-foreground mb-4">Scrcpy 螢幕鏡像</h2>
 
             {/* 系統檢查區塊 */}
             {scrcpySystemInfo && (
-              <div className={`p-4 rounded-lg mb-6 ${
+              <div className={`mb-6 rounded-xl p-4 ${
                 scrcpySystemInfo.installed 
-                  ? 'bg-success/10 border border-success' 
-                  : 'bg-surface border border-border'
+                  ? 'bg-success/10 border border-success/60' 
+                  : 'bg-surface/60 border border-border/70'
               }`}>
                 {scrcpySystemInfo.installed ? (
                   <div>
@@ -343,9 +336,9 @@ export default function QuestSettingsPage() {
                   <button
                     onClick={handleSaveScrcpyConfig}
                     disabled={!scrcpyConfigChanged || !scrcpySystemInfo?.installed}
-                    className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
+                    className={`ui-btn ui-btn-md transition-colors ${
                       scrcpyConfigChanged && scrcpySystemInfo?.installed
-                        ? 'bg-primary hover:bg-primary/80 text-white'
+                        ? 'ui-btn-primary'
                         : 'bg-muted/50 text-foreground/50 cursor-not-allowed'
                     }`}
                   >
@@ -357,7 +350,7 @@ export default function QuestSettingsPage() {
           </div>
 
           {/* 系統信息 */}
-          <div className="bg-surface rounded-lg  border border-border p-6">
+          <div className="surface-card p-6">
             <h2 className="text-xl font-bold text-foreground mb-4">系統信息</h2>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between py-2 border-b border-border">
@@ -380,7 +373,7 @@ export default function QuestSettingsPage() {
           </div>
 
           {/* 關於 */}
-          <div className="bg-surface rounded-lg  border border-border p-6">
+          <div className="surface-card p-6">
             <h2 className="text-xl font-bold text-foreground mb-4">關於</h2>
             <p className="text-foreground/70 mb-2">
               Quest 設備管理模組提供了完整的 Meta Quest 設備管理功能，包括：
@@ -393,8 +386,7 @@ export default function QuestSettingsPage() {
               <li>ADB 命令集成</li>
             </ul>
           </div>
-        </div>
       </div>
-    </div>
+    </QuestPageShell>
   )
 }

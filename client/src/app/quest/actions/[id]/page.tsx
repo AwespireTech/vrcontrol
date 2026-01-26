@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { actionApi } from '@/services/quest-api'
 import ActionForm from '@/components/quest/action-form'
 import type { QuestAction } from '@/services/quest-types'
+import QuestPageShell from '@/components/quest/quest-page-shell'
 
 export default function EditActionPage() {
   const navigate = useNavigate()
@@ -60,24 +61,26 @@ export default function EditActionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-2xl mx-auto">
+    <QuestPageShell
+      title="編輯動作"
+      subtitle="更新動作設定與參數"
+      maxWidth="sm"
+      actions={
         <button
           onClick={() => navigate('/quest/actions')}
-          className="text-primary hover:text-primary/80 mb-4"
+          className="ui-btn ui-btn-md ui-btn-muted"
         >
-          ← 返回
+          回到動作列表
         </button>
-
-        <div className="bg-surface rounded-lg border border-border p-6">
-          <h1 className="text-2xl font-bold text-foreground mb-6">編輯動作</h1>
-          <ActionForm 
-            action={action} 
-            onSubmit={handleSubmit} 
-            onCancel={() => navigate('/quest/actions')} 
-          />
-        </div>
+      }
+    >
+      <div className="surface-card p-6">
+        <ActionForm
+          action={action}
+          onSubmit={handleSubmit}
+          onCancel={() => navigate('/quest/actions')}
+        />
       </div>
-    </div>
+    </QuestPageShell>
   )
 }

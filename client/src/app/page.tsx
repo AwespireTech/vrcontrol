@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { SERVER } from "@/environment"
+import { roomApi } from "@/services/quest-api"
 
 import PlayerList from "@/components/player-list"
 import RoomList from "@/components/room-list"
@@ -11,6 +12,7 @@ export default function Home() {
   const navigate = useNavigate()
   const [playerList, setPlayerList] = useState<string[]>([])
   const [roomList, setRoomList] = useState<string[]>([])
+  const [roomOptions, setRoomOptions] = useState<{ value: string; label: string }[]>([])
   const [countdown, setCountdown] = useState<number>(5)
 
   const getPlayer = async () => {
@@ -27,12 +29,33 @@ export default function Home() {
   }
 
   const getRoom = async () => {
-    console.log("fetching room list")
-    fetch(`${SERVER}/control/roomlist`).then((r) =>
-      r.json().then((j) => {
-        setRoomList(j.rooms.slice().sort((a: string, b: string) => a.localeCompare(b)))
-      }),
-    )
+    try {
+      console.log("fetching room list")
+      const [controlRooms, questRooms] = await Promise.all([
+        fetch(`${SERVER}/control/roomlist`).then((r) => r.json()),
+        roomApi.getAll().catch(() => []),
+      ])
+
+      const sortedRoomIds = controlRooms.rooms
+        .slice()
+        .sort((a: string, b: string) => a.localeCompare(b))
+      setRoomList(sortedRoomIds)
+
+      const nameMap = new Map<string, string>()
+      questRooms.forEach((room) => {
+        nameMap.set(room.room_id, room.name)
+      })
+
+      setRoomOptions(
+        sortedRoomIds.map((roomId: string) => ({
+          value: roomId,
+          label: nameMap.get(roomId) || roomId,
+        })),
+      )
+    } catch (error) {
+      console.error("fetching room list failed", error)
+      setRoomOptions(roomList.map((roomId) => ({ value: roomId, label: roomId })))
+    }
   }
 
   useEffect(() => {
@@ -63,15 +86,15 @@ export default function Home() {
         </Button>
       </div>
       <main className="grid w-full grid-cols-1 gap-8 lg:grid-cols-2">
-        <div className="flex w-full flex-col items-center gap-8 rounded-lg border border-border p-3 text-xs sm:text-base">
+        <div className="surface-card flex w-full flex-col items-center gap-8 p-4 text-xs sm:text-base">
           <PlayerList
             playerList={playerList}
-            roomList={roomList}
+            roomOptions={roomOptions}
             countdown={countdown}
             refresh={getPlayer}
           />
         </div>
-        <div className="flex w-full flex-col items-center gap-8 rounded-lg border border-border p-3 sm:items-start">
+        <div className="surface-card flex w-full flex-col items-center gap-8 p-4 sm:items-start">
           <RoomCreate />
           <div className="m-1 w-full border-b border-border"></div>
           <RoomList roomList={roomList} countdown={countdown} refresh={getRoom} />

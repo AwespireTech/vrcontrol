@@ -60,9 +60,9 @@ export default function ActionCard({ action, onEdit, onDelete, onExecute }: Acti
       : 0
 
   return (
-    <div className="rounded-lg border border-border bg-surface p-4 hover:border-primary transition-colors">
+    <div className="surface-card surface-card-hover p-5">
       {/* 動作名稱和圖標 */}
-      <div className="flex items-center justify-between mb-3">
+      <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-2xl">{getActionIcon(action.action_type)}</span>
           <div>
@@ -74,11 +74,11 @@ export default function ActionCard({ action, onEdit, onDelete, onExecute }: Acti
 
       {/* 動作描述 */}
       {action.description && (
-        <p className="text-sm text-foreground/70 mb-3">{action.description}</p>
+        <p className="mb-3 text-sm text-foreground/70">{action.description}</p>
       )}
 
       {/* 執行統計 */}
-      <div className="space-y-2 mb-4 text-sm">
+      <div className="mb-4 space-y-2 text-sm">
         <div className="flex justify-between">
           <span className="text-foreground/70">成功次數:</span>
           <span className="font-semibold text-success">{action.success_count}</span>
@@ -105,18 +105,18 @@ export default function ActionCard({ action, onEdit, onDelete, onExecute }: Acti
       {Object.keys(action.params).length > 0 && (
         <div className="mb-4">
           <p className="text-sm font-semibold text-foreground mb-2">參數:</p>
-          <div className="bg-background rounded p-2 text-xs font-mono text-foreground/70 max-h-20 overflow-y-auto">
+          <div className="surface-panel max-h-20 overflow-y-auto p-2 text-xs font-mono text-foreground/70">
             {JSON.stringify(action.params, null, 2)}
           </div>
         </div>
       )}
 
       {/* 操作按鈕 */}
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex flex-wrap gap-2">
         {onExecute && (
           <button
             onClick={() => onExecute(action.action_id)}
-            className="px-3 py-1 text-sm bg-primary text-foreground rounded hover:bg-primary/80 transition-colors"
+            className="ui-btn ui-btn-xs ui-btn-primary"
           >
             執行
           </button>
@@ -124,7 +124,7 @@ export default function ActionCard({ action, onEdit, onDelete, onExecute }: Acti
         {onEdit && (
           <button
             onClick={() => onEdit(action.action_id)}
-            className="px-3 py-1 text-sm bg-muted text-foreground rounded hover:bg-muted/80 transition-colors"
+            className="ui-btn ui-btn-xs ui-btn-muted"
           >
             編輯
           </button>
@@ -132,7 +132,7 @@ export default function ActionCard({ action, onEdit, onDelete, onExecute }: Acti
         {onDelete && (
           <button
             onClick={() => onDelete(action.action_id)}
-            className="px-3 py-1 text-sm bg-danger text-foreground rounded hover:bg-danger/80 transition-colors"
+            className="ui-btn ui-btn-xs ui-btn-danger"
           >
             刪除
           </button>
