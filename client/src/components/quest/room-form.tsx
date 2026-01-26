@@ -66,7 +66,7 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
           value={formData.name}
           onChange={handleChange}
           required
-          className="w-full rounded-xl border border-border/70 bg-background/40 px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+          className="ui-input w-full px-4 py-2"
           placeholder="例如: VR Room 1"
         />
       </div>
@@ -80,7 +80,7 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
           value={formData.description}
           onChange={handleChange}
           rows={3}
-          className="w-full rounded-xl border border-border/70 bg-background/40 px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+          className="ui-input w-full px-4 py-2"
           placeholder="描述這個房間的用途..."
         />
       </div>
@@ -94,7 +94,7 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
           value={formData.parameters}
           onChange={handleChange}
           rows={6}
-          className="w-full rounded-xl border border-border/70 bg-background/40 px-4 py-2 font-mono text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+          className="ui-input w-full px-4 py-2 font-mono text-sm"
           placeholder='{"key": "value"}'
         />
         <p className="text-xs text-foreground/50 mt-1">
@@ -110,7 +110,7 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
           value={JSON.stringify(assignedSequences, null, 2)}
           readOnly
           rows={6}
-          className="w-full rounded-xl border border-border/70 bg-muted/30 px-4 py-2 font-mono text-sm text-foreground"
+          className="ui-input w-full bg-muted/30 px-4 py-2 font-mono text-sm"
         />
         <p className="text-xs text-foreground/50 mt-1">
           由控制流程寫入，作為目前房間的玩家序號對應。
@@ -121,14 +121,14 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-full bg-muted px-6 py-2 text-sm text-foreground transition hover:bg-muted/80"
+          className="ui-btn ui-btn-md ui-btn-muted"
         >
           取消
         </button>
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-full bg-primary px-6 py-2 text-sm text-white transition hover:bg-primary/80 disabled:cursor-not-allowed disabled:opacity-50"
+          className="ui-btn ui-btn-md ui-btn-primary"
         >
           {submitting ? '提交中...' : room ? '更新' : '創建'}
         </button>

@@ -155,12 +155,12 @@ export default function RoomControlPage() {
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <span
-            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+            className={`ui-badge text-xs font-semibold ${
               connectionStatus === 'connected'
-                ? 'bg-success/20 text-success'
+                ? 'ui-badge-success'
                 : connectionStatus === 'connecting'
-                  ? 'bg-muted text-foreground'
-                  : 'bg-danger/20 text-danger'
+                  ? 'ui-badge-muted'
+                  : 'ui-badge-danger'
             }`}
           >
             {connectionStatus === 'connected'
@@ -171,19 +171,19 @@ export default function RoomControlPage() {
           </span>
           <button
             onClick={() => navigate('/quest/rooms')}
-            className="rounded-full bg-muted px-4 py-2 text-sm text-foreground transition hover:bg-muted/80"
+            className="ui-btn ui-btn-md ui-btn-muted"
           >
             回到房間列表
           </button>
           <button
             onClick={() => navigate(`/quest/rooms/${roomId}`)}
-            className="rounded-full bg-primary px-4 py-2 text-sm text-foreground transition hover:bg-primary/80"
+            className="ui-btn ui-btn-md ui-btn-primary"
           >
             編輯房間
           </button>
           <button
             onClick={() => navigate(`/quest/rooms/${roomId}/devices`)}
-            className="rounded-full bg-accent px-4 py-2 text-sm text-foreground transition hover:bg-accent/80"
+            className="ui-btn ui-btn-md ui-btn-accent"
           >
             前往設備
           </button>
@@ -192,7 +192,7 @@ export default function RoomControlPage() {
     >
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
-            <div className="rounded-2xl border border-border/70 bg-surface/60 p-6">
+            <div className="surface-card p-6">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h2 className="text-xl font-bold text-foreground">即時狀態</h2>
@@ -211,13 +211,13 @@ export default function RoomControlPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-border/70 bg-surface/60 p-6">
+            <div className="surface-card p-6">
               <h2 className="text-xl font-bold text-foreground mb-4">強制移動</h2>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-foreground/70">Force all move to chapter</span>
                 <select
                   id="moveSelect"
-                  className={`mx-2 place-self-center max-h-40 overflow-y-auto rounded-xl border border-border/70 bg-background/40 px-2 py-1 text-center text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60 ${
+                  className={`mx-2 place-self-center max-h-40 overflow-y-auto ui-select px-2 py-1 text-center ${
                     selectedOption === '' ? 'text-foreground/50' : ''
                   }`}
                   value={selectedOption}
@@ -240,7 +240,7 @@ export default function RoomControlPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-border/70 bg-surface/60 p-6">
+            <div className="surface-card p-6">
               <h2 className="text-xl font-bold text-foreground mb-4">房間內玩家</h2>
               <div className="flex flex-wrap gap-4 py-1">
                 {sortedRoomPlayers.map((player) => (
@@ -255,7 +255,7 @@ export default function RoomControlPage() {
           </div>
 
           <div className="space-y-6">
-            <div className="rounded-2xl border border-border/70 bg-surface/60 p-6">
+            <div className="surface-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-foreground">未分配玩家</h2>
                 <div className="text-xs text-foreground/60">Refreshing in {countdown}s</div>
@@ -278,7 +278,7 @@ export default function RoomControlPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-border/70 bg-surface/60 p-6">
+            <div className="surface-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-foreground">控制房間清單</h2>
                 <button

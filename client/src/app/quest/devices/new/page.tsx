@@ -21,13 +21,13 @@ export default function NewDevicePage() {
       actions={
         <button
           onClick={() => navigate('/quest/devices')}
-          className="rounded-full bg-muted px-4 py-2 text-sm text-foreground transition hover:bg-muted/80"
+          className="ui-btn ui-btn-md ui-btn-muted"
         >
           回到設備列表
         </button>
       }
     >
-      <div className="rounded-2xl border border-border/70 bg-surface/60 p-6">
+      <div className="surface-card p-6">
         <DeviceForm onSubmit={handleSubmit} onCancel={() => navigate('/quest/devices')} />
       </div>
     </QuestPageShell>

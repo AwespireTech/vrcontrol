@@ -98,7 +98,7 @@ export default function DeviceCard({
   }
 
   return (
-    <div className="rounded-2xl border border-border/70 bg-surface/60 p-5 transition hover:border-primary/60">
+    <div className="surface-card surface-card-hover p-5">
       {/* 設備名稱和狀態 */}
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-lg font-semibold text-foreground">{getDisplayName(device)}</h3>
@@ -158,7 +158,7 @@ export default function DeviceCard({
         {!isOnline && !isConnecting && onConnect && (
           <button
             onClick={() => onConnect(device.device_id)}
-            className="rounded-full bg-primary px-3 py-1 text-xs text-foreground transition hover:bg-primary/80"
+            className="ui-btn ui-btn-xs ui-btn-primary"
           >
             連接
           </button>
@@ -166,7 +166,7 @@ export default function DeviceCard({
         {isOnline && onDisconnect && (
           <button
             onClick={() => onDisconnect(device.device_id)}
-            className="rounded-full bg-danger px-3 py-1 text-xs text-foreground transition hover:bg-danger/80"
+            className="ui-btn ui-btn-xs ui-btn-danger"
           >
             斷開
           </button>
@@ -174,7 +174,7 @@ export default function DeviceCard({
         {isOnline && onPing && (
           <button
             onClick={() => onPing(device.device_id)}
-            className="rounded-full bg-success px-3 py-1 text-xs text-foreground transition hover:bg-success/80"
+            className="ui-btn ui-btn-xs ui-btn-success"
           >
             Ping
           </button>
@@ -183,9 +183,9 @@ export default function DeviceCard({
           <button
             onClick={() => onMonitor(device.device_id)}
             disabled={!scrcpyInstalled}
-            className={`rounded-full px-3 py-1 text-xs transition ${
+            className={`ui-btn ui-btn-xs ${
               scrcpyInstalled
-                ? 'bg-accent text-foreground hover:bg-accent/80'
+                ? 'ui-btn-accent'
                 : 'bg-muted/50 text-foreground/50 cursor-not-allowed'
             }`}
             title={scrcpyInstalled ? '啟動螢幕監看' : 'Scrcpy 未安裝'}
@@ -196,7 +196,7 @@ export default function DeviceCard({
         {onEdit && (
           <button
             onClick={() => onEdit(device.device_id)}
-            className="rounded-full bg-muted px-3 py-1 text-xs text-foreground transition hover:bg-muted/80"
+            className="ui-btn ui-btn-xs ui-btn-muted"
           >
             編輯
           </button>
@@ -204,7 +204,7 @@ export default function DeviceCard({
         {onDelete && (
           <button
             onClick={() => onDelete(device.device_id)}
-            className="rounded-full bg-danger px-3 py-1 text-xs text-foreground transition hover:bg-danger/80"
+            className="ui-btn ui-btn-xs ui-btn-danger"
           >
             刪除
           </button>

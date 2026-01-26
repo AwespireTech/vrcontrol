@@ -53,7 +53,7 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
           value={formData.alias}
           onChange={handleChange}
           required
-          className="w-full rounded-xl border border-border/70 bg-background/40 px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+          className="ui-input w-full px-4 py-2"
           placeholder="例如: Quest 1"
         />
         <p className="text-xs text-foreground/50 mt-1">設備的自訂顯示名稱</p>
@@ -63,7 +63,7 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
         <label className="block text-sm font-semibold text-foreground mb-2">
           原始設備名稱
         </label>
-        <div className="w-full rounded-xl border border-border/70 bg-muted/30 px-4 py-2 text-foreground/70">
+        <div className="ui-input w-full bg-muted/30 px-4 py-2 text-foreground/70">
           {device?.name || '(連接設備後自動填入)'}
         </div>
         <p className="text-xs text-foreground/50 mt-1">由 ADB 自動獲取的設備名稱，不可編輯</p>
@@ -80,7 +80,7 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
           onChange={handleChange}
           required
           pattern="^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$"
-          className="w-full rounded-xl border border-border/70 bg-background/40 px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+          className="ui-input w-full px-4 py-2"
           placeholder="例如: 192.168.1.100"
         />
         <p className="text-xs text-foreground/50 mt-1">請輸入有效的 IPv4 地址</p>
@@ -97,7 +97,7 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
           onChange={handleChange}
           min="1"
           max="65535"
-          className="w-full rounded-xl border border-border/70 bg-background/40 px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+          className="ui-input w-full px-4 py-2"
         />
         <p className="text-xs text-foreground/50 mt-1">預設: 5555</p>
       </div>
@@ -111,7 +111,7 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
           name="sort_order"
           value={formData.sort_order}
           onChange={handleChange}
-          className="w-full rounded-xl border border-border/70 bg-background/40 px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+          className="ui-input w-full px-4 py-2"
         />
         <p className="text-xs text-foreground/50 mt-1">數字越小越靠前</p>
       </div>
@@ -120,14 +120,14 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
         <button
           type="button"
           onClick={onCancel}
-          className="rounded-full bg-muted px-6 py-2 text-sm text-foreground transition hover:bg-muted/80"
+          className="ui-btn ui-btn-md ui-btn-muted"
         >
           取消
         </button>
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-full bg-primary px-6 py-2 text-sm text-white transition hover:bg-primary/80 disabled:cursor-not-allowed disabled:opacity-50"
+          className="ui-btn ui-btn-md ui-btn-primary"
         >
           {submitting ? '提交中...' : device ? '更新' : '創建'}
         </button>

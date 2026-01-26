@@ -185,19 +185,19 @@ export default function QuestMonitoringPage() {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={runOnce}
-            className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-accent/80"
+              className="ui-btn ui-btn-md ui-btn-accent"
           >
             手動執行一次
           </button>
           <button
             onClick={toggleMonitoring}
             disabled={!monitoring.known || monitoring.loading}
-            className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+              className={`ui-btn ui-btn-md transition-colors ${
               !monitoring.known
-                ? 'bg-muted text-foreground'
+                  ? 'ui-btn-muted'
                 : monitoring.running
-                  ? 'bg-danger text-foreground'
-                  : 'bg-success text-foreground'
+                    ? 'ui-btn-danger'
+                    : 'ui-btn-success'
             } disabled:opacity-50 disabled:cursor-not-allowed`}
           >
             {!monitoring.known ? '狀態未知' : monitoring.running ? '停止監控' : '啟動監控'}
@@ -205,19 +205,19 @@ export default function QuestMonitoringPage() {
         </div>
       }
     >
-      <div className="mb-6 rounded-2xl border border-border/70 bg-surface/60 p-5">
+      <div className="surface-card mb-6 p-5">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="搜尋：名稱 / IP / ID"
-              className="w-full rounded-xl border border-border/70 bg-background/40 px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+              className="ui-input w-full px-4 py-2"
             />
 
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
-              className="w-full rounded-xl border border-border/70 bg-background/40 px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+              className="ui-select w-full px-4 py-2"
             >
               <option value="all">狀態：全部</option>
               <option value={QUEST_DEVICE_STATUS.ONLINE}>狀態：在線</option>
@@ -230,7 +230,7 @@ export default function QuestMonitoringPage() {
             <select
               value={autoReconnectFilter}
               onChange={(e) => setAutoReconnectFilter(e.target.value as AutoReconnectFilter)}
-              className="w-full rounded-xl border border-border/70 bg-background/40 px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+              className="ui-select w-full px-4 py-2"
             >
               <option value="all">自動重連：全部</option>
               <option value="enabled">自動重連：已啟用</option>
@@ -245,27 +245,27 @@ export default function QuestMonitoringPage() {
             <button
               onClick={() => setAutoReconnectBatch(true)}
               disabled={filteredIds.length === 0}
-              className="rounded-full bg-success px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-success/80 disabled:cursor-not-allowed disabled:opacity-50"
+              className="ui-btn ui-btn-md ui-btn-success"
             >
               全選（啟用重連）
             </button>
             <button
               onClick={() => setAutoReconnectBatch(false)}
               disabled={filteredIds.length === 0}
-              className="rounded-full bg-muted px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted/80 disabled:cursor-not-allowed disabled:opacity-50"
+              className="ui-btn ui-btn-md ui-btn-muted"
             >
               不選（停用重連）
             </button>
             <button
               onClick={resetBatch}
               disabled={filteredIds.length === 0}
-              className="rounded-full bg-primary px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-primary/80 disabled:cursor-not-allowed disabled:opacity-50"
+              className="ui-btn ui-btn-md ui-btn-primary"
             >
               批次重置
             </button>
             <button
               onClick={load}
-              className="ml-auto rounded-full bg-muted px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted/80"
+              className="ui-btn ui-btn-md ui-btn-muted ml-auto"
             >
               重新整理
             </button>
@@ -273,7 +273,7 @@ export default function QuestMonitoringPage() {
         </div>
 
         {batchResult ? (
-          <div className="mb-6 rounded-2xl border border-border/70 bg-surface/60 p-5">
+          <div className="surface-card mb-6 p-5">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="font-semibold text-foreground">{batchResult.title}</div>
@@ -283,12 +283,11 @@ export default function QuestMonitoringPage() {
               </div>
               <button
                 onClick={() => setBatchResult(null)}
-                className="rounded-full bg-muted px-3 py-1 text-xs text-foreground transition hover:bg-muted/80"
+                className="ui-btn ui-btn-xs ui-btn-muted"
               >
                 清除
               </button>
             </div>
-
             {batchResult.failed_count > 0 ? (
               <details className="mt-3">
                 <summary className="cursor-pointer text-sm text-warning">
@@ -310,7 +309,7 @@ export default function QuestMonitoringPage() {
           </div>
         ) : null}
 
-        <div className="rounded-2xl border border-border/70 bg-surface/60 overflow-hidden">
+        <div className="surface-card overflow-hidden">
           <div className="grid grid-cols-12 gap-3 px-4 py-3 border-b border-border text-xs text-foreground/60">
             <div className="col-span-4">設備</div>
             <div className="col-span-2">狀態</div>
@@ -360,7 +359,7 @@ export default function QuestMonitoringPage() {
                   <div className="col-span-1 flex justify-end">
                     <button
                       onClick={() => resetOne(d.device_id)}
-                      className="rounded-full bg-accent px-3 py-1 text-xs text-foreground transition hover:bg-accent/80"
+                      className="ui-btn ui-btn-xs ui-btn-accent"
                       title="依規則重置自動重連狀態"
                     >
                       重置

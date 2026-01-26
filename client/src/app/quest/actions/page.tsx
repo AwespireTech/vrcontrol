@@ -119,7 +119,7 @@ export default function ActionsPage() {
       actions={
         <button
           onClick={() => navigate('/quest/actions/new')}
-          className="rounded-full bg-primary px-4 py-2 text-sm text-foreground transition hover:bg-primary/80"
+          className="ui-btn ui-btn-md ui-btn-primary"
         >
           + 創建動作
         </button>
@@ -148,7 +148,7 @@ export default function ActionsPage() {
       {/* 執行動作模態框 */}
       {showExecuteModal && selectedAction && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-2xl border border-border/70 bg-surface/60 p-6 mx-4">
+          <div className="surface-card w-full max-w-2xl max-h-[80vh] overflow-y-auto p-6 mx-4">
             <h2 className="text-2xl font-bold text-foreground mb-4">
               執行動作: {selectedAction.name}
             </h2>
@@ -166,7 +166,7 @@ export default function ActionsPage() {
                 </button>
               </div>
 
-              <div className="space-y-2 max-h-60 overflow-y-auto border border-border rounded p-2 bg-background">
+              <div className="surface-panel space-y-2 max-h-60 overflow-y-auto p-2">
                 {devices.map((device) => (
                   <label
                     key={device.device_id}
@@ -185,10 +185,8 @@ export default function ActionsPage() {
                       {getDisplayName(device)} ({device.ip})
                     </span>
                     <span
-                      className={`text-xs px-2 py-1 rounded ${
-                        device.status === 'online'
-                          ? 'bg-success/20 text-success'
-                          : 'bg-muted/50 text-foreground/70'
+                      className={`ui-badge ${
+                        device.status === 'online' ? 'ui-badge-success' : 'ui-badge-muted'
                       }`}
                     >
                       {device.status}
@@ -205,14 +203,14 @@ export default function ActionsPage() {
                   setSelectedAction(null)
                   setSelectedDevices([])
                 }}
-                className="px-4 py-2 bg-muted text-foreground rounded hover:bg-muted/80 transition-colors"
+                className="ui-btn ui-btn-md ui-btn-muted"
               >
                 取消
               </button>
               <button
                 onClick={handleConfirmExecute}
                 disabled={selectedDevices.length === 0}
-                className="px-4 py-2 bg-primary text-foreground rounded hover:bg-primary/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="ui-btn ui-btn-md ui-btn-primary"
               >
                 執行 ({selectedDevices.length} 個設備)
               </button>

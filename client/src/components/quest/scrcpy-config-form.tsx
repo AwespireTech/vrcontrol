@@ -38,7 +38,7 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
               value={config.bitrate}
               onChange={(e) => handleChange('bitrate', e.target.value)}
               disabled={disabled}
-              className="w-full rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+              className="ui-select w-full px-3 py-2"
             >
               <option value="2M">2M (低畫質)</option>
               <option value="4M">4M (中畫質)</option>
@@ -55,7 +55,7 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
               value={config.max_size}
               onChange={(e) => handleChange('max_size', parseInt(e.target.value))}
               disabled={disabled}
-              className="w-full rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+              className="ui-input w-full px-3 py-2"
               min="720"
               max="2560"
             />
@@ -68,7 +68,7 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
               value={config.max_fps}
               onChange={(e) => handleChange('max_fps', parseInt(e.target.value))}
               disabled={disabled}
-              className="w-full rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+              className="ui-input w-full px-3 py-2"
               min="15"
               max="120"
             />
@@ -88,7 +88,7 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
               value={config.window_width ?? ''}
               onChange={(e) => handleNumberChange('window_width', e.target.value)}
               disabled={disabled}
-              className="w-full rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+              className="ui-input w-full px-3 py-2"
               placeholder="自動"
             />
           </div>
@@ -100,7 +100,7 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
               value={config.window_height ?? ''}
               onChange={(e) => handleNumberChange('window_height', e.target.value)}
               disabled={disabled}
-              className="w-full rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+              className="ui-input w-full px-3 py-2"
               placeholder="自動"
             />
           </div>
@@ -112,7 +112,7 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
               value={config.window_x ?? ''}
               onChange={(e) => handleNumberChange('window_x', e.target.value)}
               disabled={disabled}
-              className="w-full rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+              className="ui-input w-full px-3 py-2"
               placeholder="自動"
             />
           </div>
@@ -124,7 +124,7 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
               value={config.window_y ?? ''}
               onChange={(e) => handleNumberChange('window_y', e.target.value)}
               disabled={disabled}
-              className="w-full rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+              className="ui-input w-full px-3 py-2"
               placeholder="自動"
             />
           </div>
@@ -228,7 +228,7 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
             value={config.render_driver}
             onChange={(e) => handleChange('render_driver', e.target.value)}
             disabled={disabled}
-            className="w-full rounded-xl border border-border/70 bg-background/40 px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+            className="ui-input w-full px-3 py-2"
             placeholder="預設 (opengl, metal, direct3d)"
           />
           <p className="text-xs text-foreground/50 mt-1">

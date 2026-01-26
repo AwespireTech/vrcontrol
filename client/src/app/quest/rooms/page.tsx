@@ -77,7 +77,7 @@ export default function RoomsPage() {
       actions={
         <button
           onClick={() => navigate('/quest/rooms/new')}
-          className="rounded-full bg-primary px-4 py-2 text-sm text-foreground transition hover:bg-primary/80"
+          className="ui-btn ui-btn-md ui-btn-primary"
         >
           + 創建房間
         </button>

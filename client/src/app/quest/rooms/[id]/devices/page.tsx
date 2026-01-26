@@ -97,13 +97,13 @@ export default function RoomDevicesPage() {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => navigate('/quest/rooms')}
-            className="rounded-full bg-muted px-4 py-2 text-sm text-foreground transition hover:bg-muted/80"
+            className="ui-btn ui-btn-md ui-btn-muted"
           >
             回到房間列表
           </button>
           <button
             onClick={() => navigate(`/quest/rooms/${id}/control`)}
-            className="rounded-full bg-accent px-4 py-2 text-sm text-foreground transition hover:bg-accent/80"
+            className="ui-btn ui-btn-md ui-btn-accent"
           >
             前往控制
           </button>
@@ -112,7 +112,7 @@ export default function RoomDevicesPage() {
     >
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* 房間中的設備 */}
-          <div className="rounded-2xl border border-border/70 bg-surface/60 p-6">
+          <div className="surface-card p-6">
             <h2 className="text-xl font-bold text-foreground mb-4">
               房間中的設備 ({roomDevices.length})
             </h2>
@@ -126,7 +126,7 @@ export default function RoomDevicesPage() {
                 {roomDevices.map((device) => (
                   <div
                     key={device.device_id}
-                    className="flex items-center justify-between rounded-xl border border-border/70 bg-background/40 p-4 transition hover:border-primary/60"
+                    className="surface-panel surface-card-hover flex items-center justify-between p-4"
                   >
                     <div>
                       <div className="font-semibold text-foreground">{getDisplayName(device)}</div>
@@ -134,18 +134,18 @@ export default function RoomDevicesPage() {
                         {device.ip}:{device.port}
                       </div>
                       <div className="mt-1">
-                        <span className={`rounded-full px-2 py-1 text-xs ${
-                          device.status === 'online'
-                            ? 'bg-success/20 text-success'
-                            : 'bg-muted/40 text-foreground/70'
-                        }`}>
+                        <span
+                          className={`ui-badge ${
+                            device.status === 'online' ? 'ui-badge-success' : 'ui-badge-muted'
+                          }`}
+                        >
                           {device.status}
                         </span>
                       </div>
                     </div>
                     <button
                       onClick={() => handleRemoveDevice(device.device_id)}
-                      className="rounded-full bg-danger px-4 py-2 text-sm text-white transition hover:bg-danger/80"
+                      className="ui-btn ui-btn-md ui-btn-danger"
                     >
                       移除
                     </button>
@@ -156,7 +156,7 @@ export default function RoomDevicesPage() {
           </div>
 
           {/* 可添加的設備 */}
-          <div className="rounded-2xl border border-border/70 bg-surface/60 p-6">
+          <div className="surface-card p-6">
             <h2 className="text-xl font-bold text-foreground mb-4">
               可添加的設備 ({availableDevices.length})
             </h2>
@@ -170,7 +170,7 @@ export default function RoomDevicesPage() {
                 {availableDevices.map((device) => (
                   <div
                     key={device.device_id}
-                    className="flex items-center justify-between rounded-xl border border-border/70 bg-background/40 p-4 transition hover:border-primary/60"
+                    className="surface-panel surface-card-hover flex items-center justify-between p-4"
                   >
                     <div>
                       <div className="font-semibold text-foreground">{getDisplayName(device)}</div>
@@ -178,18 +178,18 @@ export default function RoomDevicesPage() {
                         {device.ip}:{device.port}
                       </div>
                       <div className="mt-1">
-                        <span className={`rounded-full px-2 py-1 text-xs ${
-                          device.status === 'online'
-                            ? 'bg-success/20 text-success'
-                            : 'bg-muted/40 text-foreground/70'
-                        }`}>
+                        <span
+                          className={`ui-badge ${
+                            device.status === 'online' ? 'ui-badge-success' : 'ui-badge-muted'
+                          }`}
+                        >
                           {device.status}
                         </span>
                       </div>
                     </div>
                     <button
                       onClick={() => handleAddDevice(device.device_id)}
-                      className="rounded-full bg-success px-4 py-2 text-sm text-white transition hover:bg-success/80"
+                      className="ui-btn ui-btn-md ui-btn-success"
                     >
                       添加
                     </button>

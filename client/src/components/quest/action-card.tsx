@@ -60,7 +60,7 @@ export default function ActionCard({ action, onEdit, onDelete, onExecute }: Acti
       : 0
 
   return (
-    <div className="rounded-2xl border border-border/70 bg-surface/60 p-5 transition hover:border-primary/60">
+    <div className="surface-card surface-card-hover p-5">
       {/* 動作名稱和圖標 */}
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -105,7 +105,7 @@ export default function ActionCard({ action, onEdit, onDelete, onExecute }: Acti
       {Object.keys(action.params).length > 0 && (
         <div className="mb-4">
           <p className="text-sm font-semibold text-foreground mb-2">參數:</p>
-          <div className="max-h-20 overflow-y-auto rounded-xl bg-background/40 p-2 text-xs font-mono text-foreground/70">
+          <div className="surface-panel max-h-20 overflow-y-auto p-2 text-xs font-mono text-foreground/70">
             {JSON.stringify(action.params, null, 2)}
           </div>
         </div>
@@ -116,7 +116,7 @@ export default function ActionCard({ action, onEdit, onDelete, onExecute }: Acti
         {onExecute && (
           <button
             onClick={() => onExecute(action.action_id)}
-            className="rounded-full bg-primary px-3 py-1 text-xs text-foreground transition hover:bg-primary/80"
+            className="ui-btn ui-btn-xs ui-btn-primary"
           >
             執行
           </button>
@@ -124,7 +124,7 @@ export default function ActionCard({ action, onEdit, onDelete, onExecute }: Acti
         {onEdit && (
           <button
             onClick={() => onEdit(action.action_id)}
-            className="rounded-full bg-muted px-3 py-1 text-xs text-foreground transition hover:bg-muted/80"
+            className="ui-btn ui-btn-xs ui-btn-muted"
           >
             編輯
           </button>
@@ -132,7 +132,7 @@ export default function ActionCard({ action, onEdit, onDelete, onExecute }: Acti
         {onDelete && (
           <button
             onClick={() => onDelete(action.action_id)}
-            className="rounded-full bg-danger px-3 py-1 text-xs text-foreground transition hover:bg-danger/80"
+            className="ui-btn ui-btn-xs ui-btn-danger"
           >
             刪除
           </button>

@@ -11,7 +11,7 @@ export const Button = ({
 }) => {
   return (
     <button
-      className={`rounded-full bg-primary px-3 py-1 text-sm text-foreground transition hover:bg-primary/80 ${className} disabled:bg-muted disabled:opacity-70`}
+      className={`ui-btn ui-btn-sm ui-btn-primary ${className ?? ""}`}
       disabled={disabled}
       onClick={onClick}
     >

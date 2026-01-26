@@ -27,7 +27,7 @@ const PlayerInfo = ({
 
   return (
     <div
-      className={`w-[400px] rounded-2xl border border-border/70 bg-surface/60 p-3 ${
+      className={`surface-card w-[400px] p-3 ${
         player.ready_to_move ? "border-primary/80" : "border-muted"
       }`}
     >
@@ -60,7 +60,7 @@ const PlayerInfo = ({
               {" ⭢ "}
               <input
                 type="number"
-                className="w-14 place-self-center rounded-xl border border-border/70 bg-background/40 px-2 py-1 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+                className="w-14 place-self-center ui-input px-2 py-1"
                 value={numberInput}
                 onChange={handleNumberChange}
                 min={0}

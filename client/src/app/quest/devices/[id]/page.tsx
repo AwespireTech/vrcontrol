@@ -68,14 +68,14 @@ export default function EditDevicePage() {
       actions={
         <button
           onClick={() => navigate('/quest/devices')}
-          className="rounded-full bg-muted px-4 py-2 text-sm text-foreground transition hover:bg-muted/80"
+          className="ui-btn ui-btn-md ui-btn-muted"
         >
           回到設備列表
         </button>
       }
     >
-      <div className="rounded-2xl border border-border/70 bg-surface/60 p-6">
-        <div className="mb-6 rounded-2xl border border-border/70 bg-background/40 p-4 text-sm">
+      <div className="surface-card p-6">
+        <div className="surface-panel mb-6 p-4 text-sm">
           <div className="flex items-center justify-between">
             <span className="text-foreground/70">Ping 狀態:</span>
             <span className="text-foreground">

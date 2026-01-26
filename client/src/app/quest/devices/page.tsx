@@ -394,27 +394,27 @@ export default function DevicesPage() {
         <div className="flex flex-wrap gap-2">
           <button
             onClick={handleConnectAll}
-            className="rounded-full bg-primary px-4 py-2 text-sm text-foreground transition hover:bg-primary/80"
+            className="ui-btn ui-btn-md ui-btn-primary"
           >
             批量連接
           </button>
           <button
             onClick={handlePingAll}
-            className="rounded-full bg-success px-4 py-2 text-sm text-foreground transition hover:bg-success/80"
+            className="ui-btn ui-btn-md ui-btn-success"
           >
             批量 Ping
           </button>
           {scrcpySystemInfo?.installed && selectedDeviceIds.length > 0 && (
             <button
               onClick={handleMonitorBatch}
-              className="rounded-full bg-accent px-4 py-2 text-sm text-foreground transition hover:bg-accent/80"
+              className="ui-btn ui-btn-md ui-btn-accent"
             >
               批量監看 ({selectedDeviceIds.length})
             </button>
           )}
           <button
             onClick={() => navigate('/quest/devices/new')}
-            className="rounded-full bg-primary px-4 py-2 text-sm text-foreground transition hover:bg-primary/80"
+            className="ui-btn ui-btn-md ui-btn-primary"
           >
             + 添加設備
           </button>
@@ -455,12 +455,12 @@ export default function DevicesPage() {
       )}
 
       {scrcpySystemInfo?.installed && scrcpySessions.length > 0 && (
-        <div className="rounded-2xl border border-border/70 bg-surface/60 p-6">
+        <div className="surface-card p-6">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-bold text-foreground">監看會話</h2>
             <button
               onClick={handleRefreshSessions}
-              className="rounded-full bg-muted px-4 py-2 text-sm text-foreground transition hover:bg-muted/80"
+              className="ui-btn ui-btn-md ui-btn-muted"
             >
               刷新狀態
             </button>
@@ -503,10 +503,8 @@ export default function DevicesPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
-                          className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            session.is_running
-                              ? 'bg-success/20 text-success'
-                              : 'bg-muted/50 text-foreground/70'
+                          className={`ui-badge inline-flex leading-5 font-semibold ${
+                            session.is_running ? 'ui-badge-success' : 'ui-badge-muted'
                           }`}
                         >
                           {session.is_running ? '運行中' : '已停止'}

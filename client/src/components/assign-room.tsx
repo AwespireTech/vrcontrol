@@ -23,7 +23,7 @@ export const AssignRoom = ({
       <span> {player} </span>
       <select
         id="mySelect"
-        className={`mx-2 place-self-center max-h-40 overflow-y-auto rounded-xl border border-border/70 bg-background/40 px-2 py-1 text-center text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60 ${
+        className={`mx-2 place-self-center max-h-40 overflow-y-auto ui-select px-2 py-1 text-center ${
           selectedOption === "" ? "text-foreground/50" : ""
         }`}
         value={selectedOption}
@@ -41,7 +41,7 @@ export const AssignRoom = ({
 
       <input
         type="number"
-        className="w-12 place-self-center rounded-xl border border-border/70 bg-background/40 px-2 py-1 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+        className="w-12 place-self-center ui-input px-2 py-1"
         value={numberInput}
         onChange={handleNumberChange}
         min={0}

@@ -18,7 +18,7 @@ export default function RoomCard({
   onControl,
 }: RoomCardProps) {
   return (
-    <div className="rounded-2xl border border-border/70 bg-surface/60 p-5 transition hover:border-primary/60">
+    <div className="surface-card surface-card-hover p-5">
       {/* 房間名稱和狀態 */}
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-lg font-semibold text-foreground">{room.name}</h3>
@@ -45,13 +45,13 @@ export default function RoomCard({
             {room.device_ids.slice(0, 3).map((deviceId) => (
               <span
                 key={deviceId}
-                className="rounded-full bg-primary/15 px-2 py-1 text-xs text-primary"
+                className="ui-badge ui-badge-primary"
               >
                 {deviceNames?.get(deviceId) || deviceId}
               </span>
             ))}
             {room.device_ids.length > 3 && (
-              <span className="px-2 py-1 text-xs bg-muted/50 text-foreground/70 rounded">
+              <span className="ui-badge ui-badge-muted">
                 +{room.device_ids.length - 3} 更多
               </span>
             )}
@@ -64,7 +64,7 @@ export default function RoomCard({
         {onControl && (
           <button
             onClick={() => onControl(room.room_id)}
-            className="rounded-full bg-primary px-3 py-1 text-xs text-foreground transition hover:bg-primary/80"
+            className="ui-btn ui-btn-xs ui-btn-primary"
           >
             控制
           </button>
@@ -72,7 +72,7 @@ export default function RoomCard({
         {onManageDevices && (
           <button
             onClick={() => onManageDevices(room.room_id)}
-            className="rounded-full bg-muted px-3 py-1 text-xs text-foreground transition hover:bg-muted/80"
+            className="ui-btn ui-btn-xs ui-btn-muted"
           >
             管理設備
           </button>
@@ -80,7 +80,7 @@ export default function RoomCard({
         {onEdit && (
           <button
             onClick={() => onEdit(room.room_id)}
-            className="rounded-full bg-muted px-3 py-1 text-xs text-foreground transition hover:bg-muted/80"
+            className="ui-btn ui-btn-xs ui-btn-muted"
           >
             編輯
           </button>
@@ -88,7 +88,7 @@ export default function RoomCard({
         {onDelete && (
           <button
             onClick={() => onDelete(room.room_id)}
-            className="rounded-full bg-danger px-3 py-1 text-xs text-foreground transition hover:bg-danger/80"
+            className="ui-btn ui-btn-xs ui-btn-danger"
           >
             刪除
           </button>

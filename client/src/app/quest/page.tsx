@@ -40,7 +40,7 @@ export default function QuestPage() {
       actions={
         <Link
           to="/quest/settings"
-          className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted/70"
+          className="ui-btn ui-btn-md ui-btn-outline inline-flex items-center gap-2"
         >
           ⚙️ 系統設置
         </Link>
@@ -55,7 +55,7 @@ export default function QuestPage() {
         ].map((item) => (
           <div
             key={item.label}
-            className="rounded-2xl border border-border/70 bg-surface/60 p-6"
+            className="surface-card p-6"
           >
             <div className="flex items-center justify-between">
               <div>

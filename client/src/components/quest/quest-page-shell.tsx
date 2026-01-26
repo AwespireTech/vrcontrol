@@ -27,7 +27,7 @@ export default function QuestPageShell({
   return (
     <div className="min-h-screen bg-background px-6 py-8">
       <div className={`mx-auto flex w-full flex-col gap-8 ${maxWidthMap[maxWidth]}`}>
-        <header className="rounded-2xl border border-border/70 bg-surface/60 p-6 shadow-[0_18px_40px_-30px_rgba(0,0,0,0.8)]">
+        <header className="surface-card p-6 shadow-[0_18px_40px_-30px_rgba(0,0,0,0.8)]">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
               <div className="text-xs uppercase tracking-[0.28em] text-foreground/50">{eyebrow}</div>
