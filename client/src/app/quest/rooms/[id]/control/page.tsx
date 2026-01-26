@@ -27,13 +27,18 @@ export default function RoomControlPage() {
   const [moveState, setMoveState] = useState('')
 
   const [playerList, setPlayerList] = useState<string[]>([])
-  const [roomList, setRoomList] = useState<string[]>([])
+  const [roomList, setRoomList] = useState<{ value: string; label: string }[]>([])
   const [countdown, setCountdown] = useState(5)
 
 
   const sortedRoomPlayers = useMemo(() => {
     return playerData.slice().sort((a, b) => (a.sequence >= b.sequence ? 1 : -1))
   }, [playerData])
+
+  const currentRoomName = useMemo(() => {
+    const found = roomList.find((room) => room.value === roomId)
+    return found?.label || roomId
+  }, [roomId, roomList])
 
   const loadControlData = async () => {
     try {
@@ -42,8 +47,10 @@ export default function RoomControlPage() {
         roomApi.getAll(),
       ])
       setPlayerList(players.slice().sort((a, b) => a.localeCompare(b, undefined, { numeric: true })))
-      const questRoomIds = questRooms.map((room) => room.room_id)
-      setRoomList(questRoomIds.slice().sort((a, b) => a.localeCompare(b)))
+      const roomOptions = questRooms
+        .map((room) => ({ value: room.room_id, label: room.name }))
+        .sort((a, b) => a.label.localeCompare(b.label))
+      setRoomList(roomOptions)
     } catch (error) {
       console.error('Failed to load control data:', error)
     }
@@ -151,7 +158,7 @@ export default function RoomControlPage() {
   return (
     <QuestPageShell
       title="房間控制"
-      subtitle={`房間: ${roomId}`}
+      subtitle={`房間: ${currentRoomName}`}
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <span
@@ -262,7 +269,7 @@ export default function RoomControlPage() {
               </div>
               <div className="grid grid-cols-4 items-center gap-2 border-b border-border p-2 text-xs font-medium text-foreground/60">
                 <span>Player ID</span>
-                <span className="text-center">Room ID</span>
+                <span className="text-center">Room</span>
                 <span className="text-center">Seq</span>
                 <span></span>
               </div>
@@ -274,29 +281,6 @@ export default function RoomControlPage() {
                     options={roomList}
                     onClick={handleAssignRoomAndSeq}
                   />
-                ))}
-              </div>
-            </div>
-
-            <div className="surface-card p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-foreground">控制房間清單</h2>
-                <button
-                  onClick={loadControlData}
-                  className="text-xs text-primary hover:text-primary/80"
-                >
-                  重新整理
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {roomList.map((room) => (
-                  <Button
-                    key={room}
-                    onClick={() => navigate(`/quest/rooms/${room}/control`)}
-                    className="w-28"
-                  >
-                    {room}
-                  </Button>
                 ))}
               </div>
             </div>

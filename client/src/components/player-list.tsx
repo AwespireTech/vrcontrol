@@ -6,12 +6,12 @@ import AssignRoom from "./assign-room"
 
 const PlayerList = ({
   playerList,
-  roomList,
+  roomOptions,
   countdown,
   refresh,
 }: {
   playerList: string[]
-  roomList: string[]
+  roomOptions: Array<string | { value: string; label: string }>
   countdown: number
   refresh: () => void
 }) => {
@@ -33,7 +33,7 @@ const PlayerList = ({
       </div>
       <div className="grid grid-cols-4 items-center gap-2 border-b border-border p-2 font-medium text-foreground/60">
         <span>Player ID</span>
-        <span className="text-center">Room ID</span>
+        <span className="text-center">Room</span>
         <span className="text-center">Seq</span>
         <span className="text-center"></span>
       </div>
@@ -41,7 +41,7 @@ const PlayerList = ({
         playerList.map((player) => {
           return (
             <div key={player}>
-              <AssignRoom player={player} options={roomList} onClick={assignPlayer} />
+              <AssignRoom player={player} options={roomOptions} onClick={assignPlayer} />
             </div>
           )
         })}

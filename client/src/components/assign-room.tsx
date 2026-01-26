@@ -1,17 +1,23 @@
 import { useState } from "react"
 import Button from "./button"
 
+type RoomOption = { value: string; label: string }
+
 export const AssignRoom = ({
   player,
   options,
   onClick,
 }: {
   player: string
-  options: string[]
+  options: Array<string | RoomOption>
   onClick: (player: string, roomId: string, seq: number) => void
 }) => {
   const [selectedOption, setSelectedOption] = useState("")
   const [numberInput, setNumberInput] = useState(0)
+
+  const normalizedOptions: RoomOption[] = options.map((option) =>
+    typeof option === "string" ? { value: option, label: option } : option,
+  )
 
   const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value, 10)
@@ -32,9 +38,9 @@ export const AssignRoom = ({
         <option value="" className="text-foreground/50">
           Select...
         </option>
-        {options.map((option, index) => (
-          <option key={index} value={option} className="text-foreground">
-            {option}
+        {normalizedOptions.map((option) => (
+          <option key={option.value} value={option.value} className="text-foreground">
+            {option.label}
           </option>
         ))}
       </select>
