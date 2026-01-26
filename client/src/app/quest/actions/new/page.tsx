@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { actionApi } from '@/services/quest-api'
 import ActionForm from '@/components/quest/action-form'
 import type { QuestAction } from '@/services/quest-types'
+import QuestPageShell from '@/components/quest/quest-page-shell'
 
 export default function NewActionPage() {
   const navigate = useNavigate()
@@ -13,20 +14,22 @@ export default function NewActionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-2xl mx-auto">
+    <QuestPageShell
+      title="創建新動作"
+      subtitle="建立新的動作範本"
+      maxWidth="sm"
+      actions={
         <button
           onClick={() => navigate('/quest/actions')}
-          className="text-primary hover:text-primary/80 mb-4"
+          className="rounded-full bg-muted px-4 py-2 text-sm text-foreground transition hover:bg-muted/80"
         >
-          ← 返回
+          回到動作列表
         </button>
-
-        <div className="bg-surface rounded-lg  border border-border p-6">
-          <h1 className="text-2xl font-bold text-foreground mb-6">創建新動作</h1>
-          <ActionForm onSubmit={handleSubmit} onCancel={() => navigate('/quest/actions')} />
-        </div>
+      }
+    >
+      <div className="rounded-2xl border border-border/70 bg-surface/60 p-6">
+        <ActionForm onSubmit={handleSubmit} onCancel={() => navigate('/quest/actions')} />
       </div>
-    </div>
+    </QuestPageShell>
   )
 }

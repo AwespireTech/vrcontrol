@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { roomApi, deviceApi } from '@/services/quest-api'
 import type { QuestRoom, QuestDevice } from '@/services/quest-types'
 import { getDisplayName } from '@/lib/utils/device'
+import QuestPageShell from '@/components/quest/quest-page-shell'
 
 export default function RoomDevicesPage() {
   const navigate = useNavigate()
@@ -88,29 +89,28 @@ export default function RoomDevicesPage() {
   )
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex flex-wrap items-center gap-3 mb-4">
+    <QuestPageShell
+      title="管理房間設備"
+      subtitle={`房間: ${room.name}`}
+      maxWidth="lg"
+      actions={
+        <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => navigate(`/quest/rooms`)}
-            className="text-primary hover:text-primary/80"
+            onClick={() => navigate('/quest/rooms')}
+            className="rounded-full bg-muted px-4 py-2 text-sm text-foreground transition hover:bg-muted/80"
           >
-            ← 返回
+            回到房間列表
           </button>
           <button
             onClick={() => navigate(`/quest/rooms/${id}/control`)}
-            className="text-primary hover:text-primary/80"
+            className="rounded-full bg-accent px-4 py-2 text-sm text-foreground transition hover:bg-accent/80"
           >
             前往控制
           </button>
         </div>
-
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-foreground">管理房間設備</h1>
-          <p className="text-foreground/70 mt-2">房間: {room.name}</p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      }
+    >
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           {/* 房間中的設備 */}
           <div className="bg-surface rounded-lg  border border-border p-6">
             <h2 className="text-xl font-bold text-foreground mb-4">
@@ -198,8 +198,7 @@ export default function RoomDevicesPage() {
               </div>
             )}
           </div>
-        </div>
       </div>
-    </div>
+    </QuestPageShell>
   )
 }

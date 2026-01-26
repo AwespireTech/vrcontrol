@@ -6,6 +6,7 @@ import PlayerInfo from '@/components/player-info'
 import AssignRoom from '@/components/assign-room'
 import { controlApi, roomApi, simpleApi } from '@/services/quest-api'
 import type { PlayerData, RoomInfoData } from '@/interfaces/room.interface'
+import QuestPageShell from '@/components/quest/quest-page-shell'
 
 const TotalChapters = 11
 
@@ -148,54 +149,48 @@ export default function RoomControlPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
-          <div>
-            <div className="flex flex-wrap items-center gap-3 mb-2">
-              <button
-                onClick={() => navigate('/quest/rooms')}
-                className="text-primary hover:text-primary/80"
-              >
-                ← 返回
-              </button>
-              <button
-                onClick={() => navigate(`/quest/rooms/${roomId}/devices`)}
-                className="text-primary hover:text-primary/80"
-              >
-                前往設備
-              </button>
-              <button
-                onClick={() => navigate(`/quest/rooms/${roomId}`)}
-                className="text-primary hover:text-primary/80"
-              >
-                編輯房間
-              </button>
-            </div>
-            <h1 className="text-3xl font-bold text-foreground">房間控制</h1>
-            <p className="text-foreground/70 mt-2">房間: {roomId}</p>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="text-foreground/70">連線狀態</span>
-            <span
-              className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                connectionStatus === 'connected'
-                  ? 'bg-success/20 text-success'
-                  : connectionStatus === 'connecting'
-                    ? 'bg-muted text-foreground'
-                    : 'bg-danger/20 text-danger'
-              }`}
-            >
-              {connectionStatus === 'connected'
-                ? '已連線'
+    <QuestPageShell
+      title="房間控制"
+      subtitle={`房間: ${roomId}`}
+      actions={
+        <div className="flex flex-wrap items-center gap-2">
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+              connectionStatus === 'connected'
+                ? 'bg-success/20 text-success'
                 : connectionStatus === 'connecting'
-                  ? '連線中'
-                  : '已中斷'}
-            </span>
-          </div>
+                  ? 'bg-muted text-foreground'
+                  : 'bg-danger/20 text-danger'
+            }`}
+          >
+            {connectionStatus === 'connected'
+              ? '已連線'
+              : connectionStatus === 'connecting'
+                ? '連線中'
+                : '已中斷'}
+          </span>
+          <button
+            onClick={() => navigate('/quest/rooms')}
+            className="rounded-full bg-muted px-4 py-2 text-sm text-foreground transition hover:bg-muted/80"
+          >
+            回到房間列表
+          </button>
+          <button
+            onClick={() => navigate(`/quest/rooms/${roomId}`)}
+            className="rounded-full bg-primary px-4 py-2 text-sm text-foreground transition hover:bg-primary/80"
+          >
+            編輯房間
+          </button>
+          <button
+            onClick={() => navigate(`/quest/rooms/${roomId}/devices`)}
+            className="rounded-full bg-accent px-4 py-2 text-sm text-foreground transition hover:bg-accent/80"
+          >
+            前往設備
+          </button>
         </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      }
+    >
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
             <div className="bg-surface rounded-lg border border-border p-6">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -305,8 +300,7 @@ export default function RoomControlPage() {
             </div>
 
           </div>
-        </div>
       </div>
-    </div>
+    </QuestPageShell>
   )
 }

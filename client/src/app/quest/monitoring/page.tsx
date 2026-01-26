@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { deviceApi, monitoringApi } from '@/services/quest-api'
 import { QUEST_DEVICE_STATUS, type QuestDevice } from '@/services/quest-types'
 import { getDisplayName } from '@/lib/utils/device'
 import { useMonitoringStatus } from '@/hooks/useMonitoringStatus'
+import QuestPageShell from '@/components/quest/quest-page-shell'
 
 type StatusFilter = 'all' | QuestDevice['status']
 type AutoReconnectFilter = 'all' | 'enabled' | 'disabled'
@@ -178,46 +178,34 @@ export default function QuestMonitoringPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-4">
-          <Link
-            to="/quest"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors"
+    <QuestPageShell
+      title="監控中心"
+      subtitle="篩選設備並批次設定自動重連／重置狀態"
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={runOnce}
+            className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-accent/80"
           >
-            ← 返回
-          </Link>
+            手動執行一次
+          </button>
+          <button
+            onClick={toggleMonitoring}
+            disabled={!monitoring.known || monitoring.loading}
+            className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+              !monitoring.known
+                ? 'bg-muted text-foreground'
+                : monitoring.running
+                  ? 'bg-danger text-foreground'
+                  : 'bg-success text-foreground'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            {!monitoring.known ? '狀態未知' : monitoring.running ? '停止監控' : '啟動監控'}
+          </button>
         </div>
-
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">監控中心</h1>
-            <p className="text-foreground/70 mt-2">篩選設備並批次設定自動重連／重置狀態</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={runOnce}
-              className="px-4 py-2 bg-accent text-foreground rounded-lg hover:bg-accent/80 transition-colors font-semibold"
-            >
-              手動執行一次
-            </button>
-            <button
-              onClick={toggleMonitoring}
-              disabled={!monitoring.known || monitoring.loading}
-              className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                !monitoring.known
-                  ? 'bg-muted hover:bg-muted/80 text-foreground'
-                  : monitoring.running
-                    ? 'bg-danger hover:bg-danger/80 text-foreground'
-                    : 'bg-success hover:bg-success/80 text-foreground'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              {!monitoring.known ? '狀態未知' : monitoring.running ? '停止監控' : '啟動監控'}
-            </button>
-          </div>
-        </div>
-
-        <div className="bg-surface rounded-lg border border-border p-4 mb-6">
+      }
+    >
+      <div className="bg-surface rounded-lg border border-border p-4 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <input
               value={search}
@@ -383,7 +371,6 @@ export default function QuestMonitoringPage() {
             })
           )}
         </div>
-      </div>
-    </div>
+    </QuestPageShell>
   )
 }

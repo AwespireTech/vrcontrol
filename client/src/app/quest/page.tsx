@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { deviceApi, roomApi, actionApi } from '@/services/quest-api'
 import type { QuestDevice, QuestRoom, QuestAction } from '@/services/quest-types'
 import { useMonitoringStatus } from '@/hooks/useMonitoringStatus'
+import QuestPageShell from '@/components/quest/quest-page-shell'
 
 export default function QuestPage() {
   const [devices, setDevices] = useState<QuestDevice[]>([])
@@ -33,112 +34,86 @@ export default function QuestPage() {
   const totalDevices = devices.length
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* 頁面標題 */}
-        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Quest 設備管理</h1>
-            <p className="text-foreground/70 mt-2">管理 Meta Quest 設備、房間和動作</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Link
-              to="/quest/settings"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors font-semibold"
-            >
-              ⚙️ 系統設置
-            </Link>
-          </div>
-        </div>
-
-        {/* 統計卡片 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-surface rounded-lg p-6 border border-border">
+    <QuestPageShell
+      title="Quest 設備管理"
+      subtitle="管理 Meta Quest 設備、房間和動作"
+      actions={
+        <Link
+          to="/quest/settings"
+          className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-4 py-2 text-sm font-semibold text-foreground transition hover:bg-muted/70"
+        >
+          ⚙️ 系統設置
+        </Link>
+      }
+    >
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        {[
+          { label: '設備總數', value: totalDevices, icon: '📱' },
+          { label: '在線設備', value: onlineDevices, icon: '✅', accent: 'text-success' },
+          { label: '房間數量', value: rooms.length, icon: '🏠' },
+          { label: '動作數量', value: actions.length, icon: '⚡' },
+        ].map((item) => (
+          <div
+            key={item.label}
+            className="rounded-2xl border border-border/70 bg-surface/60 p-6"
+          >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-foreground/70">設備總數</p>
-                <p className="text-3xl font-bold text-foreground">{totalDevices}</p>
+                <p className="text-xs text-foreground/60">{item.label}</p>
+                <p className={`text-3xl font-bold ${item.accent ?? 'text-foreground'}`}>
+                  {item.value}
+                </p>
               </div>
-              <div className="text-4xl">📱</div>
+              <div className="text-4xl">{item.icon}</div>
             </div>
           </div>
-
-          <div className="bg-surface rounded-lg p-6 border border-border">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-foreground/70">在線設備</p>
-                <p className="text-3xl font-bold text-success">{onlineDevices}</p>
-              </div>
-              <div className="text-4xl">✅</div>
-            </div>
-          </div>
-
-          <div className="bg-surface rounded-lg p-6 border border-border">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-foreground/70">房間數量</p>
-                <p className="text-3xl font-bold text-foreground">{rooms.length}</p>
-              </div>
-              <div className="text-4xl">🏠</div>
-            </div>
-          </div>
-
-          <div className="bg-surface rounded-lg p-6 border border-border">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-foreground/70">動作數量</p>
-                <p className="text-3xl font-bold text-foreground">{actions.length}</p>
-              </div>
-              <div className="text-4xl">⚡</div>
-            </div>
-          </div>
-        </div>
-
-        {/* 功能區塊 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <Link
-            to="/quest/devices"
-            className="bg-surface rounded-lg p-8 border border-border hover:border-primary transition-colors cursor-pointer"
-          >
-            <div className="text-5xl mb-4">📱</div>
-            <h2 className="text-xl font-bold text-foreground mb-2">設備管理</h2>
-            <p className="text-foreground/70">添加、編輯和管理 Quest 設備，查看設備狀態</p>
-          </Link>
-
-          <Link
-            to="/quest/rooms"
-            className="bg-surface rounded-lg p-8 border border-border hover:border-primary transition-colors cursor-pointer"
-          >
-            <div className="text-5xl mb-4">🏠</div>
-            <h2 className="text-xl font-bold text-foreground mb-2">房間管理</h2>
-            <p className="text-foreground/70">創建房間，分配設備，管理 Socket 連接</p>
-          </Link>
-
-          <Link
-            to="/quest/actions"
-            className="bg-surface rounded-lg p-8 border border-border hover:border-primary transition-colors cursor-pointer"
-          >
-            <div className="text-5xl mb-4">⚡</div>
-            <h2 className="text-xl font-bold text-foreground mb-2">動作管理</h2>
-            <p className="text-foreground/70">創建和執行設備動作，批量操作設備</p>
-          </Link>
-
-          <Link
-            to="/quest/monitoring"
-            className="bg-surface rounded-lg p-8 border border-border hover:border-primary transition-colors cursor-pointer"
-          >
-            <div className="text-5xl mb-4">🛰️</div>
-            <h2 className="text-xl font-bold text-foreground mb-2">網絡監控</h2>
-            <p className="text-foreground/70">
-              背景監控會定期 ping 設備 IP，並在設備恢復可達時嘗試 ADB 重連
-            </p>
-            <p className="text-xs text-foreground/50 mt-2">
-              目前狀態：
-              {!monitoring.known ? '未知' : monitoring.running ? '運行中' : '已停止'}（詳情與控制請到監控頁）
-            </p>
-          </Link>
-        </div>
+        ))}
       </div>
-    </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+        {[
+          {
+            to: '/quest/devices',
+            icon: '📱',
+            title: '設備管理',
+            desc: '添加、編輯和管理 Quest 設備，查看設備狀態',
+          },
+          {
+            to: '/quest/rooms',
+            icon: '🏠',
+            title: '房間管理',
+            desc: '創建房間，分配設備，管理 Socket 連接',
+          },
+          {
+            to: '/quest/actions',
+            icon: '⚡',
+            title: '動作管理',
+            desc: '創建和執行設備動作，批量操作設備',
+          },
+          {
+            to: '/quest/monitoring',
+            icon: '🛰️',
+            title: '網絡監控',
+            desc: '背景監控會定期 ping 設備 IP，並在設備恢復可達時嘗試 ADB 重連',
+            meta: `目前狀態：${
+              !monitoring.known ? '未知' : monitoring.running ? '運行中' : '已停止'
+            }（詳情與控制請到監控頁）`,
+          },
+        ].map((item) => (
+          <Link
+            key={item.title}
+            to={item.to}
+            className="group rounded-2xl border border-border/70 bg-surface/50 p-6 transition hover:border-primary/60 hover:bg-surface/70"
+          >
+            <div className="text-4xl">{item.icon}</div>
+            <h2 className="mt-4 text-lg font-semibold text-foreground">{item.title}</h2>
+            <p className="mt-2 text-sm text-foreground/70">{item.desc}</p>
+            {item.meta ? (
+              <p className="mt-3 text-xs text-foreground/50">{item.meta}</p>
+            ) : null}
+          </Link>
+        ))}
+      </div>
+    </QuestPageShell>
   )
 }

@@ -4,6 +4,7 @@ import { getDisplayName } from '@/lib/utils/device'
 import { deviceApi, scrcpyApi, preferenceApi } from '@/services/quest-api'
 import type { QuestDevice, ScrcpySession, ScrcpySystemInfo, UserPreference } from '@/services/quest-types'
 import DeviceCard, { type StatusErrorType } from '@/components/quest/device-card'
+import QuestPageShell from '@/components/quest/quest-page-shell'
 import {
   DEFAULT_BATCH_SIZE,
   DEFAULT_MAX_CONCURRENCY,
@@ -386,162 +387,149 @@ export default function DevicesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* 頁面標題和操作 */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
+    <QuestPageShell
+      title="設備管理"
+      subtitle={`下次更新: ${countdown} 秒`}
+      actions={
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={handleConnectAll}
+            className="rounded-full bg-primary px-4 py-2 text-sm text-foreground transition hover:bg-primary/80"
+          >
+            批量連接
+          </button>
+          <button
+            onClick={handlePingAll}
+            className="rounded-full bg-success px-4 py-2 text-sm text-foreground transition hover:bg-success/80"
+          >
+            批量 Ping
+          </button>
+          {scrcpySystemInfo?.installed && selectedDeviceIds.length > 0 && (
             <button
-              onClick={() => navigate('/quest')}
-              className="text-primary hover:text-primary/80 mb-2"
+              onClick={handleMonitorBatch}
+              className="rounded-full bg-accent px-4 py-2 text-sm text-foreground transition hover:bg-accent/80"
             >
-              ← 返回
+              批量監看 ({selectedDeviceIds.length})
             </button>
-            <h1 className="text-3xl font-bold text-foreground">設備管理</h1>
-            <p className="text-foreground/70 mt-2">下次更新: {countdown} 秒</p>
+          )}
+          <button
+            onClick={() => navigate('/quest/devices/new')}
+            className="rounded-full bg-primary px-4 py-2 text-sm text-foreground transition hover:bg-primary/80"
+          >
+            + 添加設備
+          </button>
+        </div>
+      }
+    >
+      {devices.length === 0 ? (
+        <div className="rounded-2xl border border-border/70 bg-surface/50 p-10 text-center text-foreground/70">
+          尚無設備
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {devices.map((device) => (
+            <div key={device.device_id} className="relative">
+              {device.status === 'online' && scrcpySystemInfo?.installed && (
+                <input
+                  type="checkbox"
+                  checked={selectedDeviceIds.includes(device.device_id)}
+                  onChange={() => toggleDeviceSelection(device.device_id)}
+                  className="absolute left-3 top-3 z-10 h-5 w-5"
+                />
+              )}
+              <DeviceCard
+                device={device}
+                onConnect={handleConnect}
+                onDisconnect={handleDisconnect}
+                onPing={handlePing}
+                onDelete={handleDelete}
+                onEdit={(deviceId) => navigate(`/quest/devices/${deviceId}`)}
+                onMonitor={handleMonitor}
+                scrcpyInstalled={scrcpySystemInfo?.installed}
+                statusErrorType={statusErrors[device.device_id] || 'idle'}
+                pingTooltipText={formatPingTooltip(device)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {scrcpySystemInfo?.installed && scrcpySessions.length > 0 && (
+        <div className="rounded-2xl border border-border/70 bg-surface/60 p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-foreground">監看會話</h2>
+            <button
+              onClick={handleRefreshSessions}
+              className="rounded-full bg-muted px-4 py-2 text-sm text-foreground transition hover:bg-muted/80"
+            >
+              刷新狀態
+            </button>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleConnectAll}
-              className="px-4 py-2 bg-primary text-foreground rounded-lg hover:bg-primary/80 transition-colors"
-            >
-              批量連接
-            </button>
-            <button
-              onClick={handlePingAll}
-              className="px-4 py-2 bg-success text-foreground rounded-lg hover:bg-success/80 transition-colors"
-            >
-              批量 Ping
-            </button>
-            {scrcpySystemInfo?.installed && selectedDeviceIds.length > 0 && (
-              <button
-                onClick={handleMonitorBatch}
-                className="px-4 py-2 bg-accent text-foreground rounded-lg hover:bg-accent/80 transition-colors"
-              >
-                批量監看 ({selectedDeviceIds.length})
-              </button>
-            )}
-            <button
-              onClick={() => navigate('/quest/devices/new')}
-              className="px-4 py-2 bg-primary text-foreground rounded-lg hover:bg-primary/80 transition-colors"
-            >
-              + 添加設備
-            </button>
+
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-border">
+              <thead className="bg-surface">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider">
+                    設備
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider">
+                    PID
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider">
+                    啟動時間
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider">
+                    狀態
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider">
+                    操作
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-surface divide-y divide-border">
+                {scrcpySessions.map((session) => {
+                  const device = devices.find((d) => d.device_id === session.device_id)
+                  return (
+                    <tr key={session.device_id}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
+                        {device ? getDisplayName(device) : session.device_id}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-foreground/70">
+                        {session.process_id}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground/70">
+                        {new Date(session.started_at).toLocaleString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            session.is_running
+                              ? 'bg-success/20 text-success'
+                              : 'bg-muted/50 text-foreground/70'
+                          }`}
+                        >
+                          {session.is_running ? '運行中' : '已停止'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {session.is_running && (
+                          <button
+                            onClick={() => handleStopScrcpy(session.device_id)}
+                            className="text-danger hover:text-danger/80"
+                          >
+                            停止
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
-
-        {/* 設備列表 */}
-        {devices.length === 0 ? (
-          <div className="text-center py-12 bg-surface rounded-lg border border-border">
-            <p className="text-foreground/70">尚無設備</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {devices.map((device) => (
-              <div key={device.device_id} className="relative">
-                {device.status === 'online' && scrcpySystemInfo?.installed && (
-                  <input
-                    type="checkbox"
-                    checked={selectedDeviceIds.includes(device.device_id)}
-                    onChange={() => toggleDeviceSelection(device.device_id)}
-                    className="absolute top-2 left-2 w-5 h-5 z-10"
-                  />
-                )}
-                <DeviceCard
-                  device={device}
-                  onConnect={handleConnect}
-                  onDisconnect={handleDisconnect}
-                  onPing={handlePing}
-                  onDelete={handleDelete}
-                  onEdit={(deviceId) => navigate(`/quest/devices/${deviceId}`)}
-                  onMonitor={handleMonitor}
-                  scrcpyInstalled={scrcpySystemInfo?.installed}
-                  statusErrorType={statusErrors[device.device_id] || 'idle'}
-                  pingTooltipText={formatPingTooltip(device)}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Scrcpy 會話列表 */}
-        {scrcpySystemInfo?.installed && scrcpySessions.length > 0 && (
-          <div className="mt-8 bg-surface rounded-lg border border-border p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-foreground">監看會話</h2>
-              <button
-                onClick={handleRefreshSessions}
-                className="px-4 py-2 bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors"
-              >
-                刷新狀態
-              </button>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-border">
-                <thead className="bg-surface">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider">
-                      設備
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider">
-                      PID
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider">
-                      啟動時間
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider">
-                      狀態
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-foreground/70 uppercase tracking-wider">
-                      操作
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-surface divide-y divide-border">
-                  {scrcpySessions.map((session) => {
-                    const device = devices.find((d) => d.device_id === session.device_id)
-                    return (
-                      <tr key={session.device_id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground">
-                          {device ? getDisplayName(device) : session.device_id}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-foreground/70">
-                          {session.process_id}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-foreground/70">
-                          {new Date(session.started_at).toLocaleString()}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span
-                            className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              session.is_running
-                                ? 'bg-success/20 text-success'
-                                : 'bg-muted/50 text-foreground/70'
-                            }`}
-                          >
-                            {session.is_running ? '運行中' : '已停止'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {session.is_running && (
-                            <button
-                              onClick={() => handleStopScrcpy(session.device_id)}
-                              className="text-danger hover:text-danger/80"
-                            >
-                              停止
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+      )}
+    </QuestPageShell>
   )
 }

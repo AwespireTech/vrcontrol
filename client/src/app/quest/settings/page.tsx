@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { monitoringApi, scrcpyApi, preferenceApi } from '@/services/quest-api'
 import { ScrcpyConfigForm } from '@/components/quest/scrcpy-config-form'
 import type { ScrcpyConfig, ScrcpySystemInfo, UserPreference } from '@/services/quest-types'
+import QuestPageShell from '@/components/quest/quest-page-shell'
 import {
   DEFAULT_BATCH_SIZE,
   DEFAULT_MAX_CONCURRENCY,
@@ -10,7 +10,6 @@ import {
 } from '@/environment'
 
 export default function QuestSettingsPage() {
-  const navigate = useNavigate()
   const [monitoringInterval, setMonitoringInterval] = useState(10)
   const [loading, setLoading] = useState(true)
   
@@ -104,18 +103,12 @@ export default function QuestSettingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-4xl mx-auto">
-        <button
-          onClick={() => navigate('/quest')}
-          className="text-primary hover:text-primary/80 mb-4"
-        >
-          ← 返回
-        </button>
-
-        <h1 className="text-3xl font-bold text-foreground mb-6">Quest 系統設置</h1>
-
-        <div className="space-y-6">
+    <QuestPageShell
+      title="Quest 系統設置"
+      subtitle="偏好、監控與 Scrcpy 設定總覽"
+      maxWidth="md"
+    >
+      <div className="space-y-6">
           {/* 設備狀態設定 */}
           <div className="bg-surface rounded-lg border border-border p-6">
             <h2 className="text-xl font-bold text-foreground mb-4">設備狀態設定</h2>
@@ -393,8 +386,7 @@ export default function QuestSettingsPage() {
               <li>ADB 命令集成</li>
             </ul>
           </div>
-        </div>
       </div>
-    </div>
+    </QuestPageShell>
   )
 }
