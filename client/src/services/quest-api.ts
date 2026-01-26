@@ -6,7 +6,6 @@ import {
   type QuestAction,
   type BatchExecuteRequest,
   type BatchExecuteResponse,
-  type SocketInfo,
   type MonitoringStatus,
   type ExecutionResult,
   type ScrcpyConfig,
@@ -17,6 +16,9 @@ import {
   type UserPreference,
   type BatchStatusResponse,
 } from './quest-types'
+
+const QUEST_CONTROL_BASE = `${QUEST_API_BASE}/control`
+const QUEST_SIMPLE_BASE = `${QUEST_API_BASE}/simple`
 
 // ============ 設備 API ============
 
@@ -275,40 +277,39 @@ export const roomApi = {
     if (!data.success) throw new Error(data.error || 'Failed to remove device from room')
   },
 
-  // 啟動 Socket Server
-  startSocket: async (roomId: string): Promise<number> => {
-    const res = await fetch(`${QUEST_API_BASE}/rooms/${roomId}/socket/start`, {
-      method: 'POST',
-    })
-    const data: ApiResponse<{ port: number }> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to start socket server')
-    return data.data!.port
+}
+
+// ============ 控制 API（鏡像 /control） ============
+
+export const controlApi = {
+  // 獲取未分配玩家清單
+  getPlayerList: async (): Promise<string[]> => {
+    const res = await fetch(`${QUEST_CONTROL_BASE}/playerlist`)
+    const data = await res.json()
+    return data?.unassignedPlayers || []
   },
 
-  // 停止 Socket Server
-  stopSocket: async (roomId: string): Promise<void> => {
-    const res = await fetch(`${QUEST_API_BASE}/rooms/${roomId}/socket/stop`, {
+  // 指派玩家房間與序列
+  assignRoomAndSeq: async (clientId: string, roomId: string, seq: number): Promise<void> => {
+    await fetch(`${QUEST_CONTROL_BASE}/assignroomandseq/${clientId}/${roomId}/${seq}`, {
       method: 'POST',
     })
-    const data: ApiResponse<void> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to stop socket server')
   },
 
-  // 獲取 Socket 信息
-  getSocketInfo: async (roomId: string): Promise<SocketInfo> => {
-    const res = await fetch(`${QUEST_API_BASE}/rooms/${roomId}/socket/info`)
-    const data: ApiResponse<SocketInfo> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to get socket info')
-    return data.data!
-  },
-
-  // 同步參數
-  syncParameters: async (roomId: string): Promise<void> => {
-    const res = await fetch(`${QUEST_API_BASE}/rooms/${roomId}/parameters/sync`, {
+  // 指派序列
+  assignSeq: async (roomId: string, clientId: string, seq: number): Promise<void> => {
+    await fetch(`${QUEST_CONTROL_BASE}/assignseq/${roomId}/${clientId}/${seq}`, {
       method: 'POST',
     })
-    const data: ApiResponse<void> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to sync parameters')
+  },
+}
+
+// ============ 簡化控制 API（鏡像 /simple） ============
+
+export const simpleApi = {
+  // 強制所有玩家移動
+  forceAllMove: async (roomId: string, dest: string): Promise<void> => {
+    await fetch(`${QUEST_SIMPLE_BASE}/forceallmove/${roomId}/${dest}`)
   },
 }
 

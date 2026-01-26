@@ -9,6 +9,7 @@ import QuestRoomsPage from "./app/quest/rooms/page"
 import QuestNewRoomPage from "./app/quest/rooms/new/page"
 import QuestEditRoomPage from "./app/quest/rooms/[id]/page"
 import QuestRoomDevicesPage from "./app/quest/rooms/[id]/devices/page"
+import QuestRoomControlPage from "./app/quest/rooms/[id]/control/page"
 import QuestActionsPage from "./app/quest/actions/page"
 import QuestNewActionPage from "./app/quest/actions/new/page"
 import QuestEditActionPage from "./app/quest/actions/[id]/page"
@@ -31,6 +32,7 @@ function App() {
           <Route path="/quest/rooms/new" element={<QuestNewRoomPage />} />
           <Route path="/quest/rooms/:id" element={<QuestEditRoomPage />} />
           <Route path="/quest/rooms/:id/devices" element={<QuestRoomDevicesPage />} />
+          <Route path="/quest/rooms/:id/control" element={<QuestRoomControlPage />} />
           <Route path="/quest/actions" element={<QuestActionsPage />} />
           <Route path="/quest/actions/new" element={<QuestNewActionPage />} />
           <Route path="/quest/actions/:id" element={<QuestEditActionPage />} />

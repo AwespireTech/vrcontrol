@@ -15,6 +15,7 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
     description: room?.description || '',
     parameters: room?.parameters ? JSON.stringify(room.parameters, null, 2) : '{}',
   })
+  const assignedSequences = room?.assigned_sequences || {}
   const [submitting, setSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -98,6 +99,21 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
         />
         <p className="text-xs text-foreground/50 mt-1">
           輸入 JSON 格式的參數，將會同步到 Socket Server 的所有客戶端
+        </p>
+      </div>
+
+      <div>
+        <label className="block text-sm font-semibold text-foreground mb-2">
+          Assigned Sequences (唯讀)
+        </label>
+        <textarea
+          value={JSON.stringify(assignedSequences, null, 2)}
+          readOnly
+          rows={6}
+          className="w-full px-4 py-2 border border-border rounded-lg bg-muted/40 text-foreground font-mono text-sm"
+        />
+        <p className="text-xs text-foreground/50 mt-1">
+          由控制流程寫入，作為目前房間的玩家序號對應。
         </p>
       </div>
 

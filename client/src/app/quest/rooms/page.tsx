@@ -49,28 +49,6 @@ export default function RoomsPage() {
     return () => clearInterval(intervalId)
   }, [])
 
-  const handleStartSocket = async (roomId: string) => {
-    try {
-      const port = await roomApi.startSocket(roomId)
-      alert(`Socket Server 已啟動，端口: ${port}`)
-      await loadData()
-    } catch (error) {
-      console.error('Failed to start socket:', error)
-      alert('啟動 Socket Server 失敗')
-    }
-  }
-
-  const handleStopSocket = async (roomId: string) => {
-    try {
-      await roomApi.stopSocket(roomId)
-      alert('Socket Server 已停止')
-      await loadData()
-    } catch (error) {
-      console.error('Failed to stop socket:', error)
-      alert('停止 Socket Server 失敗')
-    }
-  }
-
   const handleDelete = async (roomId: string) => {
     if (!confirm('確定要刪除這個房間嗎？')) return
 
@@ -128,11 +106,10 @@ export default function RoomsPage() {
                 key={room.room_id}
                 room={room}
                 deviceNames={deviceNameMap}
-                onStartSocket={handleStartSocket}
-                onStopSocket={handleStopSocket}
                 onDelete={handleDelete}
                 onEdit={(roomId) => navigate(`/quest/rooms/${roomId}`)}
                 onManageDevices={(roomId) => navigate(`/quest/rooms/${roomId}/devices`)}
+                onControl={(roomId) => navigate(`/quest/rooms/${roomId}/control`)}
               />
             ))}
           </div>

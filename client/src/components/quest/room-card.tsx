@@ -5,9 +5,8 @@ interface RoomCardProps {
   deviceNames?: Map<string, string>
   onEdit?: (roomId: string) => void
   onDelete?: (roomId: string) => void
-  onStartSocket?: (roomId: string) => void
-  onStopSocket?: (roomId: string) => void
   onManageDevices?: (roomId: string) => void
+  onControl?: (roomId: string) => void
 }
 
 export default function RoomCard({
@@ -15,30 +14,14 @@ export default function RoomCard({
   deviceNames,
   onEdit,
   onDelete,
-  onStartSocket,
-  onStopSocket,
   onManageDevices,
+  onControl,
 }: RoomCardProps) {
-  const isSocketRunning = room.socket_port > 0
-
   return (
     <div className="rounded-lg border border-border bg-surface p-4 hover:border-primary transition-colors">
       {/* 房間名稱和狀態 */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-lg font-semibold text-foreground">{room.name}</h3>
-        <div className="flex items-center gap-2">
-          {isSocketRunning ? (
-            <>
-              <span className="w-3 h-3 rounded-full bg-success" />
-              <span className="text-sm text-foreground/70">運行中</span>
-            </>
-          ) : (
-            <>
-              <span className="w-3 h-3 rounded-full bg-muted" />
-              <span className="text-sm text-foreground/70">已停止</span>
-            </>
-          )}
-        </div>
       </div>
 
       {/* 房間描述 */}
@@ -52,18 +35,6 @@ export default function RoomCard({
           <span className="text-foreground/70">設備數量:</span>
           <span className="font-semibold text-foreground">{room.device_ids.length}</span>
         </div>
-        {isSocketRunning && (
-          <>
-            <div className="flex justify-between">
-              <span className="text-foreground/70">Socket 端口:</span>
-              <span className="font-mono text-foreground">{room.socket_port}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-foreground/70">Socket IP:</span>
-              <span className="font-mono text-xs text-foreground">{room.socket_ip}</span>
-            </div>
-          </>
-        )}
       </div>
 
       {/* 設備列表 */}
@@ -90,26 +61,18 @@ export default function RoomCard({
 
       {/* 操作按鈕 */}
       <div className="flex gap-2 flex-wrap">
-        {!isSocketRunning && onStartSocket && (
+        {onControl && (
           <button
-            onClick={() => onStartSocket(room.room_id)}
-            className="px-3 py-1 text-sm bg-success text-foreground rounded hover:bg-success/80 transition-colors"
+            onClick={() => onControl(room.room_id)}
+            className="px-3 py-1 text-sm bg-primary text-foreground rounded hover:bg-primary/80 transition-colors"
           >
-            啟動 Socket
-          </button>
-        )}
-        {isSocketRunning && onStopSocket && (
-          <button
-            onClick={() => onStopSocket(room.room_id)}
-            className="px-3 py-1 text-sm bg-danger text-foreground rounded hover:bg-danger/80 transition-colors"
-          >
-            停止 Socket
+            控制
           </button>
         )}
         {onManageDevices && (
           <button
             onClick={() => onManageDevices(room.room_id)}
-            className="px-3 py-1 text-sm bg-primary text-foreground rounded hover:bg-primary/80 transition-colors"
+            className="px-3 py-1 text-sm bg-muted text-foreground rounded hover:bg-muted/80 transition-colors"
           >
             管理設備
           </button>

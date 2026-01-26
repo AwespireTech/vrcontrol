@@ -116,6 +116,9 @@ func (r *RoomRepository) Create(room *model.QuestRoom) error {
 	if room.Parameters == nil {
 		room.Parameters = make(map[string]any)
 	}
+	if room.AssignedSequences == nil {
+		room.AssignedSequences = make(map[string]int)
+	}
 
 	r.rooms[room.RoomID] = room
 
@@ -132,6 +135,9 @@ func (r *RoomRepository) Update(room *model.QuestRoom) error {
 	}
 
 	room.UpdatedAt = time.Now()
+	if room.AssignedSequences == nil {
+		room.AssignedSequences = make(map[string]int)
+	}
 	r.rooms[room.RoomID] = room
 
 	return r.save()
