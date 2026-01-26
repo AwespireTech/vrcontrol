@@ -98,7 +98,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 		}
 
 		// WebSocket 控制路由（Quest 內部副本）
-		socket := questAPI.Group("/socket")
+		socket := questAPI.Group("/ws")
 		{
 			SetQuestSocketRoutes(socket)
 		}

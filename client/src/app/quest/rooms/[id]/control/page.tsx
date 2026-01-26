@@ -69,7 +69,7 @@ export default function RoomControlPage() {
   useEffect(() => {
     if (!roomId) return
 
-    const ws = new WebSocket(`${wsProtocol}://${host}/api/quest/socket/control/${roomId}`)
+    const ws = new WebSocket(`${wsProtocol}://${host}/api/quest/ws/control/${roomId}`)
     setConnectionStatus('connecting')
 
     ws.onopen = () => {
