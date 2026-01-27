@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getDisplayName } from '@/lib/utils/device'
-import { deviceApi, scrcpyApi, preferenceApi } from '@/services/quest-api'
+import { deviceApi, roomApi, scrcpyApi, preferenceApi } from '@/services/quest-api'
 import { QUEST_DEVICE_STATUS, type QuestDevice, ScrcpySession, ScrcpySystemInfo, UserPreference } from '@/services/quest-types'
 import QuestPageShell from '@/components/quest/quest-page-shell'
 import {
@@ -15,6 +15,7 @@ type StatusErrorType = 'idle' | 'ok' | 'timeout' | 'adb-error'
 export default function DevicesPage() {
   const navigate = useNavigate()
   const [devices, setDevices] = useState<QuestDevice[]>([])
+  const [roomNameMap, setRoomNameMap] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
   const [countdown, setCountdown] = useState(DEFAULT_POLL_INTERVAL_SECONDS)
   
@@ -39,8 +40,12 @@ export default function DevicesPage() {
 
   const loadDevices = async () => {
     try {
-      const data = await deviceApi.getAll()
-      setDevices(data)
+      const [devicesData, roomsData] = await Promise.all([
+        deviceApi.getAll(),
+        roomApi.getAll(),
+      ])
+      setDevices(devicesData)
+      setRoomNameMap(new Map(roomsData.map((room) => [room.room_id, room.name])))
     } catch (error) {
       console.error('Failed to load devices:', error)
     } finally {
@@ -494,10 +499,11 @@ export default function DevicesPage() {
         <div className="surface-card overflow-hidden">
           <div className="grid grid-cols-12 gap-3 border-b border-border bg-surface/50 px-4 py-3 text-xs text-foreground/60">
             <div className="col-span-1">選取</div>
-            <div className="col-span-4">設備</div>
+            <div className="col-span-3">設備</div>
             <div className="col-span-2">狀態</div>
+            <div className="col-span-2">房間</div>
             <div className="col-span-2">電量 / 溫度</div>
-            <div className="col-span-3 text-right">操作</div>
+            <div className="col-span-2 text-right">操作</div>
           </div>
           {devices.map((device) => {
             const isOnline = device.status === QUEST_DEVICE_STATUS.ONLINE
@@ -522,7 +528,7 @@ export default function DevicesPage() {
                     className="h-4 w-4"
                   />
                 </div>
-                <div className="col-span-4">
+                <div className="col-span-3">
                   <div className="font-semibold text-foreground">
                     {getDisplayName(device)}
                   </div>
@@ -558,6 +564,23 @@ export default function DevicesPage() {
                   ) : null}
                 </div>
                 <div className="col-span-2 text-xs text-foreground/70">
+                  {device.room_id ? (
+                    <button
+                      onClick={() => navigate(`/quest/rooms/${device.room_id}/devices`)}
+                      className="text-left cursor-pointer group"
+                    >
+                      <div className="font-semibold text-foreground group-hover:underline">
+                        {roomNameMap.get(device.room_id) || device.room_id}
+                      </div>
+                      <div className="text-[11px] text-foreground/50 font-mono group-hover:text-foreground/70">
+                        {device.room_id}
+                      </div>
+                    </button>
+                  ) : (
+                    <div className="font-semibold text-foreground/60">未指派</div>
+                  )}
+                </div>
+                <div className="col-span-2 text-xs text-foreground/70">
                   <div>
                     電量：{renderStatusValue(statusErrorType, device.battery, '%')}
                   </div>
@@ -565,7 +588,7 @@ export default function DevicesPage() {
                     溫度：{renderStatusValue(statusErrorType, device.temperature, '°C')}
                   </div>
                 </div>
-                <div className="col-span-3 flex flex-wrap items-start justify-end gap-2">
+                <div className="col-span-2 flex flex-wrap items-start justify-end gap-2">
                   {!isOnline && !isConnecting && (
                     <button
                       onClick={() => handleConnect(device.device_id)}

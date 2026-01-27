@@ -51,10 +51,11 @@ export const deviceApi = {
 
   // 取代設備（PUT = replace）
   replace: async (deviceId: string, device: QuestDevice): Promise<QuestDevice> => {
+    const { room_id: _roomId, ...safeDevice } = device
     const res = await fetch(`${QUEST_API_BASE}/devices/${deviceId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(device),
+      body: JSON.stringify(safeDevice),
     })
     const data: ApiResponse<QuestDevice> = await res.json()
     if (!data.success) throw new Error(data.error || 'Failed to update device')
@@ -63,10 +64,11 @@ export const deviceApi = {
 
   // 局部更新設備（PATCH = strict whitelist on server）
   patch: async (deviceId: string, patch: Partial<QuestDevice>): Promise<QuestDevice> => {
+    const { room_id: _roomId, ...safePatch } = patch
     const res = await fetch(`${QUEST_API_BASE}/devices/${deviceId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
+      body: JSON.stringify(safePatch),
     })
     const data: ApiResponse<QuestDevice> = await res.json()
     if (!data.success) throw new Error(data.error || 'Failed to patch device')

@@ -42,6 +42,12 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {device?.room_id && (
+        <div className="rounded-lg border border-border/70 bg-muted/20 p-4 text-sm text-foreground/70">
+          目前所屬房間：<span className="font-semibold text-foreground">{device.room_id}</span>
+          <span className="ml-2 text-foreground/50">房間指派請至房間頁管理</span>
+        </div>
+      )}
       <div>
         <label className="block text-sm font-semibold text-foreground mb-2">
           顯示名稱 *
