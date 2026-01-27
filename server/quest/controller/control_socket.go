@@ -29,6 +29,7 @@ func ConnectToRoomSocket(c *gin.Context) {
 		return
 	}
 
+	refreshDeviceRoomMapFromService()
 	roomId, exists := DeviceRoomMap[deviceId]
 	if !exists {
 		log.Println("Device not assigned to any room")

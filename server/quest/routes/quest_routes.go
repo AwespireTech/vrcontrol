@@ -73,6 +73,13 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 	// 啟動時以 ADB 清單校正在線狀態（僅更新 Status）
 	deviceService.SyncOnlineStatusFromADBAtStartup()
 
+	// 啟動時以 DeviceIDs 重建 assigned_room.json，並以房間 UpdatedAt 去重
+	if assigned, err := roomService.ReconcileDeviceAssignmentsByRoomUpdate(); err != nil {
+		log.Printf("[Quest] 重建設備房間關聯失敗: %v\n", err)
+	} else {
+		log.Printf("[Quest] 設備房間關聯重建完成: %d 筆\n", len(assigned))
+	}
+
 	// 初始化 Controllers
 	deviceController := controller.NewDeviceController(deviceService)
 	roomController := controller.NewRoomController(roomService)

@@ -144,7 +144,7 @@ type DevicePatch struct {
 	IP                   *string `json:"ip"`
 	Port                 *int    `json:"port"`
 	Notes                *string `json:"notes"`
-	RoomID               *string `json:"room_id"`
+	RoomID               *string `json:"room_id"` // read-only, use room API
 	AutoReconnectEnabled *bool   `json:"auto_reconnect_enabled"`
 }
 
@@ -169,9 +169,6 @@ func (s *DeviceService) PatchDevice(deviceID string, patch DevicePatch) (*model.
 	}
 	if patch.Notes != nil {
 		device.Notes = *patch.Notes
-	}
-	if patch.RoomID != nil {
-		device.RoomID = *patch.RoomID
 	}
 	if patch.AutoReconnectEnabled != nil {
 		device.AutoReconnectEnabled = *patch.AutoReconnectEnabled

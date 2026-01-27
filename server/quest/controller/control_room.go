@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	questconsts "vrcontrol/server/quest/consts"
+	"vrcontrol/server/quest/model"
 	"vrcontrol/server/quest/service"
 	"vrcontrol/server/quest/sockets"
 	"vrcontrol/server/utilities"
@@ -22,6 +23,7 @@ var questRoomService *service.RoomService
 
 func SetQuestRoomService(svc *service.RoomService) {
 	questRoomService = svc
+	refreshDeviceRoomMapFromService()
 }
 
 func init() {
@@ -36,6 +38,23 @@ func init() {
 			}
 		}
 	}()
+}
+
+func refreshDeviceRoomMapFromService() {
+	if questRoomService == nil {
+		return
+	}
+	DeviceRoomMap = questRoomService.BuildAssignedRoomMap()
+	go questconsts.SaveAssignedRoom(DeviceRoomMap)
+}
+
+func roomHasDevice(room *model.QuestRoom, deviceID string) bool {
+	for _, id := range room.DeviceIDs {
+		if id == deviceID {
+			return true
+		}
+	}
+	return false
 }
 
 func GetRoomList(c *gin.Context) {
@@ -64,12 +83,25 @@ func GetRoomList(c *gin.Context) {
 
 }
 func AssignRoomAndSeq(c *gin.Context) {
+	refreshDeviceRoomMapFromService()
 	roomId := c.Param("roomId")
 	deviceId := c.Param("clientId")
 	seq, err := strconv.Atoi(c.Param("seq"))
 	if err != nil || seq < 0 {
 		c.JSON(400, gin.H{"error": "Invalid sequence number"})
 		return
+	}
+
+	if questRoomService != nil {
+		roomData, err := questRoomService.GetRoom(roomId)
+		if err != nil || roomData == nil {
+			c.JSON(404, gin.H{"error": "Room " + roomId + " not found"})
+			return
+		}
+		if !roomHasDevice(roomData, deviceId) {
+			c.JSON(400, gin.H{"error": "Device not assigned to room (DeviceIDs required)"})
+			return
+		}
 	}
 
 	room, exists := RoomList[roomId]

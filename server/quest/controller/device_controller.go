@@ -102,6 +102,16 @@ func (c *DeviceController) UpdateDevice(ctx *gin.Context) {
 
 	device.DeviceID = deviceID
 
+	existing, err := c.deviceService.GetDevice(deviceID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+	device.RoomID = existing.RoomID
+
 	if err := c.deviceService.UpdateDevice(&device); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
@@ -140,6 +150,14 @@ func (c *DeviceController) PatchDevice(ctx *gin.Context) {
 			})
 			return
 		}
+	}
+
+	if req.RoomID != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "room_id is read-only; use room assignment API",
+		})
+		return
 	}
 
 	updated, err := c.deviceService.PatchDevice(deviceID, req)
