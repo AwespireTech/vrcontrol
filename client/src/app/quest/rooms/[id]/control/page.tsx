@@ -25,9 +25,7 @@ export default function RoomControlPage() {
   const [selectedOption, setSelectedOption] = useState('')
   const [moveState, setMoveState] = useState('')
 
-  const [playerList, setPlayerList] = useState<string[]>([])
   const [roomList, setRoomList] = useState<{ value: string; label: string }[]>([])
-  const [countdown, setCountdown] = useState(5)
 
 
   const sortedRoomPlayers = useMemo(() => {
@@ -41,11 +39,7 @@ export default function RoomControlPage() {
 
   const loadControlData = async () => {
     try {
-      const [players, questRooms] = await Promise.all([
-        controlApi.getPlayerList(),
-        roomApi.getAll(),
-      ])
-      setPlayerList(players.slice().sort((a, b) => a.localeCompare(b, undefined, { numeric: true })))
+      const questRooms = await roomApi.getAll()
       const roomOptions = questRooms
         .map((room) => ({ value: room.room_id, label: room.name }))
         .sort((a, b) => a.label.localeCompare(b.label))
@@ -57,20 +51,6 @@ export default function RoomControlPage() {
 
   useEffect(() => {
     loadControlData()
-
-    const intervalId = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev === 1) {
-          loadControlData()
-          return 5
-        }
-        return prev - 1
-      })
-    }, 1000)
-
-    return () => {
-      clearInterval(intervalId)
-    }
   }, [])
 
   useEffect(() => {
@@ -187,8 +167,8 @@ export default function RoomControlPage() {
         </div>
       }
     >
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 gap-6">
+          <div className="space-y-6">
             <div className="surface-card p-6">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -251,34 +231,6 @@ export default function RoomControlPage() {
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="surface-card p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-foreground">未分配玩家</h2>
-                <div className="text-xs text-foreground/60">Refreshing in {countdown}s</div>
-              </div>
-              <div className="rounded-lg border border-border/70 bg-muted/20 p-3 text-sm text-foreground/70">
-                請先至「房間 → 管理設備」將設備加入房間，再回來使用序列指派。
-              </div>
-              <div className="mt-4 grid grid-cols-2 items-center gap-2 border-b border-border p-2 text-xs font-medium text-foreground/60">
-                <span>Player ID</span>
-                <span className="text-right">狀態</span>
-              </div>
-              <div className="space-y-2">
-                {playerList.length === 0 ? (
-                  <div className="py-4 text-center text-foreground/50">目前沒有未分配玩家</div>
-                ) : (
-                  playerList.map((player) => (
-                    <div key={player} className="flex items-center justify-between px-2 py-1 text-sm">
-                      <span className="font-mono text-foreground/80">{player}</span>
-                      <span className="text-foreground/50">待指派</span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-          </div>
       </div>
     </QuestPageShell>
   )

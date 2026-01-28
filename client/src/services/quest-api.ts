@@ -292,13 +292,6 @@ export const roomApi = {
 // ============ 控制 API（鏡像 /control） ============
 
 export const controlApi = {
-  // 獲取未分配玩家清單
-  getPlayerList: async (): Promise<string[]> => {
-    const res = await fetch(`${QUEST_CONTROL_BASE}/playerlist`)
-    const data = await res.json()
-    return data?.unassignedPlayers || []
-  },
-
   // 指派序列
   assignSeq: async (roomId: string, clientId: string, seq: number): Promise<void> => {
     await fetch(`${QUEST_CONTROL_BASE}/assignseq/${roomId}/${clientId}/${seq}`, {

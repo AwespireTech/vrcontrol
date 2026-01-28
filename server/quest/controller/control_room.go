@@ -1,13 +1,9 @@
 package controller
 
 import (
-	"maps"
-	"strings"
-
 	questconsts "vrcontrol/server/quest/consts"
 	"vrcontrol/server/quest/service"
 	"vrcontrol/server/quest/sockets"
-	"vrcontrol/server/utilities"
 
 	"github.com/gin-gonic/gin"
 )
@@ -109,24 +105,4 @@ func getQuestAssignedSequences(roomId string) map[string]int {
 		sequences[key] = value
 	}
 	return sequences
-}
-func GetUnassignedPlayers(c *gin.Context) {
-	players := utilities.Fold(maps.Keys(StandbyPlayerMap), make([]string, 0, len(StandbyPlayerMap)), func(_l []string, deviceId string) []string { return append(_l, deviceId) })
-	if questDeviceService == nil {
-		c.JSON(200, gin.H{"unassignedPlayers": players})
-		return
-	}
-	filtered := make([]string, 0, len(players))
-	for _, deviceId := range players {
-		if strings.HasPrefix(deviceId, "DEV-") {
-			if questDeviceService.Exists(deviceId) {
-				filtered = append(filtered, deviceId)
-			}
-			continue
-		}
-		if id, ok := normalizeDeviceIDFromClient(deviceId); ok && questDeviceService.Exists(id) {
-			filtered = append(filtered, id)
-		}
-	}
-	c.JSON(200, gin.H{"unassignedPlayers": filtered})
 }
