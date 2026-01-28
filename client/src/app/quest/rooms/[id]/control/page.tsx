@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { SERVER } from '@/environment'
 import Button from '@/components/button'
 import PlayerInfo from '@/components/player-info'
-import AssignRoom from '@/components/assign-room'
 import { controlApi, roomApi, simpleApi } from '@/services/quest-api'
 import type { PlayerData, RoomInfoData } from '@/interfaces/room.interface'
 import QuestPageShell from '@/components/quest/quest-page-shell'
@@ -112,15 +111,6 @@ export default function RoomControlPage() {
       return () => clearTimeout(timer)
     }
   }, [moveState])
-
-  const handleAssignRoomAndSeq = async (player: string, targetRoomId: string, seq: number) => {
-    try {
-      await controlApi.assignRoomAndSeq(player, targetRoomId, seq)
-      await loadControlData()
-    } catch (error) {
-      console.error('Failed to assign room and sequence:', error)
-    }
-  }
 
   const handleChangeSequence = async (player: string, seq: number) => {
     if (!roomId) return
@@ -267,21 +257,24 @@ export default function RoomControlPage() {
                 <h2 className="text-xl font-bold text-foreground">未分配玩家</h2>
                 <div className="text-xs text-foreground/60">Refreshing in {countdown}s</div>
               </div>
-              <div className="grid grid-cols-4 items-center gap-2 border-b border-border p-2 text-xs font-medium text-foreground/60">
+              <div className="rounded-lg border border-border/70 bg-muted/20 p-3 text-sm text-foreground/70">
+                請先至「房間 → 管理設備」將設備加入房間，再回來使用序列指派。
+              </div>
+              <div className="mt-4 grid grid-cols-2 items-center gap-2 border-b border-border p-2 text-xs font-medium text-foreground/60">
                 <span>Player ID</span>
-                <span className="text-center">Room</span>
-                <span className="text-center">Seq</span>
-                <span></span>
+                <span className="text-right">狀態</span>
               </div>
               <div className="space-y-2">
-                {playerList.map((player) => (
-                  <AssignRoom
-                    key={player}
-                    player={player}
-                    options={roomList}
-                    onClick={handleAssignRoomAndSeq}
-                  />
-                ))}
+                {playerList.length === 0 ? (
+                  <div className="py-4 text-center text-foreground/50">目前沒有未分配玩家</div>
+                ) : (
+                  playerList.map((player) => (
+                    <div key={player} className="flex items-center justify-between px-2 py-1 text-sm">
+                      <span className="font-mono text-foreground/80">{player}</span>
+                      <span className="text-foreground/50">待指派</span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 

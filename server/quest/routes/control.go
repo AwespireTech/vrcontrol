@@ -12,9 +12,6 @@ func SetQuestControlRoutes(router *gin.RouterGroup) {
 	router.POST("/assignseq/:roomId/:clientId/:seq", controller.AssignSequence)
 	router.GET("/assignseq/:roomId/:clientId/:seq", controller.AssignSequence)
 
-	router.POST("/assignroomandseq/:clientId/:roomId/:seq", controller.AssignRoomAndSeq)
-	router.GET("/assignroomandseq/:clientId/:roomId/:seq", controller.AssignRoomAndSeq)
-
 	router.GET("/roomlist", controller.GetRoomList)
 	router.GET("/playerlist", controller.GetUnassignedPlayers)
 }

@@ -291,13 +291,6 @@ export const controlApi = {
     return data?.unassignedPlayers || []
   },
 
-  // 指派玩家房間與序列
-  assignRoomAndSeq: async (clientId: string, roomId: string, seq: number): Promise<void> => {
-    await fetch(`${QUEST_CONTROL_BASE}/assignroomandseq/${clientId}/${roomId}/${seq}`, {
-      method: 'POST',
-    })
-  },
-
   // 指派序列
   assignSeq: async (roomId: string, clientId: string, seq: number): Promise<void> => {
     await fetch(`${QUEST_CONTROL_BASE}/assignseq/${roomId}/${clientId}/${seq}`, {
