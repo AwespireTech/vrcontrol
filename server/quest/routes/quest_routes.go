@@ -88,6 +88,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 	scrcpyController := controller.NewScrcpyController(scrcpyService)
 	preferenceController := controller.NewPreferenceController(preferenceService)
 	controller.SetQuestRoomService(roomService)
+	controller.SetQuestDeviceService(deviceService)
 
 	// Quest API 路由群組
 	questAPI := router.Group("/api/quest")
@@ -114,6 +115,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 		devices := questAPI.Group("/devices")
 		{
 			devices.GET("", deviceController.GetAllDevices)
+			devices.GET("/isolation", controller.GetIsolationDevices)
 			devices.GET("/:id", deviceController.GetDevice)
 			devices.POST("", deviceController.CreateDevice)
 			devices.PUT("/:id", deviceController.UpdateDevice)

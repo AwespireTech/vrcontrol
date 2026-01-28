@@ -11,6 +11,7 @@ interface DeviceFormProps {
 
 export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormProps) {
   const [formData, setFormData] = useState({
+    device_id: '',
     alias: device?.alias || '',
     name: device?.name || '',
     ip: device?.ip || '',
@@ -23,7 +24,18 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
     setSubmitting(true)
 
     try {
-      await onSubmit(formData)
+      const payload = device
+        ? ({
+            alias: formData.alias,
+            name: formData.name,
+            ip: formData.ip,
+            port: formData.port,
+          } as Partial<QuestDevice>)
+        : {
+            ...formData,
+            device_id: formData.device_id.trim(),
+          }
+      await onSubmit(payload)
     } catch (error) {
       console.error('Failed to submit form:', error)
       alert('提交失敗')
@@ -42,6 +54,24 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {!device && (
+        <div>
+          <label className="block text-sm font-semibold text-foreground mb-2">
+            設備 ID（8 位 16 進位）*
+          </label>
+          <input
+            type="text"
+            name="device_id"
+            value={formData.device_id}
+            onChange={handleChange}
+            required
+            pattern="^[0-9a-fA-F]{8}$"
+            className="ui-input w-full px-4 py-2 uppercase"
+            placeholder="例如: 1A2B3C4D"
+          />
+          <p className="text-xs text-foreground/50 mt-1">系統會自動加上 DEV- 前綴</p>
+        </div>
+      )}
       {device?.room_id && (
         <div className="rounded-lg border border-border/70 bg-muted/20 p-4 text-sm text-foreground/70">
           目前所屬房間：<span className="font-semibold text-foreground">{device.room_id}</span>

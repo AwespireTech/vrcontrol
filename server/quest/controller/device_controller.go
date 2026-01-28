@@ -78,6 +78,8 @@ func (c *DeviceController) CreateDevice(ctx *gin.Context) {
 	}
 
 	log.Printf("[DeviceController] CreateDevice: 創建成功 - Device ID: %s\n", device.DeviceID)
+	reconcileIsolationAfterDeviceUpdate(device.DeviceID, device.IP)
+	removeIsolationByDeviceID(device.DeviceID)
 	ctx.JSON(http.StatusCreated, gin.H{
 		"success": true,
 		"data":    device,
@@ -168,6 +170,9 @@ func (c *DeviceController) PatchDevice(ctx *gin.Context) {
 		})
 		return
 	}
+
+	reconcileIsolationAfterDeviceUpdate(updated.DeviceID, updated.IP)
+	removeIsolationByDeviceID(updated.DeviceID)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,

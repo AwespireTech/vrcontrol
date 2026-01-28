@@ -2,6 +2,7 @@ import {
   QUEST_API_BASE,
   type ApiResponse,
   type QuestDevice,
+  type IsolationDevice,
   type QuestRoom,
   type QuestAction,
   type BatchExecuteRequest,
@@ -27,6 +28,13 @@ export const deviceApi = {
   getAll: async (): Promise<QuestDevice[]> => {
     const res = await fetch(`${QUEST_API_BASE}/devices`)
     const data: ApiResponse<QuestDevice[]> = await res.json()
+    return data.data || []
+  },
+
+  // 獲取隔離區連線清單
+  getIsolation: async (): Promise<IsolationDevice[]> => {
+    const res = await fetch(`${QUEST_API_BASE}/devices/isolation`)
+    const data: ApiResponse<IsolationDevice[]> = await res.json()
     return data.data || []
   },
 

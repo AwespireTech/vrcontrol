@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -106,10 +107,18 @@ func (s *DeviceService) GetDevice(deviceID string) (*model.QuestDevice, error) {
 // CreateDevice 創建新設備
 func (s *DeviceService) CreateDevice(device *model.QuestDevice) error {
 	log.Println("[DeviceService] CreateDevice: 開始創建設備")
-	// 生成 DeviceID
+	// 驗證並生成 DeviceID（DEV- + 8 位 16 進位）
 	if device.DeviceID == "" {
-		device.DeviceID = fmt.Sprintf("QQ-%d", time.Now().UnixNano()%1000000)
+		return fmt.Errorf("device_id is required")
 	}
+	normalized, err := normalizeDeviceIDInput(device.DeviceID)
+	if err != nil {
+		return err
+	}
+	if s.deviceRepo.Exists(normalized) {
+		return fmt.Errorf("device already exists: %s", normalized)
+	}
+	device.DeviceID = normalized
 	log.Printf("[DeviceService] CreateDevice: 設備 ID 生成 - %s\n", device.DeviceID)
 
 	// 設置預設值
@@ -128,7 +137,7 @@ func (s *DeviceService) CreateDevice(device *model.QuestDevice) error {
 	}
 
 	log.Println("[DeviceService] CreateDevice: 調用 Repository Create")
-	err := s.deviceRepo.Create(device)
+	err = s.deviceRepo.Create(device)
 	if err != nil {
 		log.Printf("[DeviceService] CreateDevice: Repository Create 失敗 - %v\n", err)
 	} else {
@@ -144,6 +153,7 @@ type DevicePatch struct {
 	IP                   *string `json:"ip"`
 	Port                 *int    `json:"port"`
 	Notes                *string `json:"notes"`
+	Serial               *string `json:"serial"`
 	RoomID               *string `json:"room_id"` // read-only, use room API
 	AutoReconnectEnabled *bool   `json:"auto_reconnect_enabled"`
 }
@@ -169,6 +179,9 @@ func (s *DeviceService) PatchDevice(deviceID string, patch DevicePatch) (*model.
 	}
 	if patch.Notes != nil {
 		device.Notes = *patch.Notes
+	}
+	if patch.Serial != nil {
+		device.Serial = *patch.Serial
 	}
 	if patch.AutoReconnectEnabled != nil {
 		device.AutoReconnectEnabled = *patch.AutoReconnectEnabled
@@ -531,6 +544,11 @@ func (s *DeviceService) GetDevicesByRoom(roomID string) []*model.QuestDevice {
 	return s.deviceRepo.GetByRoomID(roomID)
 }
 
+// Exists 檢查設備是否存在
+func (s *DeviceService) Exists(deviceID string) bool {
+	return s.deviceRepo.Exists(deviceID)
+}
+
 // UpdateDeviceRoom 更新設備所在房間
 func (s *DeviceService) UpdateDeviceRoom(deviceID, roomID string) error {
 	device, err := s.deviceRepo.GetByID(deviceID)
@@ -540,4 +558,24 @@ func (s *DeviceService) UpdateDeviceRoom(deviceID, roomID string) error {
 
 	device.RoomID = roomID
 	return s.deviceRepo.Update(device)
+}
+
+// UpdateWSStatus 更新設備 WS 連線狀態
+func (s *DeviceService) UpdateWSStatus(deviceID, status string) error {
+	device, err := s.deviceRepo.GetByID(deviceID)
+	if err != nil {
+		return err
+	}
+	device.WSStatus = status
+	device.WSLastSeen = time.Now()
+	return s.deviceRepo.Update(device)
+}
+
+var deviceIDPattern = regexp.MustCompile(`^[0-9A-Fa-f]{8}$`)
+
+func normalizeDeviceIDInput(input string) (string, error) {
+	if !deviceIDPattern.MatchString(input) {
+		return "", fmt.Errorf("device_id must be 8 hex characters")
+	}
+	return "DEV-" + strings.ToUpper(input), nil
 }

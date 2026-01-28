@@ -2,6 +2,7 @@ package controller
 
 import (
 	"maps"
+	"strings"
 
 	questconsts "vrcontrol/server/quest/consts"
 	"vrcontrol/server/quest/service"
@@ -18,10 +19,15 @@ var DeviceRoomMap map[string]string = make(map[string]string)
 var StandbyPlayerMap map[string]*sockets.Player = make(map[string]*sockets.Player)
 var StandbyPlayerDisconnect = make(chan string)
 var questRoomService *service.RoomService
+var questDeviceService *service.DeviceService
 
 func SetQuestRoomService(svc *service.RoomService) {
 	questRoomService = svc
 	refreshDeviceRoomMapFromService()
+}
+
+func SetQuestDeviceService(svc *service.DeviceService) {
+	questDeviceService = svc
 }
 
 func init() {
@@ -34,6 +40,9 @@ func init() {
 					player.Room.PlayerUnregister <- player
 				}
 			}
+			removeIsolation(disconect)
+			removeIsolationByDeviceID(disconect)
+			updateDeviceWSStatus(disconect, "disconnected")
 		}
 	}()
 }
@@ -102,6 +111,22 @@ func getQuestAssignedSequences(roomId string) map[string]int {
 	return sequences
 }
 func GetUnassignedPlayers(c *gin.Context) {
-
-	c.JSON(200, gin.H{"unassignedPlayers": utilities.Fold(maps.Keys(StandbyPlayerMap), make([]string, 0, len(StandbyPlayerMap)), func(_l []string, deviceId string) []string { return append(_l, deviceId) })})
+	players := utilities.Fold(maps.Keys(StandbyPlayerMap), make([]string, 0, len(StandbyPlayerMap)), func(_l []string, deviceId string) []string { return append(_l, deviceId) })
+	if questDeviceService == nil {
+		c.JSON(200, gin.H{"unassignedPlayers": players})
+		return
+	}
+	filtered := make([]string, 0, len(players))
+	for _, deviceId := range players {
+		if strings.HasPrefix(deviceId, "DEV-") {
+			if questDeviceService.Exists(deviceId) {
+				filtered = append(filtered, deviceId)
+			}
+			continue
+		}
+		if id, ok := normalizeDeviceIDFromClient(deviceId); ok && questDeviceService.Exists(id) {
+			filtered = append(filtered, id)
+		}
+	}
+	c.JSON(200, gin.H{"unassignedPlayers": filtered})
 }

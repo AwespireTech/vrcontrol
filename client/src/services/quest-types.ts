@@ -73,10 +73,26 @@ export interface QuestDevice {
   auto_reconnect_next_attempt_at?: string
   auto_reconnect_last_error?: string
 
+  // WebSocket 連線狀態
+  ws_status?: 'connected' | 'disconnected'
+  ws_last_seen?: string
+
   last_seen: string
   first_connected: string
   created_at: string
   updated_at: string
+}
+
+// 隔離區連線資料
+export interface IsolationDevice {
+  client_id: string
+  device_id: string
+  ip: string
+  valid: boolean
+  id_matched: boolean
+  ip_matched: boolean
+  connected_at: string
+  last_seen: string
 }
 
 // 房間類型
