@@ -228,9 +228,31 @@ export default function DevicesPage() {
     }
   }
 
+  const getAdbStatusBadgeClass = (status: QuestDevice['status']) => {
+    switch (status) {
+      case QUEST_DEVICE_STATUS.ONLINE:
+        return 'ui-badge-success'
+      case QUEST_DEVICE_STATUS.CONNECTING:
+        return 'ui-badge-warning'
+      case QUEST_DEVICE_STATUS.ERROR:
+        return 'ui-badge-danger'
+      case QUEST_DEVICE_STATUS.OFFLINE:
+      case QUEST_DEVICE_STATUS.DISCONNECTED:
+      default:
+        return 'ui-badge-muted'
+    }
+  }
+
   const getWsStatusText = (status?: QuestDevice['ws_status']) => {
-    if (status === 'connected') return 'WS 已連線'
-    return 'WS 未連線'
+    if (status === 'connected') return '已連線'
+    if (status === 'disconnected') return '未連線'
+    return '未知'
+  }
+
+  const getWsStatusBadgeClass = (status?: QuestDevice['ws_status']) => {
+    if (status === 'connected') return 'ui-badge-success'
+    if (status === 'disconnected') return 'ui-badge-muted'
+    return 'ui-badge-muted'
   }
 
   const isValidClientId = (clientId: string) => /^[0-9A-Za-z]{8}$/.test(clientId)
@@ -275,23 +297,6 @@ export default function DevicesPage() {
     } catch (error) {
       console.error('Failed to update device from isolation:', error)
       alert('更新設備失敗')
-    }
-  }
-
-  const getStatusColor = (status: QuestDevice['status']) => {
-    switch (status) {
-      case QUEST_DEVICE_STATUS.ONLINE:
-        return 'bg-success'
-      case QUEST_DEVICE_STATUS.OFFLINE:
-        return 'bg-muted'
-      case QUEST_DEVICE_STATUS.CONNECTING:
-        return 'bg-warning'
-      case QUEST_DEVICE_STATUS.ERROR:
-        return 'bg-danger'
-      case QUEST_DEVICE_STATUS.DISCONNECTED:
-        return 'bg-muted'
-      default:
-        return 'bg-muted'
     }
   }
 
@@ -555,7 +560,7 @@ export default function DevicesPage() {
           <div className="grid grid-cols-12 gap-3 border-b border-border bg-surface/50 px-4 py-3 text-xs text-foreground/60">
             <div className="col-span-1">選取</div>
             <div className="col-span-3">設備</div>
-            <div className="col-span-2">狀態</div>
+            <div className="col-span-2">連線</div>
             <div className="col-span-2">房間</div>
             <div className="col-span-2">電量 / 溫度</div>
             <div className="col-span-2 text-right">操作</div>
@@ -608,18 +613,23 @@ export default function DevicesPage() {
                   ) : null}
                 </div>
                 <div className="col-span-2">
-                  <div className="flex items-center gap-2">
-                    <span className={`h-2.5 w-2.5 rounded-full ${getStatusColor(device.status)}`} />
-                    <span className="text-sm text-foreground/80">
-                      {getStatusText(device.status)}
-                    </span>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="w-9 text-[11px] uppercase tracking-wide text-foreground/50">ADB</span>
+                      <span className={`ui-badge ${getAdbStatusBadgeClass(device.status)}`}>
+                        {getStatusText(device.status)}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-9 text-[11px] uppercase tracking-wide text-foreground/50">WS</span>
+                      <span className={`ui-badge ${getWsStatusBadgeClass(device.ws_status)}`}>
+                        {getWsStatusText(device.ws_status)}
+                      </span>
+                    </div>
                   </div>
                   {device.alias ? (
-                    <div className="text-xs text-foreground/50">{device.alias}</div>
+                    <div className="mt-2 text-xs text-foreground/50">{device.alias}</div>
                   ) : null}
-                  <div className="mt-1 text-xs text-foreground/50">
-                    {getWsStatusText(device.ws_status)}
-                  </div>
                 </div>
                 <div className="col-span-2 text-xs text-foreground/70">
                   {device.room_id ? (

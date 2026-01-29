@@ -5,6 +5,50 @@ import type { QuestRoom, QuestDevice } from '@/services/quest-types'
 import { getDisplayName } from '@/lib/utils/device'
 import QuestPageShell from '@/components/quest/quest-page-shell'
 
+const getStatusText = (status: QuestDevice['status']) => {
+  switch (status) {
+    case 'online':
+      return '在線'
+    case 'offline':
+      return '離線'
+    case 'connecting':
+      return '連接中'
+    case 'error':
+      return '錯誤'
+    case 'disconnected':
+      return '手動斷開'
+    default:
+      return '未知'
+  }
+}
+
+const getAdbStatusBadgeClass = (status: QuestDevice['status']) => {
+  switch (status) {
+    case 'online':
+      return 'ui-badge-success'
+    case 'connecting':
+      return 'ui-badge-warning'
+    case 'error':
+      return 'ui-badge-danger'
+    case 'offline':
+    case 'disconnected':
+    default:
+      return 'ui-badge-muted'
+  }
+}
+
+const getWsStatusText = (status?: QuestDevice['ws_status']) => {
+  if (status === 'connected') return '已連線'
+  if (status === 'disconnected') return '未連線'
+  return '未知'
+}
+
+const getWsStatusBadgeClass = (status?: QuestDevice['ws_status']) => {
+  if (status === 'connected') return 'ui-badge-success'
+  if (status === 'disconnected') return 'ui-badge-muted'
+  return 'ui-badge-muted'
+}
+
 export default function RoomDevicesPage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
@@ -147,14 +191,19 @@ export default function RoomDevicesPage() {
                       <div className="text-sm text-foreground/50">
                         {device.ip}:{device.port}
                       </div>
-                      <div className="mt-1">
-                        <span
-                          className={`ui-badge ${
-                            device.status === 'online' ? 'ui-badge-success' : 'ui-badge-muted'
-                          }`}
-                        >
-                          {device.status}
-                        </span>
+                      <div className="mt-2 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="w-9 text-[11px] uppercase tracking-wide text-foreground/50">ADB</span>
+                          <span className={`ui-badge ${getAdbStatusBadgeClass(device.status)}`}>
+                            {getStatusText(device.status)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-9 text-[11px] uppercase tracking-wide text-foreground/50">WS</span>
+                          <span className={`ui-badge ${getWsStatusBadgeClass(device.ws_status)}`}>
+                            {getWsStatusText(device.ws_status)}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <button
@@ -196,14 +245,19 @@ export default function RoomDevicesPage() {
                           目前房間：{roomNameMap.get(device.room_id) || device.room_id}
                         </div>
                       )}
-                      <div className="mt-1">
-                        <span
-                          className={`ui-badge ${
-                            device.status === 'online' ? 'ui-badge-success' : 'ui-badge-muted'
-                          }`}
-                        >
-                          {device.status}
-                        </span>
+                      <div className="mt-2 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="w-9 text-[11px] uppercase tracking-wide text-foreground/50">ADB</span>
+                          <span className={`ui-badge ${getAdbStatusBadgeClass(device.status)}`}>
+                            {getStatusText(device.status)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-9 text-[11px] uppercase tracking-wide text-foreground/50">WS</span>
+                          <span className={`ui-badge ${getWsStatusBadgeClass(device.ws_status)}`}>
+                            {getWsStatusText(device.ws_status)}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <button

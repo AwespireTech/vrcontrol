@@ -42,6 +42,18 @@ function getReasonText(reason?: QuestDevice['auto_reconnect_disabled_reason']) {
   }
 }
 
+function getWsStatusText(status?: QuestDevice['ws_status']) {
+  if (status === 'connected') return '已連線'
+  if (status === 'disconnected') return '未連線'
+  return '未知'
+}
+
+function getWsStatusBadge(status?: QuestDevice['ws_status']) {
+  if (status === 'connected') return 'ui-badge-success'
+  if (status === 'disconnected') return 'ui-badge-muted'
+  return 'ui-badge-muted'
+}
+
 export default function QuestMonitoringPage() {
   const [devices, setDevices] = useState<QuestDevice[]>([])
   const [loading, setLoading] = useState(true)
@@ -311,10 +323,11 @@ export default function QuestMonitoringPage() {
 
         <div className="surface-card overflow-hidden">
           <div className="grid grid-cols-12 gap-3 border-b border-border bg-surface/50 px-4 py-3 text-xs text-foreground/60">
-            <div className="col-span-4">設備</div>
-            <div className="col-span-2">狀態</div>
+            <div className="col-span-3">設備</div>
+            <div className="col-span-2">ADB</div>
+            <div className="col-span-2">WS</div>
             <div className="col-span-2">自動重連</div>
-            <div className="col-span-3">原因 / 詳情</div>
+            <div className="col-span-2">原因 / 詳情</div>
             <div className="col-span-1 text-right">操作</div>
           </div>
 
@@ -329,7 +342,7 @@ export default function QuestMonitoringPage() {
                   key={d.device_id}
                   className="grid grid-cols-12 items-start gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-surface/40 last:border-b-0"
                 >
-                  <div className="col-span-4">
+                  <div className="col-span-3">
                     <div className="font-semibold text-foreground">{getDisplayName(d)}</div>
                     <div className="text-xs text-foreground/60 font-mono">{d.ip}:{d.port}</div>
                     <div className="text-xs text-foreground/50 font-mono">{d.device_id}</div>
@@ -352,6 +365,12 @@ export default function QuestMonitoringPage() {
                   </div>
 
                   <div className="col-span-2">
+                    <span className={`ui-badge ${getWsStatusBadge(d.ws_status)}`}>
+                      {getWsStatusText(d.ws_status)}
+                    </span>
+                  </div>
+
+                  <div className="col-span-2">
                     <label className="inline-flex items-center gap-2 text-sm text-foreground/80">
                       <input
                         type="checkbox"
@@ -362,7 +381,7 @@ export default function QuestMonitoringPage() {
                     </label>
                   </div>
 
-                  <div className="col-span-3 text-xs text-foreground/70">
+                  <div className="col-span-2 text-xs text-foreground/70">
                     {reason ? <div className="text-warning">{reason}</div> : <div className="text-foreground/40">-</div>}
                     {lastError ? (
                       <div className="truncate" title={lastError}>
