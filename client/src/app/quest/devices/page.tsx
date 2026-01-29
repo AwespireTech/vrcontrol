@@ -233,7 +233,7 @@ export default function DevicesPage() {
     return 'WS 未連線'
   }
 
-  const isValidClientId = (clientId: string) => /^[0-9a-fA-F]{8}$/.test(clientId)
+  const isValidClientId = (clientId: string) => /^[0-9A-Za-z]{8}$/.test(clientId)
 
   const getDeviceIdFromClient = (clientId: string) => `DEV-${clientId.toUpperCase()}`
 
@@ -733,7 +733,7 @@ export default function DevicesPage() {
                       </div>
                       {!valid && (
                         <div className="mt-2 text-xs text-danger">
-                          格式錯誤：需為 8 位 16 進位
+                          格式錯誤：需為 8 位英數（A-Z, 0-9）
                         </div>
                       )}
                       {valid && entry.id_matched && !entry.ip_matched && (

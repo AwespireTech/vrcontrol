@@ -107,7 +107,7 @@ func (s *DeviceService) GetDevice(deviceID string) (*model.QuestDevice, error) {
 // CreateDevice 創建新設備
 func (s *DeviceService) CreateDevice(device *model.QuestDevice) error {
 	log.Println("[DeviceService] CreateDevice: 開始創建設備")
-	// 驗證並生成 DeviceID（DEV- + 8 位 16 進位）
+	// 驗證並生成 DeviceID（DEV- + 8 位英數）
 	if device.DeviceID == "" {
 		return fmt.Errorf("device_id is required")
 	}
@@ -571,11 +571,12 @@ func (s *DeviceService) UpdateWSStatus(deviceID, status string) error {
 	return s.deviceRepo.Update(device)
 }
 
-var deviceIDPattern = regexp.MustCompile(`^[0-9A-Fa-f]{8}$`)
+var deviceIDPattern = regexp.MustCompile(`^[0-9A-Z]{8}$`)
 
 func normalizeDeviceIDInput(input string) (string, error) {
-	if !deviceIDPattern.MatchString(input) {
-		return "", fmt.Errorf("device_id must be 8 hex characters")
+	upper := strings.ToUpper(input)
+	if !deviceIDPattern.MatchString(upper) {
+		return "", fmt.Errorf("device_id must be 8 alphanumeric characters (A-Z, 0-9)")
 	}
-	return "DEV-" + strings.ToUpper(input), nil
+	return "DEV-" + upper, nil
 }
