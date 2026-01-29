@@ -191,6 +191,7 @@ export default function RoomDevicesPage() {
                       <div className="text-sm text-foreground/50">
                         {device.ip}:{device.port}
                       </div>
+                    </div>
                       <div className="mt-2 space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="w-9 text-[11px] uppercase tracking-wide text-foreground/50">ADB</span>
@@ -205,7 +206,6 @@ export default function RoomDevicesPage() {
                           </span>
                         </div>
                       </div>
-                    </div>
                     <button
                       onClick={() => handleRemoveDevice(device.device_id)}
                       className="ui-btn ui-btn-md ui-btn-danger"
@@ -240,6 +240,7 @@ export default function RoomDevicesPage() {
                       <div className="text-sm text-foreground/50">
                         {device.ip}:{device.port}
                       </div>
+                    </div>
                       {device.room_id && device.room_id !== room.room_id && (
                         <div className="mt-1 text-xs text-warning">
                           目前房間：{roomNameMap.get(device.room_id) || device.room_id}
@@ -259,7 +260,6 @@ export default function RoomDevicesPage() {
                           </span>
                         </div>
                       </div>
-                    </div>
                     <button
                       onClick={() => handleAddDevice(device)}
                       className={`ui-btn ui-btn-md ${

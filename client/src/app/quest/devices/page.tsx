@@ -627,9 +627,6 @@ export default function DevicesPage() {
                       </span>
                     </div>
                   </div>
-                  {device.alias ? (
-                    <div className="mt-2 text-xs text-foreground/50">{device.alias}</div>
-                  ) : null}
                 </div>
                 <div className="col-span-2 text-xs text-foreground/70">
                   {device.room_id ? (

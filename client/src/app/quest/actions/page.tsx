@@ -247,7 +247,7 @@ export default function ActionsPage() {
 
       {/* 執行動作模態框 */}
       {showExecuteModal && selectedAction && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
           <div className="surface-card w-full max-w-2xl max-h-[80vh] overflow-y-auto p-6 mx-4">
             <h2 className="text-2xl font-bold text-foreground mb-4">
               執行動作: {selectedAction.name}
