@@ -14,6 +14,7 @@ import (
 
 type Player struct {
 	DeiviceID         string
+	StableID          string
 	Connection        *websocket.Conn
 	Room              *Room
 	Stage             int
@@ -36,6 +37,7 @@ type Player struct {
 func HandlePlayerConnect(conn *websocket.Conn, id string, sdc chan string) *Player {
 	player := Player{
 		DeiviceID:         id,
+		StableID:          id,
 		Connection:        conn,
 		StandbyDisconnect: sdc,
 		LastUpdate:        time.Now(),
@@ -51,8 +53,8 @@ func (p *Player) read() {
 			p.Room.PlayerUnregister <- p
 		} else {
 			log.Printf("Player %s disconnected before being assigned to a room.", p.DeiviceID)
-			p.StandbyDisconnect <- p.DeiviceID
 		}
+		p.StandbyDisconnect <- p.StableID
 		p.Connection.Close()
 	}()
 	p.Connection.SetReadLimit(MaxMessageSize)

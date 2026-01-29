@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { deviceApi } from '@/services/quest-api'
+import { deviceApi, roomApi } from '@/services/quest-api'
 import DeviceForm from '@/components/quest/device-form'
 import type { QuestDevice } from '@/services/quest-types'
 import QuestPageShell from '@/components/quest/quest-page-shell'
@@ -9,15 +9,22 @@ export default function EditDevicePage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const [device, setDevice] = useState<QuestDevice | null>(null)
+  const [roomName, setRoomName] = useState<string>('')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const loadDevice = async () => {
       if (!id) return
-      
+
       try {
         const data = await deviceApi.get(id)
         setDevice(data)
+        if (data?.room_id) {
+          const room = await roomApi.get(data.room_id)
+          setRoomName(room?.name || data.room_id)
+        } else {
+          setRoomName('')
+        }
       } catch (error) {
         console.error('Failed to load device:', error)
         alert('載入設備失敗')
@@ -81,6 +88,22 @@ export default function EditDevicePage() {
             <span className="text-foreground">
               {device.ping_status || 'unknown'} ({device.ping_ms ?? 0} ms)
             </span>
+          </div>
+          <div className="mt-2 flex items-center justify-between">
+            <span className="text-foreground/70">所屬房間:</span>
+            <div className="flex items-center gap-2">
+              <span className="text-foreground">
+                {roomName || '未指派'}
+              </span>
+              {device.room_id && (
+                <button
+                  onClick={() => navigate(`/quest/rooms/${device.room_id}/devices`)}
+                  className="ui-btn ui-btn-xs ui-btn-muted"
+                >
+                  管理房間
+                </button>
+              )}
+            </div>
           </div>
         </div>
         <DeviceForm

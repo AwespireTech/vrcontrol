@@ -167,6 +167,9 @@ func (c *RoomController) AddDevice(ctx *gin.Context) {
 		return
 	}
 
+	refreshDeviceRoomMapFromService()
+	AssignConnectedPlayerToRoom(roomID, deviceID)
+
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Device added to room successfully",
@@ -185,6 +188,9 @@ func (c *RoomController) RemoveDevice(ctx *gin.Context) {
 		})
 		return
 	}
+
+	refreshDeviceRoomMapFromService()
+	DetachConnectedPlayerFromRoom(roomID, deviceID)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,

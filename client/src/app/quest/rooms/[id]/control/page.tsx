@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { SERVER } from '@/environment'
 import Button from '@/components/button'
 import PlayerInfo from '@/components/player-info'
-import AssignRoom from '@/components/assign-room'
 import { controlApi, roomApi, simpleApi } from '@/services/quest-api'
 import type { PlayerData, RoomInfoData } from '@/interfaces/room.interface'
 import QuestPageShell from '@/components/quest/quest-page-shell'
@@ -26,9 +25,7 @@ export default function RoomControlPage() {
   const [selectedOption, setSelectedOption] = useState('')
   const [moveState, setMoveState] = useState('')
 
-  const [playerList, setPlayerList] = useState<string[]>([])
   const [roomList, setRoomList] = useState<{ value: string; label: string }[]>([])
-  const [countdown, setCountdown] = useState(5)
 
 
   const sortedRoomPlayers = useMemo(() => {
@@ -42,11 +39,7 @@ export default function RoomControlPage() {
 
   const loadControlData = async () => {
     try {
-      const [players, questRooms] = await Promise.all([
-        controlApi.getPlayerList(),
-        roomApi.getAll(),
-      ])
-      setPlayerList(players.slice().sort((a, b) => a.localeCompare(b, undefined, { numeric: true })))
+      const questRooms = await roomApi.getAll()
       const roomOptions = questRooms
         .map((room) => ({ value: room.room_id, label: room.name }))
         .sort((a, b) => a.label.localeCompare(b.label))
@@ -58,20 +51,6 @@ export default function RoomControlPage() {
 
   useEffect(() => {
     loadControlData()
-
-    const intervalId = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev === 1) {
-          loadControlData()
-          return 5
-        }
-        return prev - 1
-      })
-    }, 1000)
-
-    return () => {
-      clearInterval(intervalId)
-    }
   }, [])
 
   useEffect(() => {
@@ -112,15 +91,6 @@ export default function RoomControlPage() {
       return () => clearTimeout(timer)
     }
   }, [moveState])
-
-  const handleAssignRoomAndSeq = async (player: string, targetRoomId: string, seq: number) => {
-    try {
-      await controlApi.assignRoomAndSeq(player, targetRoomId, seq)
-      await loadControlData()
-    } catch (error) {
-      console.error('Failed to assign room and sequence:', error)
-    }
-  }
 
   const handleChangeSequence = async (player: string, seq: number) => {
     if (!roomId) return
@@ -197,8 +167,8 @@ export default function RoomControlPage() {
         </div>
       }
     >
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 gap-6">
+          <div className="space-y-6">
             <div className="surface-card p-6">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -261,31 +231,6 @@ export default function RoomControlPage() {
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="surface-card p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-foreground">未分配玩家</h2>
-                <div className="text-xs text-foreground/60">Refreshing in {countdown}s</div>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-2 border-b border-border p-2 text-xs font-medium text-foreground/60">
-                <span>Player ID</span>
-                <span className="text-center">Room</span>
-                <span className="text-center">Seq</span>
-                <span></span>
-              </div>
-              <div className="space-y-2">
-                {playerList.map((player) => (
-                  <AssignRoom
-                    key={player}
-                    player={player}
-                    options={roomList}
-                    onClick={handleAssignRoomAndSeq}
-                  />
-                ))}
-              </div>
-            </div>
-
-          </div>
       </div>
     </QuestPageShell>
   )

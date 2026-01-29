@@ -27,6 +27,7 @@ type Room struct {
 	PlayerBroadcast  chan []byte
 	PlayerRegister   chan *Player
 	PlayerUnregister chan *Player
+	PlayerDetach     chan *Player
 	MoveControl      chan Movement
 	Signals          chan ControlSignal
 	Players          map[*Player]bool
@@ -61,6 +62,7 @@ func NewRoom(roomID string) *Room {
 		PlayerBroadcast:  make(chan []byte, 1024),
 		PlayerRegister:   make(chan *Player),
 		PlayerUnregister: make(chan *Player),
+		PlayerDetach:     make(chan *Player),
 		Players:          make(map[*Player]bool),
 		MoveControl:      make(chan Movement),
 		Signals:          make(chan ControlSignal),
@@ -109,6 +111,17 @@ func (r *Room) Run() {
 				delete(r.Players, player)
 				log.Println("Player Unregistered: ", player.DeiviceID)
 				close(player.InChannel)
+				if len(r.Players) == 0 {
+					updater = false
+					updaterChannel <- struct{}{}
+					log.Println("Updater Stopped")
+				}
+			}
+		case player := <-r.PlayerDetach:
+			if _, ok := r.Players[player]; ok {
+				delete(r.Players, player)
+				player.Room = nil
+				log.Println("Player Detached: ", player.DeiviceID)
 				if len(r.Players) == 0 {
 					updater = false
 					updaterChannel <- struct{}{}

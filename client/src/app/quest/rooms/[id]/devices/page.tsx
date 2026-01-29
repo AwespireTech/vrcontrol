@@ -10,6 +10,7 @@ export default function RoomDevicesPage() {
   const { id } = useParams<{ id: string }>()
   const [room, setRoom] = useState<QuestRoom | null>(null)
   const [allDevices, setAllDevices] = useState<QuestDevice[]>([])
+  const [roomNameMap, setRoomNameMap] = useState<Map<string, string>>(new Map())
   const [roomDevices, setRoomDevices] = useState<QuestDevice[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -17,13 +18,15 @@ export default function RoomDevicesPage() {
     if (!id) return
 
     try {
-      const [roomData, devicesData] = await Promise.all([
+      const [roomData, devicesData, roomsData] = await Promise.all([
         roomApi.get(id),
-        deviceApi.getAll()
+        deviceApi.getAll(),
+        roomApi.getAll(),
       ])
       
       setRoom(roomData)
       setAllDevices(devicesData)
+      setRoomNameMap(new Map(roomsData.map((r) => [r.room_id, r.name])))
       
       // 過濾出屬於此房間的設備
       const roomDeviceIds = roomData?.device_ids || []
@@ -41,13 +44,24 @@ export default function RoomDevicesPage() {
     loadData()
   }, [loadData])
 
-  const handleAddDevice = async (deviceId: string) => {
+  const handleAddDevice = async (device: QuestDevice) => {
     if (!id) return
 
+    if (device.room_id && device.room_id !== id) {
+      const currentRoomName = roomNameMap.get(device.room_id) || device.room_id
+      const confirmed = window.confirm(
+        `此設備目前在「${currentRoomName}」，確定要移入本房間嗎？`,
+      )
+      if (!confirmed) return
+    }
+
     try {
-      await roomApi.addDevice(id, deviceId)
+      if (device.room_id) {
+        await roomApi.removeDevice(device.room_id, device.device_id)
+      }
+      await roomApi.addDevice(id, device.device_id)
       await loadData()
-      alert('設備添加成功')
+      alert(device.room_id ? '設備已移入房間' : '設備添加成功')
     } catch (error) {
       console.error('Failed to add device:', error)
       alert('添加設備失敗')
@@ -177,6 +191,11 @@ export default function RoomDevicesPage() {
                       <div className="text-sm text-foreground/50">
                         {device.ip}:{device.port}
                       </div>
+                      {device.room_id && device.room_id !== room.room_id && (
+                        <div className="mt-1 text-xs text-warning">
+                          目前房間：{roomNameMap.get(device.room_id) || device.room_id}
+                        </div>
+                      )}
                       <div className="mt-1">
                         <span
                           className={`ui-badge ${
@@ -188,10 +207,14 @@ export default function RoomDevicesPage() {
                       </div>
                     </div>
                     <button
-                      onClick={() => handleAddDevice(device.device_id)}
-                      className="ui-btn ui-btn-md ui-btn-success"
+                      onClick={() => handleAddDevice(device)}
+                      className={`ui-btn ui-btn-md ${
+                        device.room_id && device.room_id !== room.room_id
+                          ? 'ui-btn-accent'
+                          : 'ui-btn-success'
+                      }`}
                     >
-                      添加
+                      {device.room_id && device.room_id !== room.room_id ? '移入' : '添加'}
                     </button>
                   </div>
                 ))}

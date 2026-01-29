@@ -10,29 +10,65 @@ import (
 )
 
 func ConnectToRoomSocket(c *gin.Context) {
-	deviceId := c.Param("clientId")
-	// Check if the deviceId is valid
-	if deviceId == "" {
+	clientId := c.Param("clientId")
+	// Check if the clientId is valid
+	if clientId == "" {
 		log.Println("Invalid deviceId")
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid deviceId"})
 		return
 	}
+	clientIP := c.ClientIP()
 	conn, err := sockets.SocketUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Println("Error Upgrading Connection: ", err)
 		return
 	}
-	p := sockets.HandlePlayerConnect(conn, deviceId, StandbyPlayerDisconnect)
+	deviceId, valid := normalizeDeviceIDFromClient(clientId)
+	playerId := clientId
+	if valid {
+		playerId = deviceId
+	}
+	p := sockets.HandlePlayerConnect(conn, playerId, StandbyPlayerDisconnect)
 	if p == nil {
-		log.Println("Failed to handle player connection for deviceId:", deviceId)
+		log.Println("Failed to handle player connection for deviceId:", clientId)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to handle player connection"})
 		return
 	}
 
+	if !valid {
+		recordIsolation(clientId, clientIP, false, "", false, false)
+		StandbyPlayerMap[playerId] = p
+		return
+	}
+
+	if questDeviceService == nil || !questDeviceService.Exists(deviceId) {
+		recordIsolation(clientId, clientIP, true, deviceId, false, false)
+		StandbyPlayerMap[playerId] = p
+		return
+	}
+
+	device, err := questDeviceService.GetDevice(deviceId)
+	if err != nil || device == nil {
+		recordIsolation(clientId, clientIP, true, deviceId, true, false)
+		StandbyPlayerMap[playerId] = p
+		return
+	}
+	if device.IP != clientIP {
+		recordIsolation(clientId, clientIP, true, deviceId, true, false)
+		StandbyPlayerMap[playerId] = p
+		return
+	}
+
+	// id & ip matched
+
+	removeIsolation(clientId)
+	updateDeviceWSStatus(deviceId, "connected")
+
+	refreshDeviceRoomMapFromService()
 	roomId, exists := DeviceRoomMap[deviceId]
 	if !exists {
 		log.Println("Device not assigned to any room")
-		StandbyPlayerMap[deviceId] = p
+		StandbyPlayerMap[playerId] = p
 	} else {
 		log.Println("Device assigned to room:", roomId)
 

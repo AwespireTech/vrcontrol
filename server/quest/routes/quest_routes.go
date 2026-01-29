@@ -73,14 +73,22 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 	// 啟動時以 ADB 清單校正在線狀態（僅更新 Status）
 	deviceService.SyncOnlineStatusFromADBAtStartup()
 
+	// 啟動時以 DeviceIDs 去重並整理房間關聯（不再寫入 assigned_room.json）
+	if assigned, err := roomService.ReconcileDeviceAssignmentsByRoomUpdate(); err != nil {
+		log.Printf("[Quest] 整理設備房間關聯失敗: %v\n", err)
+	} else {
+		log.Printf("[Quest] 設備房間關聯整理完成: %d 筆\n", len(assigned))
+	}
+
 	// 初始化 Controllers
-	deviceController := controller.NewDeviceController(deviceService)
+	deviceController := controller.NewDeviceController(deviceService, roomService)
 	roomController := controller.NewRoomController(roomService)
 	actionController := controller.NewActionController(actionService)
 	monitoringController := controller.NewMonitoringController(monitoringService)
 	scrcpyController := controller.NewScrcpyController(scrcpyService)
 	preferenceController := controller.NewPreferenceController(preferenceService)
 	controller.SetQuestRoomService(roomService)
+	controller.SetQuestDeviceService(deviceService)
 
 	// Quest API 路由群組
 	questAPI := router.Group("/api/quest")
@@ -107,6 +115,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 		devices := questAPI.Group("/devices")
 		{
 			devices.GET("", deviceController.GetAllDevices)
+			devices.GET("/isolation", controller.GetIsolationDevices)
 			devices.GET("/:id", deviceController.GetDevice)
 			devices.POST("", deviceController.CreateDevice)
 			devices.PUT("/:id", deviceController.UpdateDevice)

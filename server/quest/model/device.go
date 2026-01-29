@@ -30,6 +30,10 @@ type QuestDevice struct {
 	AutoReconnectNextAttemptAt  *time.Time `json:"auto_reconnect_next_attempt_at,omitempty"`
 	AutoReconnectLastError      string     `json:"auto_reconnect_last_error,omitempty"`
 
+	// WebSocket 連線狀態（由 WS 連線維護）
+	WSStatus   string    `json:"ws_status"` // connected | disconnected
+	WSLastSeen time.Time `json:"ws_last_seen"`
+
 	LastSeen       time.Time `json:"last_seen"`
 	FirstConnected time.Time `json:"first_connected"`
 	CreatedAt      time.Time `json:"created_at"`

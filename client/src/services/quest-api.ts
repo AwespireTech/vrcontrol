@@ -2,6 +2,7 @@ import {
   QUEST_API_BASE,
   type ApiResponse,
   type QuestDevice,
+  type IsolationDevice,
   type QuestRoom,
   type QuestAction,
   type BatchExecuteRequest,
@@ -30,6 +31,13 @@ export const deviceApi = {
     return data.data || []
   },
 
+  // 獲取隔離區連線清單
+  getIsolation: async (): Promise<IsolationDevice[]> => {
+    const res = await fetch(`${QUEST_API_BASE}/devices/isolation`)
+    const data: ApiResponse<IsolationDevice[]> = await res.json()
+    return data.data || []
+  },
+
   // 獲取單個設備
   get: async (deviceId: string): Promise<QuestDevice | null> => {
     const res = await fetch(`${QUEST_API_BASE}/devices/${deviceId}`)
@@ -51,10 +59,11 @@ export const deviceApi = {
 
   // 取代設備（PUT = replace）
   replace: async (deviceId: string, device: QuestDevice): Promise<QuestDevice> => {
+    const { room_id: _roomId, ...safeDevice } = device
     const res = await fetch(`${QUEST_API_BASE}/devices/${deviceId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(device),
+      body: JSON.stringify(safeDevice),
     })
     const data: ApiResponse<QuestDevice> = await res.json()
     if (!data.success) throw new Error(data.error || 'Failed to update device')
@@ -63,10 +72,11 @@ export const deviceApi = {
 
   // 局部更新設備（PATCH = strict whitelist on server）
   patch: async (deviceId: string, patch: Partial<QuestDevice>): Promise<QuestDevice> => {
+    const { room_id: _roomId, ...safePatch } = patch
     const res = await fetch(`${QUEST_API_BASE}/devices/${deviceId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
+      body: JSON.stringify(safePatch),
     })
     const data: ApiResponse<QuestDevice> = await res.json()
     if (!data.success) throw new Error(data.error || 'Failed to patch device')
@@ -282,20 +292,6 @@ export const roomApi = {
 // ============ 控制 API（鏡像 /control） ============
 
 export const controlApi = {
-  // 獲取未分配玩家清單
-  getPlayerList: async (): Promise<string[]> => {
-    const res = await fetch(`${QUEST_CONTROL_BASE}/playerlist`)
-    const data = await res.json()
-    return data?.unassignedPlayers || []
-  },
-
-  // 指派玩家房間與序列
-  assignRoomAndSeq: async (clientId: string, roomId: string, seq: number): Promise<void> => {
-    await fetch(`${QUEST_CONTROL_BASE}/assignroomandseq/${clientId}/${roomId}/${seq}`, {
-      method: 'POST',
-    })
-  },
-
   // 指派序列
   assignSeq: async (roomId: string, clientId: string, seq: number): Promise<void> => {
     await fetch(`${QUEST_CONTROL_BASE}/assignseq/${roomId}/${clientId}/${seq}`, {

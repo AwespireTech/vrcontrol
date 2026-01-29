@@ -13,12 +13,14 @@ import (
 // DeviceController 設備控制器
 type DeviceController struct {
 	deviceService *service.DeviceService
+	roomService   *service.RoomService
 }
 
 // NewDeviceController 創建新的設備控制器
-func NewDeviceController(deviceService *service.DeviceService) *DeviceController {
+func NewDeviceController(deviceService *service.DeviceService, roomService *service.RoomService) *DeviceController {
 	return &DeviceController{
 		deviceService: deviceService,
+		roomService:   roomService,
 	}
 }
 
@@ -78,6 +80,8 @@ func (c *DeviceController) CreateDevice(ctx *gin.Context) {
 	}
 
 	log.Printf("[DeviceController] CreateDevice: 創建成功 - Device ID: %s\n", device.DeviceID)
+	reconcileIsolationAfterDeviceUpdate(device.DeviceID, device.IP)
+	removeIsolationByDeviceID(device.DeviceID)
 	ctx.JSON(http.StatusCreated, gin.H{
 		"success": true,
 		"data":    device,
@@ -101,6 +105,16 @@ func (c *DeviceController) UpdateDevice(ctx *gin.Context) {
 	}
 
 	device.DeviceID = deviceID
+
+	existing, err := c.deviceService.GetDevice(deviceID)
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+	device.RoomID = existing.RoomID
 
 	if err := c.deviceService.UpdateDevice(&device); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -142,6 +156,14 @@ func (c *DeviceController) PatchDevice(ctx *gin.Context) {
 		}
 	}
 
+	if req.RoomID != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "room_id is read-only; use room assignment API",
+		})
+		return
+	}
+
 	updated, err := c.deviceService.PatchDevice(deviceID, req)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -150,6 +172,9 @@ func (c *DeviceController) PatchDevice(ctx *gin.Context) {
 		})
 		return
 	}
+
+	reconcileIsolationAfterDeviceUpdate(updated.DeviceID, updated.IP)
+	removeIsolationByDeviceID(updated.DeviceID)
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -162,6 +187,17 @@ func (c *DeviceController) PatchDevice(ctx *gin.Context) {
 // @Router /api/quest/devices/:id [delete]
 func (c *DeviceController) DeleteDevice(ctx *gin.Context) {
 	deviceID := ctx.Param("id")
+	DisconnectWSByDeviceID(deviceID)
+
+	if c.roomService != nil {
+		if err := c.roomService.RemoveDeviceFromAllRooms(deviceID); err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"error":   err.Error(),
+			})
+			return
+		}
+	}
 
 	if err := c.deviceService.DeleteDevice(deviceID); err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
@@ -170,6 +206,9 @@ func (c *DeviceController) DeleteDevice(ctx *gin.Context) {
 		})
 		return
 	}
+
+	removeIsolationByDeviceID(deviceID)
+	refreshDeviceRoomMapFromService()
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,

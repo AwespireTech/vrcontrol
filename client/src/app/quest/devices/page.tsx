@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getDisplayName } from '@/lib/utils/device'
-import { deviceApi, scrcpyApi, preferenceApi } from '@/services/quest-api'
-import { QUEST_DEVICE_STATUS, type QuestDevice, ScrcpySession, ScrcpySystemInfo, UserPreference } from '@/services/quest-types'
+import { deviceApi, roomApi, scrcpyApi, preferenceApi } from '@/services/quest-api'
+import { QUEST_DEVICE_STATUS, type QuestDevice, type IsolationDevice, ScrcpySession, ScrcpySystemInfo, UserPreference } from '@/services/quest-types'
 import QuestPageShell from '@/components/quest/quest-page-shell'
 import {
   DEFAULT_BATCH_SIZE,
@@ -15,6 +15,9 @@ type StatusErrorType = 'idle' | 'ok' | 'timeout' | 'adb-error'
 export default function DevicesPage() {
   const navigate = useNavigate()
   const [devices, setDevices] = useState<QuestDevice[]>([])
+  const [roomNameMap, setRoomNameMap] = useState<Map<string, string>>(new Map())
+  const [isolationDevices, setIsolationDevices] = useState<IsolationDevice[]>([])
+  const [isolationDrafts, setIsolationDrafts] = useState<Record<string, { alias: string }>>({})
   const [loading, setLoading] = useState(true)
   const [countdown, setCountdown] = useState(DEFAULT_POLL_INTERVAL_SECONDS)
   
@@ -29,7 +32,6 @@ export default function DevicesPage() {
   
   // 輪詢控制
   const statusIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const listIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // 避免 useCallback 依賴 devices 導致輪詢 interval 反覆重設
   const devicesRef = useRef<QuestDevice[]>([])
@@ -39,8 +41,25 @@ export default function DevicesPage() {
 
   const loadDevices = async () => {
     try {
-      const data = await deviceApi.getAll()
-      setDevices(data)
+      const [devicesData, roomsData, isolationData] = await Promise.all([
+        deviceApi.getAll(),
+        roomApi.getAll(),
+        deviceApi.getIsolation(),
+      ])
+      setDevices(devicesData)
+      setRoomNameMap(new Map(roomsData.map((room) => [room.room_id, room.name])))
+      setIsolationDevices(isolationData)
+      setIsolationDrafts((prev) => {
+        const next = { ...prev }
+        isolationData.forEach((entry) => {
+          if (!next[entry.client_id]) {
+            next[entry.client_id] = {
+              alias: entry.client_id,
+            }
+          }
+        })
+        return next
+      })
     } catch (error) {
       console.error('Failed to load devices:', error)
     } finally {
@@ -175,28 +194,19 @@ export default function DevicesPage() {
     statusIntervalRef.current = setInterval(() => {
       if (!document.hidden) {
         refreshOnlineStatuses()
+        loadDevices()
+        setCountdown(pollIntervalSeconds)
       }
     }, pollIntervalSeconds * 1000)
 
-    // 設定列表輪詢（60 秒）
-    if (listIntervalRef.current) {
-      clearInterval(listIntervalRef.current)
-    }
-    listIntervalRef.current = setInterval(() => {
-      if (!document.hidden) loadDevices()
-    }, 60000)
-
     // 倒數計時器（UI 顯示用）
     const countdownInterval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) return pollIntervalSeconds
-        return prev - 1
-      })
+      if (document.hidden) return
+      setCountdown((prev) => (prev > 0 ? prev - 1 : 0))
     }, 1000)
 
     return () => {
       if (statusIntervalRef.current) clearInterval(statusIntervalRef.current)
-      if (listIntervalRef.current) clearInterval(listIntervalRef.current)
       clearInterval(countdownInterval)
     }
   }, [preference, refreshOnlineStatuses])
@@ -215,6 +225,56 @@ export default function DevicesPage() {
         return '手動斷開'
       default:
         return '未知'
+    }
+  }
+
+  const getWsStatusText = (status?: QuestDevice['ws_status']) => {
+    if (status === 'connected') return 'WS 已連線'
+    return 'WS 未連線'
+  }
+
+  const isValidClientId = (clientId: string) => /^[0-9a-fA-F]{8}$/.test(clientId)
+
+  const getDeviceIdFromClient = (clientId: string) => `DEV-${clientId.toUpperCase()}`
+
+  const handleIsolationDraftChange = (clientId: string, value: string) => {
+    setIsolationDrafts((prev) => ({
+      ...prev,
+      [clientId]: {
+        alias: value,
+      },
+    }))
+  }
+
+  const handleCreateFromIsolation = async (entry: IsolationDevice) => {
+    if (!entry.valid || !isValidClientId(entry.client_id)) return
+    const draft = isolationDrafts[entry.client_id]
+    try {
+      await deviceApi.create({
+        device_id: entry.client_id,
+        alias: draft?.alias || entry.client_id,
+        ip: entry.ip,
+      })
+      await loadDevices()
+      alert('設備建立成功')
+    } catch (error) {
+      console.error('Failed to create device from isolation:', error)
+      alert('建立設備失敗')
+    }
+  }
+
+  const handleUpdateFromIsolation = async (entry: IsolationDevice) => {
+    if (!entry.valid || !isValidClientId(entry.client_id)) return
+    const deviceId = getDeviceIdFromClient(entry.client_id)
+    try {
+      await deviceApi.patch(deviceId, {
+        ip: entry.ip,
+      })
+      await loadDevices()
+      alert('設備資訊更新成功')
+    } catch (error) {
+      console.error('Failed to update device from isolation:', error)
+      alert('更新設備失敗')
     }
   }
 
@@ -494,10 +554,11 @@ export default function DevicesPage() {
         <div className="surface-card overflow-hidden">
           <div className="grid grid-cols-12 gap-3 border-b border-border bg-surface/50 px-4 py-3 text-xs text-foreground/60">
             <div className="col-span-1">選取</div>
-            <div className="col-span-4">設備</div>
+            <div className="col-span-3">設備</div>
             <div className="col-span-2">狀態</div>
+            <div className="col-span-2">房間</div>
             <div className="col-span-2">電量 / 溫度</div>
-            <div className="col-span-3 text-right">操作</div>
+            <div className="col-span-2 text-right">操作</div>
           </div>
           {devices.map((device) => {
             const isOnline = device.status === QUEST_DEVICE_STATUS.ONLINE
@@ -522,7 +583,7 @@ export default function DevicesPage() {
                     className="h-4 w-4"
                   />
                 </div>
-                <div className="col-span-4">
+                <div className="col-span-3">
                   <div className="font-semibold text-foreground">
                     {getDisplayName(device)}
                   </div>
@@ -556,6 +617,26 @@ export default function DevicesPage() {
                   {device.alias ? (
                     <div className="text-xs text-foreground/50">{device.alias}</div>
                   ) : null}
+                  <div className="mt-1 text-xs text-foreground/50">
+                    {getWsStatusText(device.ws_status)}
+                  </div>
+                </div>
+                <div className="col-span-2 text-xs text-foreground/70">
+                  {device.room_id ? (
+                    <button
+                      onClick={() => navigate(`/quest/rooms/${device.room_id}/devices`)}
+                      className="text-left cursor-pointer group"
+                    >
+                      <div className="font-semibold text-foreground group-hover:underline">
+                        {roomNameMap.get(device.room_id) || device.room_id}
+                      </div>
+                      <div className="text-[11px] text-foreground/50 font-mono group-hover:text-foreground/70">
+                        {device.room_id}
+                      </div>
+                    </button>
+                  ) : (
+                    <div className="font-semibold text-foreground/60">未指派</div>
+                  )}
                 </div>
                 <div className="col-span-2 text-xs text-foreground/70">
                   <div>
@@ -565,7 +646,7 @@ export default function DevicesPage() {
                     溫度：{renderStatusValue(statusErrorType, device.temperature, '°C')}
                   </div>
                 </div>
-                <div className="col-span-3 flex flex-wrap items-start justify-end gap-2">
+                <div className="col-span-2 flex flex-wrap items-start justify-end gap-2">
                   {!isOnline && !isConnecting && (
                     <button
                       onClick={() => handleConnect(device.device_id)}
@@ -616,6 +697,96 @@ export default function DevicesPage() {
           })}
         </div>
       )}
+
+      <div className="surface-card p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-foreground">隔離區連線</h2>
+          <span className="text-xs text-foreground/60">{isolationDevices.length} 筆</span>
+        </div>
+        {isolationDevices.length === 0 ? (
+          <div className="text-center text-foreground/60">目前沒有隔離中的連線</div>
+        ) : (
+          <div className="space-y-3">
+            {isolationDevices.map((entry) => {
+              const valid = entry.valid && isValidClientId(entry.client_id)
+              const deviceId = valid ? getDeviceIdFromClient(entry.client_id) : ''
+              const matched = entry.id_matched && !entry.ip_matched && valid
+              const draft = isolationDrafts[entry.client_id] || {
+                alias: entry.client_id,
+              }
+              return (
+                <div key={entry.client_id} className="surface-panel p-4">
+                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
+                    <div className="lg:col-span-4">
+                      <div className="text-sm text-foreground/60">Client ID</div>
+                      <div className="font-mono text-foreground">{entry.client_id}</div>
+                      <div className="mt-1 text-xs text-foreground/50">
+                        IP: {entry.ip || '—'}
+                      </div>
+                      {entry.device_id && (
+                        <div className="text-xs text-foreground/50">
+                          對應設備: {entry.device_id}
+                        </div>
+                      )}
+                      <div className="text-xs text-foreground/50">
+                        最近連線: {entry.last_seen ? new Date(entry.last_seen).toLocaleString() : '—'}
+                      </div>
+                      {!valid && (
+                        <div className="mt-2 text-xs text-danger">
+                          格式錯誤：需為 8 位 16 進位
+                        </div>
+                      )}
+                      {valid && entry.id_matched && !entry.ip_matched && (
+                        <div className="mt-2 text-xs text-warning">
+                          ID 相符但 IP 不一致，可更新現有設備
+                        </div>
+                      )}
+                      {valid && !entry.id_matched && (
+                        <div className="mt-2 text-xs text-foreground/60">
+                          未建立設備，可直接建立
+                        </div>
+                      )}
+                    </div>
+                    <div className="lg:col-span-5 grid grid-cols-1 gap-3">
+                      <div>
+                        <div className="text-xs text-foreground/60">Alias</div>
+                        <input
+                          value={draft.alias}
+                          onChange={(e) => handleIsolationDraftChange(entry.client_id, e.target.value)}
+                          className="ui-input w-full px-2 py-1"
+                          placeholder="顯示名稱"
+                        />
+                      </div>
+                    </div>
+                    <div className="lg:col-span-3 flex flex-wrap items-center justify-end gap-2">
+                      {matched ? (
+                        <>
+                          <div className="text-xs text-foreground/60">已匹配: {deviceId}</div>
+                          <button
+                            onClick={() => handleUpdateFromIsolation(entry)}
+                            className="ui-btn ui-btn-sm ui-btn-accent"
+                            disabled={!valid}
+                          >
+                            更新設備
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => handleCreateFromIsolation(entry)}
+                          className="ui-btn ui-btn-sm ui-btn-primary"
+                          disabled={!valid || entry.id_matched}
+                        >
+                          建立設備
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       {scrcpySystemInfo?.installed && scrcpySessions.length > 0 && (
         <div className="surface-card p-6">
