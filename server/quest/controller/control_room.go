@@ -1,7 +1,7 @@
 package controller
 
 import (
-	questconsts "vrcontrol/server/quest/consts"
+	"strings"
 	"vrcontrol/server/quest/service"
 	"vrcontrol/server/quest/sockets"
 
@@ -27,7 +27,6 @@ func SetQuestDeviceService(svc *service.DeviceService) {
 }
 
 func init() {
-	DeviceRoomMap = questconsts.LoadAssignedRoom()
 	go func() {
 		for disconect := range StandbyPlayerDisconnect {
 			if player, exists := StandbyPlayerMap[disconect]; exists {
@@ -48,7 +47,6 @@ func refreshDeviceRoomMapFromService() {
 		return
 	}
 	DeviceRoomMap = questRoomService.BuildAssignedRoomMap()
-	go questconsts.SaveAssignedRoom(DeviceRoomMap)
 }
 
 func GetRoomList(c *gin.Context) {
@@ -105,4 +103,108 @@ func getQuestAssignedSequences(roomId string) map[string]int {
 		sequences[key] = value
 	}
 	return sequences
+}
+
+// AssignConnectedPlayerToRoom 將已連線且待命的玩家掛入指定房間
+func AssignConnectedPlayerToRoom(roomId, deviceId string) {
+	player, exists := StandbyPlayerMap[deviceId]
+	if !exists || player == nil {
+		if strings.HasPrefix(deviceId, "DEV-") && len(deviceId) > 4 {
+			clientId := deviceId[4:]
+			player, exists = StandbyPlayerMap[clientId]
+		}
+		if !exists || player == nil {
+			for _, candidate := range StandbyPlayerMap {
+				if candidate == nil {
+					continue
+				}
+				if candidate.DeiviceID == deviceId || candidate.StableID == deviceId {
+					player = candidate
+					break
+				}
+			}
+		}
+		if player == nil {
+			return
+		}
+	}
+
+	room, ok := RoomList[roomId]
+	if !ok {
+		if len(RoomList) > MaxRoomCount {
+			return
+		}
+		room = sockets.NewRoom(roomId)
+		room.AssignedSequence = getQuestAssignedSequences(roomId)
+		RoomList[roomId] = room
+		go room.Run()
+	}
+
+	player.Room = room
+	room.PlayerRegister <- player
+	delete(StandbyPlayerMap, player.StableID)
+	delete(StandbyPlayerMap, deviceId)
+}
+
+// DisconnectWSByDeviceID 強制中斷指定設備的 WS 連線
+func DisconnectWSByDeviceID(deviceId string) {
+	if deviceId == "" {
+		return
+	}
+	// 1) 先處理待命玩家
+	if player, ok := StandbyPlayerMap[deviceId]; ok && player != nil {
+		delete(StandbyPlayerMap, deviceId)
+		player.Connection.Close()
+		updateDeviceWSStatus(deviceId, "disconnected")
+		return
+	}
+	if strings.HasPrefix(deviceId, "DEV-") && len(deviceId) > 4 {
+		clientId := deviceId[4:]
+		if player, ok := StandbyPlayerMap[clientId]; ok && player != nil {
+			delete(StandbyPlayerMap, clientId)
+			player.Connection.Close()
+			updateDeviceWSStatus(deviceId, "disconnected")
+			return
+		}
+	}
+
+	// 2) 處理房間內玩家
+	for _, room := range RoomList {
+		if room == nil {
+			continue
+		}
+		player := room.GetPlayerByDeviceID(deviceId)
+		if player == nil && strings.HasPrefix(deviceId, "DEV-") && len(deviceId) > 4 {
+			player = room.GetPlayerByDeviceID(deviceId[4:])
+		}
+		if player != nil {
+			room.PlayerUnregister <- player
+			player.Connection.Close()
+			updateDeviceWSStatus(deviceId, "disconnected")
+			return
+		}
+	}
+
+	updateDeviceWSStatus(deviceId, "disconnected")
+}
+
+// DetachConnectedPlayerFromRoom 從房間中移除玩家但保留 WS 連線
+func DetachConnectedPlayerFromRoom(roomId, deviceId string) {
+	room, ok := RoomList[roomId]
+	if !ok || room == nil {
+		return
+	}
+	player := room.GetPlayerByDeviceID(deviceId)
+	if player == nil && strings.HasPrefix(deviceId, "DEV-") && len(deviceId) > 4 {
+		player = room.GetPlayerByDeviceID(deviceId[4:])
+	}
+	if player == nil {
+		return
+	}
+
+	room.PlayerDetach <- player
+	if player.StableID != "" {
+		StandbyPlayerMap[player.StableID] = player
+	}
+	StandbyPlayerMap[deviceId] = player
 }

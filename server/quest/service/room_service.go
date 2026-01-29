@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	questconsts "vrcontrol/server/quest/consts"
 	"vrcontrol/server/quest/model"
 	"vrcontrol/server/quest/repository"
 )
@@ -187,9 +186,53 @@ func (s *RoomService) RemoveDeviceFromRoom(roomID, deviceID string) error {
 	return nil
 }
 
+// RemoveDeviceFromAllRooms 從所有房間移除設備並清理 assigned_sequences
+func (s *RoomService) RemoveDeviceFromAllRooms(deviceID string) error {
+	rooms := s.roomRepo.GetAll()
+	for _, room := range rooms {
+		if room == nil {
+			continue
+		}
+		changed := false
+		if roomHasDevice(room, deviceID) {
+			newDeviceIDs := make([]string, 0, len(room.DeviceIDs))
+			for _, id := range room.DeviceIDs {
+				if id != deviceID {
+					newDeviceIDs = append(newDeviceIDs, id)
+				}
+			}
+			room.DeviceIDs = newDeviceIDs
+			changed = true
+		}
+		if room.AssignedSequences != nil {
+			if _, exists := room.AssignedSequences[deviceID]; exists {
+				delete(room.AssignedSequences, deviceID)
+				changed = true
+			}
+		}
+		if changed {
+			if err := s.roomRepo.Update(room); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // BuildAssignedRoomMap 從 QuestRoom.DeviceIDs 建立 device_id -> room_id 對應
 func (s *RoomService) BuildAssignedRoomMap() map[string]string {
-	return buildAssignedRoomMapFromRooms(s.roomRepo.GetAll())
+	roomMap := buildAssignedRoomMapFromRooms(s.roomRepo.GetAll())
+	devices := s.deviceRepo.GetAll()
+	for _, device := range devices {
+		if device == nil || device.RoomID == "" {
+			continue
+		}
+		if _, exists := roomMap[device.DeviceID]; exists {
+			continue
+		}
+		roomMap[device.DeviceID] = device.RoomID
+	}
+	return roomMap
 }
 
 // ReconcileDeviceAssignmentsByRoomUpdate 以房間 UpdatedAt 為優先修正多重分配
@@ -261,7 +304,6 @@ func (s *RoomService) ReconcileDeviceAssignmentsByRoomUpdate() (map[string]strin
 		}
 	}
 
-	questconsts.SaveAssignedRoom(assigned)
 	return assigned, nil
 }
 
@@ -281,8 +323,7 @@ func (s *RoomService) removeDeviceFromOtherRooms(targetRoomID, deviceID string) 
 }
 
 func (s *RoomService) syncAssignedRoomMap() {
-	roomMap := buildAssignedRoomMapFromRooms(s.roomRepo.GetAll())
-	questconsts.SaveAssignedRoom(roomMap)
+	_ = buildAssignedRoomMapFromRooms(s.roomRepo.GetAll())
 }
 
 func buildAssignedRoomMapFromRooms(rooms []*model.QuestRoom) map[string]string {

@@ -56,6 +56,9 @@ export default function RoomDevicesPage() {
     }
 
     try {
+      if (device.room_id) {
+        await roomApi.removeDevice(device.room_id, device.device_id)
+      }
       await roomApi.addDevice(id, device.device_id)
       await loadData()
       alert(device.room_id ? '設備已移入房間' : '設備添加成功')
