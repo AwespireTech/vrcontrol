@@ -3,7 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { SERVER } from '@/environment'
 import Button from '@/components/button'
 import PlayerInfo from '@/components/player-info'
-import { controlApi, roomApi, simpleApi } from '@/services/quest-api'
+import { controlApi, deviceApi, roomApi, scrcpyApi, simpleApi } from '@/services/quest-api'
+import { QUEST_DEVICE_STATUS, type QuestDevice } from '@/services/quest-types'
+import { getDisplayName } from '@/lib/utils/device'
 import type { PlayerData, RoomInfoData } from '@/interfaces/room.interface'
 import QuestPageShell from '@/components/quest/quest-page-shell'
 
@@ -18,7 +20,7 @@ export default function RoomControlPage() {
   const host = SERVER.replace(/^https?:\/\//, '')
 
   const [playerData, setPlayerData] = useState<PlayerData[]>([])
-  const [webSocketData, setWebSocketData] = useState<RoomInfoData | null>(null)
+  const [deviceMap, setDeviceMap] = useState<Map<string, QuestDevice>>(new Map())
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>(
     'connecting',
   )
@@ -39,11 +41,15 @@ export default function RoomControlPage() {
 
   const loadControlData = async () => {
     try {
-      const questRooms = await roomApi.getAll()
+      const [questRooms, devices] = await Promise.all([
+        roomApi.getAll(),
+        deviceApi.getAll(),
+      ])
       const roomOptions = questRooms
         .map((room) => ({ value: room.room_id, label: room.name }))
         .sort((a, b) => a.label.localeCompare(b.label))
       setRoomList(roomOptions)
+      setDeviceMap(new Map(devices.map((device) => [device.device_id, device])))
     } catch (error) {
       console.error('Failed to load control data:', error)
     }
@@ -73,7 +79,6 @@ export default function RoomControlPage() {
 
     ws.onmessage = (event) => {
       const data: RoomInfoData = JSON.parse(event.data)
-      setWebSocketData(data)
       setPlayerData(data.players)
     }
 
@@ -114,6 +119,72 @@ export default function RoomControlPage() {
     }
   }
 
+  const handleConnect = async (deviceId: string) => {
+    try {
+      await deviceApi.connect(deviceId)
+      await loadControlData()
+    } catch (error) {
+      console.error('Failed to connect device:', error)
+      alert('連接失敗')
+    }
+  }
+
+  const handleDisconnect = async (deviceId: string) => {
+    try {
+      await deviceApi.disconnect(deviceId)
+      await loadControlData()
+    } catch (error) {
+      console.error('Failed to disconnect device:', error)
+      alert('斷開失敗')
+    }
+  }
+
+  const handleMonitor = async (deviceId: string) => {
+    try {
+      await scrcpyApi.start(deviceId)
+      alert('已啟動監看視窗')
+    } catch (error: unknown) {
+      console.error('Failed to start scrcpy:', error)
+      const message = error instanceof Error ? error.message : ''
+      alert(message || '啟動監看失敗')
+    }
+  }
+
+  const getAdbStatusText = (status?: QuestDevice['status']) => {
+    switch (status) {
+      case QUEST_DEVICE_STATUS.ONLINE:
+        return '在線'
+      case QUEST_DEVICE_STATUS.OFFLINE:
+        return '離線'
+      case QUEST_DEVICE_STATUS.CONNECTING:
+        return '連接中'
+      case QUEST_DEVICE_STATUS.ERROR:
+        return '錯誤'
+      case QUEST_DEVICE_STATUS.DISCONNECTED:
+        return '手動斷開'
+      default:
+        return '未知'
+    }
+  }
+
+  const getAdbStatusBadgeClass = (status?: QuestDevice['status']) => {
+    switch (status) {
+      case QUEST_DEVICE_STATUS.ONLINE:
+        return 'ui-badge-success'
+      case QUEST_DEVICE_STATUS.CONNECTING:
+        return 'ui-badge-warning'
+      case QUEST_DEVICE_STATUS.ERROR:
+        return 'ui-badge-danger'
+      case QUEST_DEVICE_STATUS.OFFLINE:
+      case QUEST_DEVICE_STATUS.DISCONNECTED:
+      default:
+        return 'ui-badge-muted'
+    }
+  }
+
+  const isQuestDeviceStatus = (status?: string): status is QuestDevice['status'] => {
+    return !!status && (Object.values(QUEST_DEVICE_STATUS) as string[]).includes(status)
+  }
 
   const options = Array.from({ length: TotalChapters }, (_, i) => i.toString())
 
@@ -170,25 +241,6 @@ export default function RoomControlPage() {
         <div className="grid grid-cols-1 gap-6">
           <div className="space-y-6">
             <div className="surface-card p-6">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-foreground">即時狀態</h2>
-                  <p className="text-foreground/70">
-                    {webSocketData
-                      ? `Player Count: ${webSocketData.player_count}`
-                      : 'No data available'}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-foreground/70">
-                  <div className="w-3 h-3 rounded-full bg-primary" />
-                  <span>Ready</span>
-                  <div className="w-3 h-3 rounded-full bg-muted" />
-                  <span>Not Ready</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="surface-card p-6">
               <h2 className="text-xl font-bold text-foreground mb-4">強制移動</h2>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-foreground/70">Force all move to chapter</span>
@@ -219,14 +271,64 @@ export default function RoomControlPage() {
 
             <div className="surface-card p-6">
               <h2 className="text-xl font-bold text-foreground mb-4">房間內玩家</h2>
-              <div className="flex flex-wrap gap-4 py-1">
-                {sortedRoomPlayers.map((player) => (
-                  <PlayerInfo
-                    key={player.device_id + player.sequence}
-                    player={player}
-                    handleChangeSequence={handleChangeSequence}
-                  />
-                ))}
+              <div className="grid grid-cols-1 gap-4">
+                {sortedRoomPlayers.map((player) => {
+                  const device = deviceMap.get(player.device_id)
+                  const alias = device ? getDisplayName(device) : player.device_id
+                  const adbStatus = isQuestDeviceStatus(device?.status) ? device.status : undefined
+                  const isAdbOnline = adbStatus === QUEST_DEVICE_STATUS.ONLINE
+                  const isAdbConnecting = adbStatus === QUEST_DEVICE_STATUS.CONNECTING
+
+                  return (
+                    <div key={player.device_id + player.sequence} className="surface-panel p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <div className="text-sm font-semibold text-foreground">{alias}</div>
+                          <div className="text-xs text-foreground/50 font-mono">
+                            {player.device_id}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`ui-badge ${getAdbStatusBadgeClass(adbStatus)}`}>
+                            ADB {getAdbStatusText(adbStatus)}
+                          </span>
+                          {!isAdbOnline && !isAdbConnecting && (
+                            <button
+                              onClick={() => handleConnect(player.device_id)}
+                              className="ui-btn ui-btn-xs ui-btn-primary"
+                            >
+                              連接
+                            </button>
+                          )}
+                          {isAdbOnline && (
+                            <>
+                              <button
+                                onClick={() => handleDisconnect(player.device_id)}
+                                className="ui-btn ui-btn-xs ui-btn-danger"
+                              >
+                                斷開
+                              </button>
+                              <button
+                                onClick={() => handleMonitor(player.device_id)}
+                                className="ui-btn ui-btn-xs ui-btn-accent"
+                              >
+                                監看
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-3">
+                        <PlayerInfo
+                          player={player}
+                          handleChangeSequence={handleChangeSequence}
+                          displayName={alias}
+                          adbStatus={adbStatus}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </div>

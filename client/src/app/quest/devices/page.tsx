@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getDisplayName } from '@/lib/utils/device'
-import { deviceApi, roomApi, scrcpyApi, preferenceApi } from '@/services/quest-api'
-import { QUEST_DEVICE_STATUS, type QuestDevice, type IsolationDevice, ScrcpySession, ScrcpySystemInfo, UserPreference } from '@/services/quest-types'
+import { actionApi, deviceApi, roomApi, scrcpyApi, preferenceApi } from '@/services/quest-api'
+import { QUEST_ACTION_TYPES, QUEST_DEVICE_STATUS, type QuestAction, type QuestDevice, type IsolationDevice, ScrcpySession, ScrcpySystemInfo, UserPreference } from '@/services/quest-types'
 import QuestPageShell from '@/components/quest/quest-page-shell'
 import {
   DEFAULT_BATCH_SIZE,
@@ -15,16 +15,20 @@ type StatusErrorType = 'idle' | 'ok' | 'timeout' | 'adb-error'
 export default function DevicesPage() {
   const navigate = useNavigate()
   const [devices, setDevices] = useState<QuestDevice[]>([])
+  const [rooms, setRooms] = useState<Array<{ room_id: string; name: string }>>([])
   const [roomNameMap, setRoomNameMap] = useState<Map<string, string>>(new Map())
+  const [actions, setActions] = useState<QuestAction[]>([])
+  const [selectedActionIds, setSelectedActionIds] = useState<Record<string, string>>({})
+  const [actionRunningIds, setActionRunningIds] = useState<Record<string, boolean>>({})
   const [isolationDevices, setIsolationDevices] = useState<IsolationDevice[]>([])
   const [isolationDrafts, setIsolationDrafts] = useState<Record<string, { alias: string }>>({})
   const [loading, setLoading] = useState(true)
   const [countdown, setCountdown] = useState(DEFAULT_POLL_INTERVAL_SECONDS)
+  const [roomUpdatingIds, setRoomUpdatingIds] = useState<Record<string, boolean>>({})
   
   // Scrcpy 相關狀態
   const [scrcpySystemInfo, setScrcpySystemInfo] = useState<ScrcpySystemInfo | null>(null)
   const [scrcpySessions, setScrcpySessions] = useState<ScrcpySession[]>([])
-  const [selectedDeviceIds, setSelectedDeviceIds] = useState<string[]>([])
 
   // 使用者偏好與狀態錯誤追蹤
   const [preference, setPreference] = useState<UserPreference | null>(null)
@@ -47,6 +51,7 @@ export default function DevicesPage() {
         deviceApi.getIsolation(),
       ])
       setDevices(devicesData)
+      setRooms(roomsData.map((room) => ({ room_id: room.room_id, name: room.name })))
       setRoomNameMap(new Map(roomsData.map((room) => [room.room_id, room.name])))
       setIsolationDevices(isolationData)
       setIsolationDrafts((prev) => {
@@ -162,11 +167,21 @@ export default function DevicesPage() {
 
       // 載入設備列表
       await loadDevices()
+      await loadActions()
       await loadScrcpyInfo()
     }
 
     init()
   }, [])
+
+  const loadActions = async () => {
+    try {
+      const actionsData = await actionApi.getAll()
+      setActions(actionsData)
+    } catch (error) {
+      console.error('Failed to load actions:', error)
+    }
+  }
 
   // 當設備列表或偏好設定更新時，執行一次狀態刷新
   useEffect(() => {
@@ -253,6 +268,29 @@ export default function DevicesPage() {
     if (status === 'connected') return 'ui-badge-success'
     if (status === 'disconnected') return 'ui-badge-muted'
     return 'ui-badge-muted'
+  }
+
+  const getActionTypeText = (type: string) => {
+    switch (type) {
+      case QUEST_ACTION_TYPES.WAKE_UP:
+        return '喚醒'
+      case QUEST_ACTION_TYPES.SLEEP:
+        return '休眠'
+      case QUEST_ACTION_TYPES.LAUNCH_APP:
+        return '啟動應用'
+      case QUEST_ACTION_TYPES.STOP_APP:
+        return '停止應用'
+      case QUEST_ACTION_TYPES.RESTART_APP:
+        return '重啟應用'
+      case QUEST_ACTION_TYPES.KEEP_AWAKE:
+        return '保持喚醒'
+      case QUEST_ACTION_TYPES.SEND_KEY:
+        return '發送按鍵'
+      case QUEST_ACTION_TYPES.INSTALL_APK:
+        return '安裝 APK'
+      default:
+        return type
+    }
   }
 
   const isValidClientId = (clientId: string) => /^[0-9A-Za-z]{8}$/.test(clientId)
@@ -392,6 +430,51 @@ export default function DevicesPage() {
     }
   }
 
+  const handleAssignRoom = async (device: QuestDevice, nextRoomId: string) => {
+    const currentRoomId = device.room_id || ''
+    if (nextRoomId === currentRoomId) return
+
+    setRoomUpdatingIds((prev) => ({ ...prev, [device.device_id]: true }))
+    try {
+      if (nextRoomId === '') {
+        if (currentRoomId) {
+          await roomApi.removeDevice(currentRoomId, device.device_id)
+        }
+      } else {
+        if (currentRoomId && currentRoomId !== nextRoomId) {
+          await roomApi.removeDevice(currentRoomId, device.device_id)
+        }
+        await roomApi.addDevice(nextRoomId, device.device_id)
+      }
+      await loadDevices()
+    } catch (error) {
+      console.error('Failed to assign room:', error)
+      alert('房間指派失敗')
+    } finally {
+      setRoomUpdatingIds((prev) => ({ ...prev, [device.device_id]: false }))
+    }
+  }
+
+  const handleExecuteAction = async (deviceId: string) => {
+    const actionId = selectedActionIds[deviceId]
+    if (!actionId) return
+
+    setActionRunningIds((prev) => ({ ...prev, [deviceId]: true }))
+    try {
+      const result = await actionApi.executeBatch({
+        action_id: actionId,
+        device_ids: [deviceId],
+        max_workers: 1,
+      })
+      alert(`執行完成：成功 ${result.success_count}，失敗 ${result.failed_count}`)
+    } catch (error) {
+      console.error('Failed to execute action:', error)
+      alert('執行動作失敗')
+    } finally {
+      setActionRunningIds((prev) => ({ ...prev, [deviceId]: false }))
+    }
+  }
+
   const handleDelete = async (deviceId: string) => {
     if (!confirm('確定要刪除這個設備嗎？')) return
 
@@ -404,44 +487,6 @@ export default function DevicesPage() {
     }
   }
 
-  const handleConnectAll = async () => {
-    const offlineDevices = devices.filter((d) => d.status === 'offline')
-    if (offlineDevices.length === 0) {
-      alert('沒有離線設備')
-      return
-    }
-
-    try {
-      const result = await deviceApi.connectBatch(
-        offlineDevices.map((d) => d.device_id),
-        5,
-      )
-      alert(`批量連接完成：成功 ${result.success_count}，失敗 ${result.failed_count}`)
-      await loadDevices()
-    } catch (error) {
-      console.error('Failed to connect all devices:', error)
-      alert('批量連接失敗')
-    }
-  }
-
-  const handlePingAll = async () => {
-    const onlineDevices = devices.filter((d) => d.status === 'online')
-    if (onlineDevices.length === 0) {
-      alert('沒有在線設備')
-      return
-    }
-
-    try {
-      await deviceApi.pingBatch(
-        onlineDevices.map((d) => d.device_id),
-        10,
-      )
-      await loadDevices()
-    } catch (error) {
-      console.error('Failed to ping all devices:', error)
-      alert('批量 Ping 失敗')
-    }
-  }
 
   const handleMonitor = async (deviceId: string) => {
     if (!scrcpySystemInfo?.installed) {
@@ -460,27 +505,6 @@ export default function DevicesPage() {
     }
   }
 
-  const handleMonitorBatch = async () => {
-    if (!scrcpySystemInfo?.installed) {
-      alert('Scrcpy 未安裝，請先安裝 scrcpy')
-      return
-    }
-
-    if (selectedDeviceIds.length === 0) {
-      alert('請先選擇要監看的設備')
-      return
-    }
-
-    try {
-      const result = await scrcpyApi.startBatch({ device_ids: selectedDeviceIds })
-      alert(`批量監看啟動完成：成功 ${result.success_count}，失敗 ${result.failed_count}`)
-      await loadScrcpyInfo()
-      setSelectedDeviceIds([])
-    } catch (error) {
-      console.error('Failed to start batch scrcpy:', error)
-      alert('批量監看啟動失敗')
-    }
-  }
 
   const handleStopScrcpy = async (deviceId: string) => {
     try {
@@ -502,13 +526,6 @@ export default function DevicesPage() {
     }
   }
 
-  const toggleDeviceSelection = (deviceId: string) => {
-    setSelectedDeviceIds((prev) =>
-      prev.includes(deviceId)
-        ? prev.filter((id) => id !== deviceId)
-        : [...prev, deviceId]
-    )
-  }
 
   if (loading) {
     return (
@@ -525,26 +542,6 @@ export default function DevicesPage() {
       actions={
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={handleConnectAll}
-            className="ui-btn ui-btn-md ui-btn-primary"
-          >
-            批量連接
-          </button>
-          <button
-            onClick={handlePingAll}
-            className="ui-btn ui-btn-md ui-btn-success"
-          >
-            批量 Ping
-          </button>
-          {scrcpySystemInfo?.installed && selectedDeviceIds.length > 0 && (
-            <button
-              onClick={handleMonitorBatch}
-              className="ui-btn ui-btn-md ui-btn-accent"
-            >
-              批量監看 ({selectedDeviceIds.length})
-            </button>
-          )}
-          <button
             onClick={() => navigate('/quest/devices/new')}
             className="ui-btn ui-btn-md ui-btn-primary"
           >
@@ -558,12 +555,12 @@ export default function DevicesPage() {
       ) : (
         <div className="surface-card overflow-hidden">
           <div className="grid grid-cols-12 gap-3 border-b border-border bg-surface/50 px-4 py-3 text-xs text-foreground/60">
-            <div className="col-span-1">選取</div>
-            <div className="col-span-3">設備</div>
+            <div className="col-span-2">設備</div>
             <div className="col-span-2">連線</div>
+            <div className="col-span-1">電量 / 溫度</div>
             <div className="col-span-2">房間</div>
-            <div className="col-span-2">電量 / 溫度</div>
-            <div className="col-span-2 text-right">操作</div>
+            <div className="col-span-2">動作</div>
+            <div className="col-span-3 text-right">操作</div>
           </div>
           {devices.map((device) => {
             const isOnline = device.status === QUEST_DEVICE_STATUS.ONLINE
@@ -572,23 +569,14 @@ export default function DevicesPage() {
             const disabledReasonText = getAutoReconnectDisabledReasonText(
               device.auto_reconnect_disabled_reason,
             )
-            const canSelect = Boolean(scrcpySystemInfo?.installed) && isOnline
+            const isActionReady = isOnline && !actionRunningIds[device.device_id]
 
             return (
               <div
                 key={device.device_id}
                 className="grid grid-cols-12 items-start gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-surface/40 last:border-b-0"
               >
-                <div className="col-span-1 flex items-start pt-1">
-                  <input
-                    type="checkbox"
-                    checked={selectedDeviceIds.includes(device.device_id)}
-                    onChange={() => toggleDeviceSelection(device.device_id)}
-                    disabled={!canSelect}
-                    className="h-4 w-4"
-                  />
-                </div>
-                <div className="col-span-3">
+                <div className="col-span-2">
                   <div className="font-semibold text-foreground">
                     {getDisplayName(device)}
                   </div>
@@ -628,6 +616,14 @@ export default function DevicesPage() {
                     </div>
                   </div>
                 </div>
+                <div className="col-span-1 text-xs text-foreground/70">
+                  <div>
+                    電量：{renderStatusValue(statusErrorType, device.battery, '%')}
+                  </div>
+                  <div>
+                    溫度：{renderStatusValue(statusErrorType, device.temperature, '°C')}
+                  </div>
+                </div>
                 <div className="col-span-2 text-xs text-foreground/70">
                   {device.room_id ? (
                     <button
@@ -644,16 +640,56 @@ export default function DevicesPage() {
                   ) : (
                     <div className="font-semibold text-foreground/60">未指派</div>
                   )}
+                  <select
+                    value={device.room_id || ''}
+                    onChange={(e) => handleAssignRoom(device, e.target.value)}
+                    disabled={roomUpdatingIds[device.device_id]}
+                    className="ui-select mt-2 w-11/12 px-2 py-1 text-[11px]"
+                  >
+                    <option value="">未指派</option>
+                    {rooms
+                      .slice()
+                      .sort((a, b) => a.name.localeCompare(b.name))
+                      .map((room) => (
+                        <option key={room.room_id} value={room.room_id}>
+                          {room.name} · {room.room_id}
+                        </option>
+                      ))}
+                  </select>
                 </div>
-                <div className="col-span-2 text-xs text-foreground/70">
-                  <div>
-                    電量：{renderStatusValue(statusErrorType, device.battery, '%')}
-                  </div>
-                  <div>
-                    溫度：{renderStatusValue(statusErrorType, device.temperature, '°C')}
+                <div className="col-span-2">
+                  <div className="mt-1 flex items-center gap-2">
+                    <select
+                      value={selectedActionIds[device.device_id] || ''}
+                      onChange={(e) =>
+                        setSelectedActionIds((prev) => ({
+                          ...prev,
+                          [device.device_id]: e.target.value,
+                        }))
+                      }
+                      disabled={!isOnline}
+                      className="ui-select w-2/3 px-2 py-1 text-[11px]"
+                    >
+                      <option value="">選擇動作</option>
+                      {actions
+                        .slice()
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map((action) => (
+                          <option key={action.action_id} value={action.action_id}>
+                            {action.name} · {getActionTypeText(action.action_type)}
+                          </option>
+                        ))}
+                    </select>
+                    <button
+                      onClick={() => handleExecuteAction(device.device_id)}
+                      disabled={!isActionReady || !selectedActionIds[device.device_id]}
+                      className="ui-btn ui-btn-xs ui-btn-primary"
+                    >
+                      執行
+                    </button>
                   </div>
                 </div>
-                <div className="col-span-2 flex flex-wrap items-start justify-end gap-2">
+                <div className="col-span-3 flex flex-wrap items-start justify-end gap-2">
                   {!isOnline && !isConnecting && (
                     <button
                       onClick={() => handleConnect(device.device_id)}
