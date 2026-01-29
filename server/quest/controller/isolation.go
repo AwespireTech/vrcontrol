@@ -23,7 +23,7 @@ type IsolationEntry struct {
 var (
 	isolationMu   sync.RWMutex
 	isolationMap  = make(map[string]*IsolationEntry)
-	clientIDRegex = "0123456789ABCDEF"
+	clientIDRegex = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
 func recordIsolation(clientId, ip string, valid bool, deviceId string, idMatched, ipMatched bool) {

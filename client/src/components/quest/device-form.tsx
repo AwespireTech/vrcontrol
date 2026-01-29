@@ -57,7 +57,7 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
       {!device && (
         <div>
           <label className="block text-sm font-semibold text-foreground mb-2">
-            設備 ID（8 位 16 進位）*
+            設備 ID（8 位英數）*
           </label>
           <input
             type="text"
@@ -65,9 +65,9 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
             value={formData.device_id}
             onChange={handleChange}
             required
-            pattern="^[0-9a-fA-F]{8}$"
+            pattern="^[0-9A-Za-z]{8}$"
             className="ui-input w-full px-4 py-2 uppercase"
-            placeholder="例如: 1A2B3C4D"
+            placeholder="例如: AB12CD34"
           />
           <p className="text-xs text-foreground/50 mt-1">系統會自動加上 DEV- 前綴</p>
         </div>
