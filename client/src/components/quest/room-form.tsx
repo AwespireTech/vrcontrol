@@ -1,8 +1,8 @@
-'use client'
+"use client"
 
-import { useState } from 'react'
-import type { QuestRoom } from '@/services/quest-types'
-import Button from '@/components/button'
+import { useState } from "react"
+import type { QuestRoom } from "@/services/quest-types"
+import Button from "@/components/button"
 
 interface RoomFormProps {
   room?: QuestRoom
@@ -12,9 +12,9 @@ interface RoomFormProps {
 
 export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
   const [formData, setFormData] = useState({
-    name: room?.name || '',
-    description: room?.description || '',
-    parameters: room?.parameters ? JSON.stringify(room.parameters, null, 2) : '{}',
+    name: room?.name || "",
+    description: room?.description || "",
+    parameters: room?.parameters ? JSON.stringify(room.parameters, null, 2) : "{}",
   })
   const assignedSequences = room?.assigned_sequences || {}
   const [submitting, setSubmitting] = useState(false)
@@ -29,7 +29,7 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
       try {
         parameters = JSON.parse(formData.parameters)
       } catch {
-        alert('參數格式錯誤，請輸入有效的 JSON')
+        alert("參數格式錯誤，請輸入有效的 JSON")
         setSubmitting(false)
         return
       }
@@ -40,8 +40,8 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
         parameters,
       })
     } catch (error) {
-      console.error('Failed to submit form:', error)
-      alert('提交失敗，請稍後再試')
+      console.error("Failed to submit form:", error)
+      alert("提交失敗，請稍後再試")
     } finally {
       setSubmitting(false)
     }
@@ -58,9 +58,7 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <label className="block text-sm font-semibold text-foreground mb-2">
-          房間名稱 *
-        </label>
+        <label className="mb-2 block text-sm font-semibold text-foreground">房間名稱 *</label>
         <input
           type="text"
           name="name"
@@ -73,9 +71,7 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-foreground mb-2">
-          房間描述
-        </label>
+        <label className="mb-2 block text-sm font-semibold text-foreground">房間描述</label>
         <textarea
           name="description"
           value={formData.description}
@@ -87,9 +83,7 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-foreground mb-2">
-          參數配置 (JSON)
-        </label>
+        <label className="mb-2 block text-sm font-semibold text-foreground">參數配置 (JSON)</label>
         <textarea
           name="parameters"
           value={formData.parameters}
@@ -98,13 +92,13 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
           className="ui-input w-full px-4 py-2 font-mono text-sm"
           placeholder='{"key": "value"}'
         />
-        <p className="text-xs text-foreground/50 mt-1">
+        <p className="mt-1 text-xs text-foreground/50">
           輸入 JSON 格式的參數，將會同步到 Socket Server 的所有客戶端
         </p>
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-foreground mb-2">
+        <label className="mb-2 block text-sm font-semibold text-foreground">
           Assigned Sequences (唯讀)
         </label>
         <textarea
@@ -113,17 +107,13 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
           rows={6}
           className="ui-input w-full bg-muted/30 px-4 py-2 font-mono text-sm"
         />
-        <p className="text-xs text-foreground/50 mt-1">
+        <p className="mt-1 text-xs text-foreground/50">
           由控制流程寫入，作為目前房間的玩家序號對應。
         </p>
       </div>
 
       <div className="flex justify-end gap-3 border-t border-border/70 pt-4">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="ui-btn ui-btn-md ui-btn-muted"
-        >
+        <button type="button" onClick={onCancel} className="ui-btn ui-btn-md ui-btn-muted">
           取消
         </button>
         <Button
@@ -132,7 +122,7 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
           loading={submitting}
           className="ui-btn-md ui-btn-primary"
         >
-          {room ? '更新' : '建立'}
+          {room ? "更新" : "建立"}
         </Button>
       </div>
     </form>

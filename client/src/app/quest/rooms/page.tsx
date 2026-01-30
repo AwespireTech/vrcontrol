@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { roomApi, deviceApi } from '@/services/quest-api'
-import type { QuestRoom } from '@/services/quest-types'
-import { getDisplayName } from '@/lib/utils/device'
-import QuestPageShell from '@/components/quest/quest-page-shell'
-import Button from '@/components/button'
+import { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { roomApi, deviceApi } from "@/services/quest-api"
+import type { QuestRoom } from "@/services/quest-types"
+import { getDisplayName } from "@/lib/utils/device"
+import QuestPageShell from "@/components/quest/quest-page-shell"
+import Button from "@/components/button"
 
 export default function RoomsPage() {
   const navigate = useNavigate()
@@ -12,14 +12,11 @@ export default function RoomsPage() {
   const [deviceNameMap, setDeviceNameMap] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
   const [countdown, setCountdown] = useState(5)
-  const [roomPending, setRoomPending] = useState<Record<string, 'delete'>>({})
+  const [roomPending, setRoomPending] = useState<Record<string, "delete">>({})
 
   const loadData = async () => {
     try {
-      const [roomsData, devicesData] = await Promise.all([
-        roomApi.getAll(),
-        deviceApi.getAll(),
-      ])
+      const [roomsData, devicesData] = await Promise.all([roomApi.getAll(), deviceApi.getAll()])
       setRooms(roomsData)
 
       // 建立設備 ID 到名稱的映射
@@ -29,7 +26,7 @@ export default function RoomsPage() {
       })
       setDeviceNameMap(nameMap)
     } catch (error) {
-      console.error('Failed to load rooms:', error)
+      console.error("Failed to load rooms:", error)
     } finally {
       setLoading(false)
     }
@@ -52,15 +49,15 @@ export default function RoomsPage() {
   }, [])
 
   const handleDelete = async (roomId: string) => {
-    if (!confirm('確定要刪除這個房間嗎？')) return
+    if (!confirm("確定要刪除這個房間嗎？")) return
     if (roomPending[roomId]) return
-    setRoomPending((prev) => ({ ...prev, [roomId]: 'delete' }))
+    setRoomPending((prev) => ({ ...prev, [roomId]: "delete" }))
     try {
       await roomApi.delete(roomId)
       await loadData()
     } catch (error) {
-      console.error('Failed to delete room:', error)
-      alert('刪除失敗，請稍後再試')
+      console.error("Failed to delete room:", error)
+      alert("刪除失敗，請稍後再試")
     } finally {
       setRoomPending((prev) => {
         const next = { ...prev }
@@ -72,7 +69,7 @@ export default function RoomsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="text-xl text-foreground">載入中…</div>
       </div>
     )
@@ -84,7 +81,7 @@ export default function RoomsPage() {
       subtitle={`下次更新 ${countdown} 秒`}
       actions={
         <button
-          onClick={() => navigate('/quest/rooms/new')}
+          onClick={() => navigate("/quest/rooms/new")}
           className="ui-btn ui-btn-md ui-btn-primary"
         >
           + 建立房間
@@ -108,13 +105,13 @@ export default function RoomsPage() {
           {rooms.map((room) => (
             <div
               key={room.room_id}
-              className="grid grid-cols-12 items-start gap-3 border-b border-border px-4 py-3 transition-colors hover:bg-surface/40 last:border-b-0"
+              className="grid grid-cols-12 items-start gap-3 border-b border-border px-4 py-3 transition-colors last:border-b-0 hover:bg-surface/40"
             >
               <div className="col-span-4">
                 <div className="font-semibold text-foreground">{room.name}</div>
-                <div className="text-xs text-foreground/50 font-mono">{room.room_id}</div>
+                <div className="font-mono text-xs text-foreground/50">{room.room_id}</div>
                 {room.description ? (
-                  <div className="text-xs text-foreground/70 mt-1">{room.description}</div>
+                  <div className="mt-1 text-xs text-foreground/70">{room.description}</div>
                 ) : null}
               </div>
               <div className="col-span-4">
@@ -135,9 +132,7 @@ export default function RoomsPage() {
                   </div>
                 )}
               </div>
-              <div className="col-span-1 text-sm text-foreground/80">
-                {room.device_ids.length}
-              </div>
+              <div className="col-span-1 text-sm text-foreground/80">{room.device_ids.length}</div>
               <div className="col-span-3 flex flex-wrap items-start justify-end gap-2">
                 <button
                   onClick={() => navigate(`/quest/rooms/${room.room_id}/control`)}
@@ -160,7 +155,7 @@ export default function RoomsPage() {
                 <Button
                   onClick={() => handleDelete(room.room_id)}
                   className="ui-btn-xs ui-btn-danger"
-                  loading={roomPending[room.room_id] === 'delete'}
+                  loading={roomPending[room.room_id] === "delete"}
                   disabled={!!roomPending[room.room_id]}
                 >
                   刪除

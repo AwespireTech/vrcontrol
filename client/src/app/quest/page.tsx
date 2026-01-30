@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { deviceApi, roomApi, actionApi } from '@/services/quest-api'
-import type { QuestDevice, QuestRoom, QuestAction } from '@/services/quest-types'
-import { useMonitoringStatus } from '@/hooks/useMonitoringStatus'
-import QuestPageShell from '@/components/quest/quest-page-shell'
+import { useEffect, useState } from "react"
+import { Link } from "react-router-dom"
+import { deviceApi, roomApi, actionApi } from "@/services/quest-api"
+import type { QuestDevice, QuestRoom, QuestAction } from "@/services/quest-types"
+import { useMonitoringStatus } from "@/hooks/useMonitoringStatus"
+import QuestPageShell from "@/components/quest/quest-page-shell"
 
 export default function QuestPage() {
   const [devices, setDevices] = useState<QuestDevice[]>([])
@@ -22,7 +22,7 @@ export default function QuestPage() {
       setRooms(roomsData)
       setActions(actionsData)
     } catch (error) {
-      console.error('Failed to load Quest data:', error)
+      console.error("Failed to load Quest data:", error)
     }
   }
 
@@ -30,7 +30,7 @@ export default function QuestPage() {
     loadData()
   }, [])
 
-  const onlineDevices = devices.filter((d) => d.status === 'online').length
+  const onlineDevices = devices.filter((d) => d.status === "online").length
   const totalDevices = devices.length
 
   return (
@@ -48,19 +48,16 @@ export default function QuestPage() {
     >
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         {[
-          { label: '設備總數', value: totalDevices, icon: '📱' },
-          { label: '在線設備', value: onlineDevices, icon: '✅', accent: 'text-success' },
-          { label: '房間數量', value: rooms.length, icon: '🏠' },
-          { label: '動作數量', value: actions.length, icon: '⚡' },
+          { label: "設備總數", value: totalDevices, icon: "📱" },
+          { label: "在線設備", value: onlineDevices, icon: "✅", accent: "text-success" },
+          { label: "房間數量", value: rooms.length, icon: "🏠" },
+          { label: "動作數量", value: actions.length, icon: "⚡" },
         ].map((item) => (
-          <div
-            key={item.label}
-            className="surface-card p-6"
-          >
+          <div key={item.label} className="surface-card p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-foreground/60">{item.label}</p>
-                <p className={`text-3xl font-bold ${item.accent ?? 'text-foreground'}`}>
+                <p className={`text-3xl font-bold ${item.accent ?? "text-foreground"}`}>
                   {item.value}
                 </p>
               </div>
@@ -73,30 +70,30 @@ export default function QuestPage() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         {[
           {
-            to: '/quest/devices',
-            icon: '📱',
-            title: '設備管理',
-            desc: '建立、編輯與管理 Quest 設備，查看設備狀態',
+            to: "/quest/devices",
+            icon: "📱",
+            title: "設備管理",
+            desc: "建立、編輯與管理 Quest 設備，查看設備狀態",
           },
           {
-            to: '/quest/rooms',
-            icon: '🏠',
-            title: '房間管理',
-            desc: '建立房間，分配設備並管理 Socket 連線',
+            to: "/quest/rooms",
+            icon: "🏠",
+            title: "房間管理",
+            desc: "建立房間，分配設備並管理 Socket 連線",
           },
           {
-            to: '/quest/actions',
-            icon: '⚡',
-            title: '動作管理',
-            desc: '建立與執行設備動作，支援批次操作',
+            to: "/quest/actions",
+            icon: "⚡",
+            title: "動作管理",
+            desc: "建立與執行設備動作，支援批次操作",
           },
           {
-            to: '/quest/monitoring',
-            icon: '🛰️',
-            title: '網絡監控',
-            desc: '背景監控會定期 Ping 設備 IP，並在設備恢復可達時嘗試 ADB 重連',
+            to: "/quest/monitoring",
+            icon: "🛰️",
+            title: "網絡監控",
+            desc: "背景監控會定期 Ping 設備 IP，並在設備恢復可達時嘗試 ADB 重連",
             meta: `目前狀態：${
-              !monitoring.known ? '未知' : monitoring.running ? '運行中' : '已停止'
+              !monitoring.known ? "未知" : monitoring.running ? "運行中" : "已停止"
             }（詳情與控制請到監控頁）`,
           },
         ].map((item) => (
@@ -108,9 +105,7 @@ export default function QuestPage() {
             <div className="text-4xl">{item.icon}</div>
             <h2 className="mt-4 text-lg font-semibold text-foreground">{item.title}</h2>
             <p className="mt-2 text-sm text-foreground/70">{item.desc}</p>
-            {item.meta ? (
-              <p className="mt-3 text-xs text-foreground/50">{item.meta}</p>
-            ) : null}
+            {item.meta ? <p className="mt-3 text-xs text-foreground/50">{item.meta}</p> : null}
           </Link>
         ))}
       </div>

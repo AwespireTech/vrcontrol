@@ -4,8 +4,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gin-gonic/gin"
 	"vrcontrol/server/sockets"
+
+	"github.com/gin-gonic/gin"
 )
 
 // AssignSequence assigns a specific sequence to a client, instead of automatically assigning it based on the order of connection.
@@ -68,7 +69,7 @@ func ForceMove(c *gin.Context) {
 }
 
 func ForceAllMove(c *gin.Context) {
-	
+
 	r := RoomList[c.Param("roomId")]
 	dest, err := strconv.Atoi(c.Param("dest"))
 	if err != nil || dest < 0 {
@@ -83,7 +84,7 @@ func ForceAllMove(c *gin.Context) {
 		Broadcast:        true,
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"message": "All Player forced to move successfully",
+		"message":      "All Player forced to move successfully",
 		"dest_chapter": dest,
 	})
 }

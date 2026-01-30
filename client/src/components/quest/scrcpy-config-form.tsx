@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import type { ScrcpyConfig } from '@/services/quest-types'
+import { useState, useEffect } from "react"
+import type { ScrcpyConfig } from "@/services/quest-types"
 
 interface ScrcpyConfigFormProps {
   value: ScrcpyConfig
@@ -21,7 +21,7 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
   }
 
   const handleNumberChange = (field: keyof ScrcpyConfig, stringValue: string) => {
-    const numValue = stringValue === '' ? undefined : parseInt(stringValue)
+    const numValue = stringValue === "" ? undefined : parseInt(stringValue)
     handleChange(field, numValue)
   }
 
@@ -30,13 +30,13 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
       {/* 視訊品質設定 */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-foreground">視訊品質</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">位元率</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">位元率</label>
             <select
               value={config.bitrate}
-              onChange={(e) => handleChange('bitrate', e.target.value)}
+              onChange={(e) => handleChange("bitrate", e.target.value)}
               disabled={disabled}
               className="ui-select w-full px-3 py-2"
             >
@@ -49,11 +49,13 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">最大解析度 (px)</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              最大解析度 (px)
+            </label>
             <input
               type="number"
               value={config.max_size}
-              onChange={(e) => handleChange('max_size', parseInt(e.target.value))}
+              onChange={(e) => handleChange("max_size", parseInt(e.target.value))}
               disabled={disabled}
               className="ui-input w-full px-3 py-2"
               min="720"
@@ -62,11 +64,11 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">最大幀率 (FPS)</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">最大幀率 (FPS)</label>
             <input
               type="number"
               value={config.max_fps}
-              onChange={(e) => handleChange('max_fps', parseInt(e.target.value))}
+              onChange={(e) => handleChange("max_fps", parseInt(e.target.value))}
               disabled={disabled}
               className="ui-input w-full px-3 py-2"
               min="15"
@@ -79,14 +81,16 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
       {/* 視窗設定 */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-foreground">視窗設定</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">視窗寬度 (選填)</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              視窗寬度 (選填)
+            </label>
             <input
               type="number"
-              value={config.window_width ?? ''}
-              onChange={(e) => handleNumberChange('window_width', e.target.value)}
+              value={config.window_width ?? ""}
+              onChange={(e) => handleNumberChange("window_width", e.target.value)}
               disabled={disabled}
               className="ui-input w-full px-3 py-2"
               placeholder="自動"
@@ -94,11 +98,13 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">視窗高度 (選填)</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              視窗高度 (選填)
+            </label>
             <input
               type="number"
-              value={config.window_height ?? ''}
-              onChange={(e) => handleNumberChange('window_height', e.target.value)}
+              value={config.window_height ?? ""}
+              onChange={(e) => handleNumberChange("window_height", e.target.value)}
               disabled={disabled}
               className="ui-input w-full px-3 py-2"
               placeholder="自動"
@@ -106,11 +112,13 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">視窗 X 位置 (選填)</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              視窗 X 位置 (選填)
+            </label>
             <input
               type="number"
-              value={config.window_x ?? ''}
-              onChange={(e) => handleNumberChange('window_x', e.target.value)}
+              value={config.window_x ?? ""}
+              onChange={(e) => handleNumberChange("window_x", e.target.value)}
               disabled={disabled}
               className="ui-input w-full px-3 py-2"
               placeholder="自動"
@@ -118,11 +126,13 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-foreground mb-1">視窗 Y 位置 (選填)</label>
+            <label className="mb-1 block text-sm font-medium text-foreground">
+              視窗 Y 位置 (選填)
+            </label>
             <input
               type="number"
-              value={config.window_y ?? ''}
-              onChange={(e) => handleNumberChange('window_y', e.target.value)}
+              value={config.window_y ?? ""}
+              onChange={(e) => handleNumberChange("window_y", e.target.value)}
               disabled={disabled}
               className="ui-input w-full px-3 py-2"
               placeholder="自動"
@@ -134,48 +144,48 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
       {/* 顯示選項 */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-foreground">顯示選項</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <label className="flex items-center space-x-2 cursor-pointer text-foreground/80">
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <label className="flex cursor-pointer items-center space-x-2 text-foreground/80">
             <input
               type="checkbox"
               checked={config.fullscreen}
-              onChange={(e) => handleChange('fullscreen', e.target.checked)}
+              onChange={(e) => handleChange("fullscreen", e.target.checked)}
               disabled={disabled}
-              className="w-4 h-4"
+              className="h-4 w-4"
             />
             <span className="text-sm">全螢幕模式</span>
           </label>
 
-          <label className="flex items-center space-x-2 cursor-pointer text-foreground/80">
+          <label className="flex cursor-pointer items-center space-x-2 text-foreground/80">
             <input
               type="checkbox"
               checked={config.always_on_top}
-              onChange={(e) => handleChange('always_on_top', e.target.checked)}
+              onChange={(e) => handleChange("always_on_top", e.target.checked)}
               disabled={disabled}
-              className="w-4 h-4"
+              className="h-4 w-4"
             />
             <span className="text-sm">視窗置頂</span>
           </label>
 
-          <label className="flex items-center space-x-2 cursor-pointer text-foreground/80">
+          <label className="flex cursor-pointer items-center space-x-2 text-foreground/80">
             <input
               type="checkbox"
               checked={config.show_touches}
-              onChange={(e) => handleChange('show_touches', e.target.checked)}
+              onChange={(e) => handleChange("show_touches", e.target.checked)}
               disabled={disabled}
-              className="w-4 h-4"
+              className="h-4 w-4"
             />
             <span className="text-sm">顯示觸控點</span>
           </label>
 
-          <label className="flex items-center space-x-2 cursor-pointer text-foreground/80">
+          <label className="flex cursor-pointer items-center space-x-2 text-foreground/80">
             <input
               type="checkbox"
               checked={config.turn_screen_off}
-              onChange={(e) => handleChange('turn_screen_off', e.target.checked)}
+              onChange={(e) => handleChange("turn_screen_off", e.target.checked)}
               disabled={disabled}
-              className="w-4 h-4"
+              className="h-4 w-4"
             />
             <span className="text-sm">關閉設備螢幕</span>
           </label>
@@ -185,26 +195,26 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
       {/* 設備選項 */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-foreground">設備選項</h3>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <label className="flex items-center space-x-2 cursor-pointer text-foreground/80">
+
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <label className="flex cursor-pointer items-center space-x-2 text-foreground/80">
             <input
               type="checkbox"
               checked={config.stay_awake}
-              onChange={(e) => handleChange('stay_awake', e.target.checked)}
+              onChange={(e) => handleChange("stay_awake", e.target.checked)}
               disabled={disabled}
-              className="w-4 h-4"
+              className="h-4 w-4"
             />
             <span className="text-sm">保持設備清醒</span>
           </label>
 
-          <label className="flex items-center space-x-2 cursor-pointer text-foreground/80">
+          <label className="flex cursor-pointer items-center space-x-2 text-foreground/80">
             <input
               type="checkbox"
               checked={config.enable_audio}
-              onChange={(e) => handleChange('enable_audio', e.target.checked)}
+              onChange={(e) => handleChange("enable_audio", e.target.checked)}
               disabled={disabled}
-              className="w-4 h-4"
+              className="h-4 w-4"
             />
             <span className="text-sm">啟用音訊轉發</span>
           </label>
@@ -220,18 +230,18 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
       {/* 進階設定 */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-foreground">進階設定</h3>
-        
+
         <div>
-          <label className="block text-sm font-medium text-foreground mb-1">渲染驅動 (選填)</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">渲染驅動 (選填)</label>
           <input
             type="text"
             value={config.render_driver}
-            onChange={(e) => handleChange('render_driver', e.target.value)}
+            onChange={(e) => handleChange("render_driver", e.target.value)}
             disabled={disabled}
             className="ui-input w-full px-3 py-2"
             placeholder="預設 (opengl, metal, direct3d)"
           />
-          <p className="text-xs text-foreground/50 mt-1">
+          <p className="mt-1 text-xs text-foreground/50">
             留空使用系統預設，Windows 可選 direct3d，macOS 可選 metal
           </p>
         </div>

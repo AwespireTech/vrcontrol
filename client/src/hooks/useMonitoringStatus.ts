@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
-import { DEFAULT_MONITORING_STATUS_POLL_INTERVAL_SECONDS } from '@/environment'
-import { monitoringApi } from '@/services/quest-api'
+import { useEffect, useMemo, useState } from "react"
+import { DEFAULT_MONITORING_STATUS_POLL_INTERVAL_SECONDS } from "@/environment"
+import { monitoringApi } from "@/services/quest-api"
 
 type MonitoringStatusState = {
   known: boolean
@@ -66,7 +66,7 @@ function ensurePollingStarted() {
   const intervalMs = Math.max(1, DEFAULT_MONITORING_STATUS_POLL_INTERVAL_SECONDS) * 1000
 
   pollTimer = setInterval(() => {
-    if (document.visibilityState !== 'visible') return
+    if (document.visibilityState !== "visible") return
     void refreshInternal()
   }, intervalMs)
 
@@ -81,8 +81,8 @@ function maybeStopPolling() {
     pollTimer = null
   }
   if (eventsBound) {
-    window.removeEventListener('focus', onFocus)
-    document.removeEventListener('visibilitychange', onVisibilityChange)
+    window.removeEventListener("focus", onFocus)
+    document.removeEventListener("visibilitychange", onVisibilityChange)
     eventsBound = false
   }
 }
@@ -92,15 +92,15 @@ function onFocus() {
 }
 
 function onVisibilityChange() {
-  if (document.visibilityState === 'visible') {
+  if (document.visibilityState === "visible") {
     void refreshInternal()
   }
 }
 
 function ensureEventsBound() {
   if (eventsBound) return
-  window.addEventListener('focus', onFocus)
-  document.addEventListener('visibilitychange', onVisibilityChange)
+  window.addEventListener("focus", onFocus)
+  document.addEventListener("visibilitychange", onVisibilityChange)
   eventsBound = true
 }
 

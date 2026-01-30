@@ -3,8 +3,9 @@ package sockets
 import (
 	"net/http"
 
-	"github.com/gorilla/websocket"
 	"vrcontrol/server/consts"
+
+	"github.com/gorilla/websocket"
 )
 
 var (

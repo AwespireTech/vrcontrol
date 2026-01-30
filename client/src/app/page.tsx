@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import { SERVER } from "@/environment"
 import { roomApi } from "@/services/quest-api"
@@ -15,7 +15,7 @@ export default function Home() {
   const [roomOptions, setRoomOptions] = useState<{ value: string; label: string }[]>([])
   const [countdown, setCountdown] = useState<number>(5)
 
-  const getPlayer = async () => {
+  const getPlayer = useCallback(async () => {
     console.log("fetching player list")
     fetch(`${SERVER}/control/playerlist`).then((r) =>
       r.json().then((j) => {
@@ -26,9 +26,9 @@ export default function Home() {
         )
       }),
     )
-  }
+  }, [])
 
-  const getRoom = async () => {
+  const getRoom = useCallback(async () => {
     try {
       console.log("fetching room list")
       const [controlRooms, questRooms] = await Promise.all([
@@ -54,9 +54,9 @@ export default function Home() {
       )
     } catch (error) {
       console.error("fetching room list failed", error)
-      setRoomOptions(roomList.map((roomId) => ({ value: roomId, label: roomId })))
+      setRoomOptions([])
     }
-  }
+  }, [])
 
   useEffect(() => {
     getPlayer()
@@ -76,11 +76,11 @@ export default function Home() {
     return () => {
       clearInterval(intervalId)
     }
-  }, [])
+  }, [getPlayer, getRoom])
 
   return (
     <div className="grid h-full w-full items-center justify-items-center gap-16 p-8 pb-20 font-[family-name:var(--font-geist-sans)] sm:p-20">
-      <div className="w-full flex justify-end">
+      <div className="flex w-full justify-end">
         <Button onClick={() => navigate("/quest")} className="flex items-center gap-2">
           🎮 Quest 設備管理
         </Button>

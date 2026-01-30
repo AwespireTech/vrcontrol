@@ -7,9 +7,10 @@ import (
 	"maps"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"vrcontrol/server/model"
 	"vrcontrol/server/utilities"
+
+	"github.com/gorilla/websocket"
 )
 
 type Controller struct {

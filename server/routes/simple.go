@@ -1,8 +1,9 @@
 package routes
 
 import (
-	"github.com/gin-gonic/gin"
 	"vrcontrol/server/controller"
+
+	"github.com/gin-gonic/gin"
 )
 
 func SetSimpleControlRoutes(router *gin.RouterGroup) {

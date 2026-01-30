@@ -1,16 +1,16 @@
-import { useNavigate } from 'react-router-dom'
-import { actionApi } from '@/services/quest-api'
-import ActionForm from '@/components/quest/action-form'
-import type { QuestAction } from '@/services/quest-types'
-import QuestPageShell from '@/components/quest/quest-page-shell'
+import { useNavigate } from "react-router-dom"
+import { actionApi } from "@/services/quest-api"
+import ActionForm from "@/components/quest/action-form"
+import type { QuestAction } from "@/services/quest-types"
+import QuestPageShell from "@/components/quest/quest-page-shell"
 
 export default function NewActionPage() {
   const navigate = useNavigate()
 
   const handleSubmit = async (action: Partial<QuestAction>) => {
     await actionApi.create(action)
-    alert('動作已建立')
-    navigate('/quest/actions')
+    alert("動作已建立")
+    navigate("/quest/actions")
   }
 
   return (
@@ -20,7 +20,7 @@ export default function NewActionPage() {
       maxWidth="sm"
       actions={
         <button
-          onClick={() => navigate('/quest/actions')}
+          onClick={() => navigate("/quest/actions")}
           className="ui-btn ui-btn-md ui-btn-muted"
         >
           返回動作列表
@@ -28,7 +28,7 @@ export default function NewActionPage() {
       }
     >
       <div className="surface-card p-6">
-        <ActionForm onSubmit={handleSubmit} onCancel={() => navigate('/quest/actions')} />
+        <ActionForm onSubmit={handleSubmit} onCancel={() => navigate("/quest/actions")} />
       </div>
     </QuestPageShell>
   )

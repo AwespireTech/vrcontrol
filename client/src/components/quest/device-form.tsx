@@ -1,8 +1,8 @@
-'use client'
+"use client"
 
-import { useState } from 'react'
-import type { QuestDevice } from '@/services/quest-types'
-import Button from '@/components/button'
+import { useState } from "react"
+import type { QuestDevice } from "@/services/quest-types"
+import Button from "@/components/button"
 
 interface DeviceFormProps {
   device?: QuestDevice
@@ -12,10 +12,10 @@ interface DeviceFormProps {
 
 export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormProps) {
   const [formData, setFormData] = useState({
-    device_id: '',
-    alias: device?.alias || '',
-    name: device?.name || '',
-    ip: device?.ip || '',
+    device_id: "",
+    alias: device?.alias || "",
+    name: device?.name || "",
+    ip: device?.ip || "",
     port: device?.port || 5555,
   })
   const [submitting, setSubmitting] = useState(false)
@@ -38,8 +38,8 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
           }
       await onSubmit(payload)
     } catch (error) {
-      console.error('Failed to submit form:', error)
-      alert('提交失敗，請稍後再試')
+      console.error("Failed to submit form:", error)
+      alert("提交失敗，請稍後再試")
     } finally {
       setSubmitting(false)
     }
@@ -49,7 +49,7 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
     const { name, value, type } = e.target
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'number' ? parseInt(value) || 0 : value,
+      [name]: type === "number" ? parseInt(value) || 0 : value,
     }))
   }
 
@@ -57,7 +57,7 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
     <form onSubmit={handleSubmit} className="space-y-6">
       {!device && (
         <div>
-          <label className="block text-sm font-semibold text-foreground mb-2">
+          <label className="mb-2 block text-sm font-semibold text-foreground">
             設備 ID（8 位英數）*
           </label>
           <input
@@ -70,7 +70,7 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
             className="ui-input w-full px-4 py-2 uppercase"
             placeholder="例如: AB12CD34"
           />
-          <p className="text-xs text-foreground/50 mt-1">系統會自動加上 DEV- 前綴</p>
+          <p className="mt-1 text-xs text-foreground/50">系統會自動加上 DEV- 前綴</p>
         </div>
       )}
       {device?.room_id && (
@@ -80,9 +80,7 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
         </div>
       )}
       <div>
-        <label className="block text-sm font-semibold text-foreground mb-2">
-          顯示名稱 *
-        </label>
+        <label className="mb-2 block text-sm font-semibold text-foreground">顯示名稱 *</label>
         <input
           type="text"
           name="alias"
@@ -92,23 +90,19 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
           className="ui-input w-full px-4 py-2"
           placeholder="例如: Quest 1"
         />
-        <p className="text-xs text-foreground/50 mt-1">設備的自訂顯示名稱</p>
+        <p className="mt-1 text-xs text-foreground/50">設備的自訂顯示名稱</p>
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-foreground mb-2">
-          原始設備名稱
-        </label>
+        <label className="mb-2 block text-sm font-semibold text-foreground">原始設備名稱</label>
         <div className="ui-input w-full bg-muted/30 px-4 py-2 text-foreground/70">
-          {device?.name || '(連線設備後自動填入)'}
+          {device?.name || "(連線設備後自動填入)"}
         </div>
-        <p className="text-xs text-foreground/50 mt-1">由 ADB 自動獲取的設備名稱，不可編輯</p>
+        <p className="mt-1 text-xs text-foreground/50">由 ADB 自動獲取的設備名稱，不可編輯</p>
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-foreground mb-2">
-          IP 地址 *
-        </label>
+        <label className="mb-2 block text-sm font-semibold text-foreground">IP 地址 *</label>
         <input
           type="text"
           name="ip"
@@ -119,13 +113,11 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
           className="ui-input w-full px-4 py-2"
           placeholder="例如: 192.168.1.100"
         />
-        <p className="text-xs text-foreground/50 mt-1">請輸入有效的 IPv4 地址</p>
+        <p className="mt-1 text-xs text-foreground/50">請輸入有效的 IPv4 地址</p>
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-foreground mb-2">
-          ADB 端口
-        </label>
+        <label className="mb-2 block text-sm font-semibold text-foreground">ADB 端口</label>
         <input
           type="number"
           name="port"
@@ -135,15 +127,11 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
           max="65535"
           className="ui-input w-full px-4 py-2"
         />
-        <p className="text-xs text-foreground/50 mt-1">預設: 5555</p>
+        <p className="mt-1 text-xs text-foreground/50">預設: 5555</p>
       </div>
 
       <div className="flex justify-end gap-3 border-t border-border/70 pt-4">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="ui-btn ui-btn-md ui-btn-muted"
-        >
+        <button type="button" onClick={onCancel} className="ui-btn ui-btn-md ui-btn-muted">
           取消
         </button>
         <Button
@@ -152,7 +140,7 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
           loading={submitting}
           className="ui-btn-md ui-btn-primary"
         >
-          {device ? '更新' : '建立'}
+          {device ? "更新" : "建立"}
         </Button>
       </div>
     </form>

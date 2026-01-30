@@ -1,5 +1,5 @@
-import { type QuestRoom } from '@/services/quest-types'
-import Button from '@/components/button'
+import { type QuestRoom } from "@/services/quest-types"
+import Button from "@/components/button"
 
 interface RoomCardProps {
   room: QuestRoom
@@ -34,9 +34,7 @@ export default function RoomCard({
       </div>
 
       {/* 房間描述 */}
-      {room.description && (
-        <p className="mb-3 text-sm text-foreground/70">{room.description}</p>
-      )}
+      {room.description && <p className="mb-3 text-sm text-foreground/70">{room.description}</p>}
 
       {/* 房間信息 */}
       <div className="mb-4 space-y-2 text-sm">
@@ -52,17 +50,12 @@ export default function RoomCard({
           <p className="mb-2 text-sm font-semibold text-foreground">設備:</p>
           <div className="flex flex-wrap gap-2">
             {room.device_ids.slice(0, 3).map((deviceId) => (
-              <span
-                key={deviceId}
-                className="ui-badge ui-badge-primary"
-              >
+              <span key={deviceId} className="ui-badge ui-badge-primary">
                 {deviceNames?.get(deviceId) || deviceId}
               </span>
             ))}
             {room.device_ids.length > 3 && (
-              <span className="ui-badge ui-badge-muted">
-                +{room.device_ids.length - 3} 更多
-              </span>
+              <span className="ui-badge ui-badge-muted">+{room.device_ids.length - 3} 更多</span>
             )}
           </div>
         </div>

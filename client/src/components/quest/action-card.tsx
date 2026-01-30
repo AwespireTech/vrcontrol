@@ -1,5 +1,5 @@
-import { type QuestAction, QUEST_ACTION_TYPES } from '@/services/quest-types'
-import Button from '@/components/button'
+import { type QuestAction, QUEST_ACTION_TYPES } from "@/services/quest-types"
+import Button from "@/components/button"
 
 interface ActionCardProps {
   action: QuestAction
@@ -21,21 +21,21 @@ export default function ActionCard({
   const getActionTypeText = (type: string) => {
     switch (type) {
       case QUEST_ACTION_TYPES.WAKE_UP:
-        return '喚醒'
+        return "喚醒"
       case QUEST_ACTION_TYPES.SLEEP:
-        return '休眠'
+        return "休眠"
       case QUEST_ACTION_TYPES.LAUNCH_APP:
-        return '啟動應用'
+        return "啟動應用"
       case QUEST_ACTION_TYPES.STOP_APP:
-        return '停止應用'
+        return "停止應用"
       case QUEST_ACTION_TYPES.RESTART_APP:
-        return '重啟應用'
+        return "重啟應用"
       case QUEST_ACTION_TYPES.KEEP_AWAKE:
-        return '保持喚醒'
+        return "保持喚醒"
       case QUEST_ACTION_TYPES.SEND_KEY:
-        return '發送按鍵'
+        return "發送按鍵"
       case QUEST_ACTION_TYPES.INSTALL_APK:
-        return '安裝 APK'
+        return "安裝 APK"
       default:
         return type
     }
@@ -44,23 +44,23 @@ export default function ActionCard({
   const getActionIcon = (type: string) => {
     switch (type) {
       case QUEST_ACTION_TYPES.WAKE_UP:
-        return '☀️'
+        return "☀️"
       case QUEST_ACTION_TYPES.SLEEP:
-        return '🌙'
+        return "🌙"
       case QUEST_ACTION_TYPES.LAUNCH_APP:
-        return '🚀'
+        return "🚀"
       case QUEST_ACTION_TYPES.STOP_APP:
-        return '⏹️'
+        return "⏹️"
       case QUEST_ACTION_TYPES.RESTART_APP:
-        return '🔄'
+        return "🔄"
       case QUEST_ACTION_TYPES.KEEP_AWAKE:
-        return '⏰'
+        return "⏰"
       case QUEST_ACTION_TYPES.SEND_KEY:
-        return '⌨️'
+        return "⌨️"
       case QUEST_ACTION_TYPES.INSTALL_APK:
-        return '📦'
+        return "📦"
       default:
-        return '⚡'
+        return "⚡"
     }
   }
 
@@ -105,7 +105,7 @@ export default function ActionCard({
           <div className="flex justify-between">
             <span className="text-foreground/70">最後執行:</span>
             <span className="text-xs text-foreground">
-              {new Date(action.last_executed_at).toLocaleString('zh-TW')}
+              {new Date(action.last_executed_at).toLocaleString("zh-TW")}
             </span>
           </div>
         )}
@@ -114,8 +114,8 @@ export default function ActionCard({
       {/* 參數預覽 */}
       {Object.keys(action.params).length > 0 && (
         <div className="mb-4">
-          <p className="text-sm font-semibold text-foreground mb-2">參數:</p>
-          <div className="surface-panel max-h-20 overflow-y-auto p-2 text-xs font-mono text-foreground/70">
+          <p className="mb-2 text-sm font-semibold text-foreground">參數:</p>
+          <div className="surface-panel max-h-20 overflow-y-auto p-2 font-mono text-xs text-foreground/70">
             {JSON.stringify(action.params, null, 2)}
           </div>
         </div>
@@ -134,10 +134,7 @@ export default function ActionCard({
           </Button>
         )}
         {onEdit && (
-          <Button
-            onClick={() => onEdit(action.action_id)}
-            className="ui-btn-xs ui-btn-muted"
-          >
+          <Button onClick={() => onEdit(action.action_id)} className="ui-btn-xs ui-btn-muted">
             編輯
           </Button>
         )}

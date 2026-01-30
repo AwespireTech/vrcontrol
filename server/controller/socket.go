@@ -4,8 +4,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	"vrcontrol/server/sockets"
+
+	"github.com/gin-gonic/gin"
 )
 
 func ConnectToRoomSocket(c *gin.Context) {
