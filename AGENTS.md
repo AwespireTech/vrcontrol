@@ -28,7 +28,7 @@
 - 必要工具：ADB、scrcpy（需在 PATH）
 - 詳細安裝與平台說明：
   - [README.md](README.md)
-  - [server/readme.md](server/readme.md)
+  - [server/README.md](server/README.md)
 
 ## When to Read Which Doc
 - 動作參數格式與必填欄位：[docs/ACTION_PARAMETERS.md](docs/ACTION_PARAMETERS.md)
@@ -36,6 +36,7 @@
 - 架構與資料流：[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 - 後端快速開始與操作流程：[server/README.md](server/README.md)
 - 前端開發方式：[client/README.md](client/README.md)
+- 變更流程與文件同步要求：[docs/DEV_WORKFLOW.md](docs/DEV_WORKFLOW.md)
 
 ## Common Pitfalls
 - `keep_awake` 尚未在後端實作（動作會失敗）

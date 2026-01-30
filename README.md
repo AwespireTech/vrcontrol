@@ -88,7 +88,7 @@ docker compose up
 ## 重要文件
 
 - AI Agent 指南：[AGENTS.md](AGENTS.md)
-- Quest 模組詳情：[server/readme.md](server/readme.md)
+- Quest 模組詳情：[server/README.md](server/README.md)
 - 動作參數規格：[docs/ACTION_PARAMETERS.md](docs/ACTION_PARAMETERS.md)
 - API 總表：[docs/API.md](docs/API.md)
 - 架構概覽：[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
