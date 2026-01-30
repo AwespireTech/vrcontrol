@@ -1,36 +1,37 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# VRControl Client
 
-## Getting Started
+Vite + React 19 前端，負責顯示設備、房間與動作管理 UI。
 
-First, run the development server:
+## 開發啟動
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+預設開發位址：`http://localhost:5173`
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 主要指令
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run dev     # 開發模式
+npm run build   # 產出靜態檔案
+npm run preview # 預覽 build 結果
+npm run lint    # ESLint 檢查
+```
 
-## Learn More
+## API 連線
 
-To learn more about Next.js, take a look at the following resources:
+開發模式下，Vite 代理會將 `/api` 與 `/ws` 轉發到後端 `http://localhost:8080`。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+如需自訂 API 位置，請調整 `src/environment.ts` 中的 `SERVER` 值。
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 專案結構
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+src/
+├── app/                 # 路由頁面
+├── components/          # UI 元件
+├── services/            # API 與型別
+└── hooks/               # 前端自訂 hooks
+```

@@ -1,47 +1,49 @@
-# Quest Action Parameters Specification
+# Quest 動作參數規格
 
-This document defines the standard parameter structure for each Quest action type in the VRControl system.
+本文件定義 Quest 動作（Action）在 `params` 欄位中使用的標準結構與必填欄位。
 
-## Overview
+## 概述
 
-Action parameters are stored as JSON objects in the `params` field of each action. When executing actions, these parameters are automatically loaded from the database and passed to the ADB manager for execution.
+每筆動作在資料中以 `params` 儲存 JSON 物件，執行時會被後端載入並傳遞給 ADB 管理器。
 
-## Action Types and Parameters
+> 注意：JSON 數字在 Go 中會以 `float64` 讀取，建議仍以「整數」概念填寫。
 
-### 1. Wake Up Device (`wake_up`)
+## 參數格式
 
-Wakes up a device from sleep mode by sending a power button keycode.
-
-**Parameters:**
-- None required (uses empty object `{}`)
-
-**Optional Parameters:**
-- `timeout` (integer): Maximum time to wait for device to wake up in milliseconds
-  - Default: System default
-  - Example: `5000` (5 seconds)
-
-**Example:**
 ```json
 {
-  "timeout": 5000
+  "action_type": "launch_app",
+  "params": {
+    "package": "com.example.app",
+    "activity": ".MainActivity"
+  }
 }
+```
+
+## 動作類型與參數
+
+### 1. 喚醒設備 (`wake_up`)
+
+喚醒設備（按下電源鍵）。
+
+**參數**：無（`{}`）
+
+**範例**：
+```json
+{}
 ```
 
 ---
 
-### 2. Sleep Device (`sleep`)
+### 2. 休眠設備 (`sleep`)
 
-Puts a device into sleep mode.
+讓設備進入睡眠。
 
-**Parameters:**
-- None required (uses empty object `{}`)
+**可選參數**：
+- `force` (boolean)：強制睡眠
+  - 預設：`false`
 
-**Optional Parameters:**
-- `force` (boolean): Whether to force sleep even if device is in use
-  - Default: `false`
-  - Example: `true`
-
-**Example:**
+**範例**：
 ```json
 {
   "force": false
@@ -50,37 +52,31 @@ Puts a device into sleep mode.
 
 ---
 
-### 3. Launch App (`launch_app`)
+### 3. 啟動應用 (`launch_app`)
 
-Launches an Android application on the device.
+啟動指定 App。
 
-**Required Parameters:**
-- `package` (string): The package name of the application
-  - Example: `"com.example.app"`
-  - Example: `"com.Awespire.OrientalBeauty"`
+**必填參數**：
+- `package` (string)：套件名稱
 
-**Optional Parameters:**
-- `activity` (string): The specific activity to launch within the app
-  - Default: Main/launcher activity
-  - Example: `".MainActivity"`
-  - Example: `"com.unity3d.player.UnityPlayerGameActivity"`
-- `extras` (object): Additional intent extras to pass to the application
-  - Default: `{}` (no extras)
-  - Example: `{"key1": "value1", "key2": 123}`
+**可選參數**：
+- `activity` (string)：指定 Activity
+- `extras` (object)：Intent extras（僅支援 `string | boolean | number`）
 
-**Example:**
+**範例**：
 ```json
 {
-  "package": "com.example.app",
-  "activity": ".MainActivity",
+  "package": "com.AweSpire.ThreeTaoist",
+  "activity": "com.unity3d.player.UnityPlayerGameActivity",
   "extras": {
-    "debug_mode": true,
-    "user_id": "12345"
+    "debug": true,
+    "user_id": "12345",
+    "level": 3
   }
 }
 ```
 
-**Minimal Example:**
+**最小範例**：
 ```json
 {
   "package": "com.example.app"
@@ -89,21 +85,18 @@ Launches an Android application on the device.
 
 ---
 
-### 4. Stop App (`stop_app`)
+### 4. 停止應用 (`stop_app`)
 
-Stops a running Android application.
+停止指定 App。
 
-**Required Parameters:**
-- `package` (string): The package name of the application to stop
-  - Example: `"com.example.app"`
+**必填參數**：
+- `package` (string)：套件名稱
 
-**Optional Parameters:**
-- `method` (string): Method to use for stopping the app
-  - Default: `"force-stop"`
-  - Options: `"force-stop"`, `"kill"`
-  - Example: `"force-stop"`
+**可選參數**：
+- `method` (string)：停止方式
+  - 可選：`"force-stop"`（預設）、`"kill"`
 
-**Example:**
+**範例**：
 ```json
 {
   "package": "com.example.app",
@@ -111,83 +104,41 @@ Stops a running Android application.
 }
 ```
 
-**Minimal Example:**
-```json
-{
-  "package": "com.example.app"
-}
-```
-
 ---
 
-### 5. Restart App (`restart_app`)
+### 5. 重啟應用 (`restart_app`)
 
-Stops and then relaunches an Android application.
+停止後重新啟動指定 App。
 
-**Required Parameters:**
-- `package` (string): The package name of the application to restart
-  - Example: `"com.example.app"`
+**必填參數**：
+- `package` (string)：套件名稱
 
-**Optional Parameters:**
-- `activity` (string): The specific activity to launch when restarting
-  - Default: Main/launcher activity
-  - Example: `".MainActivity"`
-- `delay` (integer): Time to wait between stop and start in milliseconds
-  - Default: `1000` (1 second)
-  - Example: `2000` (2 seconds)
+**可選參數**：
+- `activity` (string)：指定 Activity
+- `delay` (integer)：停止後等待毫秒數（預設 `1000`）
 
-**Example:**
+**範例**：
 ```json
 {
   "package": "com.example.app",
   "activity": ".MainActivity",
-  "delay": 2000
-}
-```
-
-**Minimal Example:**
-```json
-{
-  "package": "com.example.app"
+  "delay": 1500
 }
 ```
 
 ---
 
-### 6. Keep Awake (`keep_awake`)
+### 6. 發送按鍵 (`send_key`)
 
-Keeps the device awake for a specified duration.
+模擬硬體按鍵事件。
 
-**Optional Parameters:**
-- `duration_seconds` (integer): How long to keep the device awake in seconds
-  - Default: `3600` (1 hour)
-  - Example: `7200` (2 hours)
+**必填參數**：
+- `keycode` (integer)：Android KeyCode
 
-**Example:**
-```json
-{
-  "duration_seconds": 3600
-}
-```
+**可選參數**：
+- `repeat` (integer)：重複次數（預設 `1`）
 
----
-
-### 7. Send Key (`send_key`)
-
-Sends a keycode event to the device (simulates hardware button press).
-
-**Required Parameters:**
-- `keycode` (integer): The Android keycode to send
-  - Example: `26` (KEYCODE_POWER)
-  - Example: `4` (KEYCODE_BACK)
-  - Example: `3` (KEYCODE_HOME)
-
-**Optional Parameters:**
-- `repeat` (integer): Number of times to send the keycode
-  - Default: `1`
-  - Example: `3` (send keycode 3 times)
-
-**Example:**
+**範例**：
 ```json
 {
   "keycode": 26,
@@ -195,180 +146,42 @@ Sends a keycode event to the device (simulates hardware button press).
 }
 ```
 
-**Common Keycodes:**
+**常見 KeyCode**：
 - `3`: KEYCODE_HOME
 - `4`: KEYCODE_BACK
+- `26`: KEYCODE_POWER
+**其他常見 KeyCode**（參考用）：
 - `24`: KEYCODE_VOLUME_UP
 - `25`: KEYCODE_VOLUME_DOWN
-- `26`: KEYCODE_POWER
 - `82`: KEYCODE_MENU
 - `187`: KEYCODE_APP_SWITCH
 
 ---
 
-### 8. Install APK (`install_apk`)
+### 7. 安裝 APK (`install_apk`)
 
-Installs an APK file on the device.
+在設備上安裝 APK。
 
-**Required Parameters:**
-- `apk_path` (string): Full path to the APK file on the server
-  - Example: `"/path/to/app.apk"`
-  - Example: `"C:\\apks\\myapp.apk"`
+**必填參數**：
+- `apk_path` (string)：伺服器可存取的檔案路徑
 
-**Optional Parameters:**
-- `replace` (boolean): Whether to replace existing installation
-  - Default: `true`
-  - Example: `false`
-- `grant_permissions` (boolean): Whether to grant all runtime permissions automatically
-  - Default: `true`
-  - Example: `false`
+**可選參數**：
+- `replace` (boolean)：覆蓋安裝（預設 `true`）
+- `grant_permissions` (boolean)：安裝時授權（預設 `true`）
 
-**Example:**
+**範例**：
 ```json
 {
-  "apk_path": "/path/to/app.apk",
+  "apk_path": "/app/data/app-release.apk",
   "replace": true,
   "grant_permissions": true
-}
-```
-
-**Minimal Example:**
-```json
-{
-  "apk_path": "/path/to/app.apk"
 }
 ```
 
 ---
 
-## Parameter Naming Conventions
+### 8. 保持喚醒 (`keep_awake`)
 
-### Important Notes
+**狀態**：目前後端尚未實作（`action_service.go` 未處理此類型）。
 
-1. **Use `package` not `package_name`**: For all app-related actions (`launch_app`, `stop_app`, `restart_app`), the parameter name must be `package`, not `package_name`.
-
-2. **Case Sensitivity**: All parameter names are case-sensitive and should be in lowercase with underscores (snake_case).
-
-3. **Type Safety**: 
-   - Strings must be quoted: `"com.example.app"`
-   - Numbers must not be quoted: `26`, `3600`
-   - Booleans must be lowercase: `true`, `false`
-
-4. **Required vs Optional**: Required parameters must always be provided. If missing, the action will fail with an error message indicating which parameter is required.
-
-## Error Messages
-
-When required parameters are missing, the system will return specific error messages:
-
-- `"package name required"` - Missing `package` parameter for app actions
-- `"keycode required"` - Missing `keycode` parameter for send_key action
-- `"apk_path required"` - Missing `apk_path` parameter for install_apk action
-
-## Validation
-
-### Frontend Validation
-
-The frontend form provides:
-- Parameter templates for each action type
-- JSON syntax validation before submission
-- Schema-based parameter validation (checks for required fields)
-
-### Backend Validation
-
-The backend checks:
-- Required parameters are present
-- Parameter types match expected types
-- Parameter values are within valid ranges (where applicable)
-
-## Examples by Use Case
-
-### Basic Device Control
-```json
-// Wake up device
-{}
-
-// Sleep device
-{"force": false}
-
-// Send home button
-{"keycode": 3}
-```
-
-### Application Management
-```json
-// Launch Unity game
-{
-  "package": "com.Awespire.OrientalBeauty",
-  "activity": "com.unity3d.player.UnityPlayerGameActivity"
-}
-
-// Stop app
-{
-  "package": "com.example.app"
-}
-
-// Restart app with delay
-{
-  "package": "com.example.app",
-  "delay": 3000
-}
-```
-
-### Advanced Operations
-```json
-// Install and configure app
-{
-  "apk_path": "/apks/myapp.apk",
-  "replace": true,
-  "grant_permissions": true
-}
-
-// Keep device awake for 2 hours
-{
-  "duration_seconds": 7200
-}
-```
-
-## Integration with API
-
-When creating or updating actions via the API:
-
-```typescript
-// Frontend example
-const action = {
-  name: "Launch My App",
-  action_type: "launch_app",
-  description: "Launches my application",
-  params: {
-    package: "com.example.myapp",
-    activity: ".MainActivity"
-  }
-}
-
-await actionApi.create(action)
-```
-
-Parameters are stored in the database and automatically loaded when the action is executed. There's no need to pass parameters again during execution - only the `action_id` and `device_id` are needed.
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Action fails with "package name required"**
-   - Solution: Ensure you're using `package` not `package_name`
-
-2. **JSON parse error when creating action**
-   - Solution: Validate JSON syntax, ensure proper quotes and commas
-
-3. **Action executes but app doesn't launch**
-   - Solution: Verify package name is correct using `adb shell pm list packages`
-
-4. **Install APK fails**
-   - Solution: Check APK path is absolute and accessible from server
-
-## Version History
-
-- **v1.0.0** (2026-01-07): Initial parameter specification
-  - Standardized `package` parameter naming
-  - Documented all action types
-  - Added validation guidelines
+若需使用，請先在後端新增動作處理邏輯後再擴充參數定義。
