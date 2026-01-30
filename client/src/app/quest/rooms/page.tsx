@@ -4,6 +4,7 @@ import { roomApi, deviceApi } from '@/services/quest-api'
 import type { QuestRoom } from '@/services/quest-types'
 import { getDisplayName } from '@/lib/utils/device'
 import QuestPageShell from '@/components/quest/quest-page-shell'
+import Button from '@/components/button'
 
 export default function RoomsPage() {
   const navigate = useNavigate()
@@ -11,6 +12,7 @@ export default function RoomsPage() {
   const [deviceNameMap, setDeviceNameMap] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
   const [countdown, setCountdown] = useState(5)
+  const [roomPending, setRoomPending] = useState<Record<string, 'delete'>>({})
 
   const loadData = async () => {
     try {
@@ -51,20 +53,27 @@ export default function RoomsPage() {
 
   const handleDelete = async (roomId: string) => {
     if (!confirm('確定要刪除這個房間嗎？')) return
-
+    if (roomPending[roomId]) return
+    setRoomPending((prev) => ({ ...prev, [roomId]: 'delete' }))
     try {
       await roomApi.delete(roomId)
       await loadData()
     } catch (error) {
       console.error('Failed to delete room:', error)
-      alert('刪除失敗')
+      alert('刪除失敗，請稍後再試')
+    } finally {
+      setRoomPending((prev) => {
+        const next = { ...prev }
+        delete next[roomId]
+        return next
+      })
     }
   }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-xl text-foreground">加載中...</div>
+        <div className="text-xl text-foreground">載入中…</div>
       </div>
     )
   }
@@ -72,21 +81,21 @@ export default function RoomsPage() {
   return (
     <QuestPageShell
       title="房間管理"
-      subtitle={`下次更新: ${countdown} 秒`}
+      subtitle={`下次更新 ${countdown} 秒`}
       actions={
         <button
           onClick={() => navigate('/quest/rooms/new')}
           className="ui-btn ui-btn-md ui-btn-primary"
         >
-          + 創建房間
+          + 建立房間
         </button>
       }
     >
       {rooms.length === 0 ? (
         <div className="surface-card p-10 text-center">
           <div className="text-5xl">🏠</div>
-          <div className="mt-4 text-lg font-semibold text-foreground">還沒有房間</div>
-          <div className="mt-2 text-sm text-foreground/70">點擊上方按鈕創建您的第一個房間</div>
+          <div className="mt-4 text-lg font-semibold text-foreground">尚無房間</div>
+          <div className="mt-2 text-sm text-foreground/70">點擊上方按鈕建立第一個房間</div>
         </div>
       ) : (
         <div className="surface-card overflow-hidden">
@@ -148,12 +157,14 @@ export default function RoomsPage() {
                 >
                   編輯
                 </button>
-                <button
+                <Button
                   onClick={() => handleDelete(room.room_id)}
-                  className="ui-btn ui-btn-xs ui-btn-danger"
+                  className="ui-btn-xs ui-btn-danger"
+                  loading={roomPending[room.room_id] === 'delete'}
+                  disabled={!!roomPending[room.room_id]}
                 >
                   刪除
-                </button>
+                </Button>
               </div>
             </div>
           ))}

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { QuestDevice } from '@/services/quest-types'
+import Button from '@/components/button'
 
 interface DeviceFormProps {
   device?: QuestDevice
@@ -38,7 +39,7 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
       await onSubmit(payload)
     } catch (error) {
       console.error('Failed to submit form:', error)
-      alert('提交失敗')
+      alert('提交失敗，請稍後再試')
     } finally {
       setSubmitting(false)
     }
@@ -99,7 +100,7 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
           原始設備名稱
         </label>
         <div className="ui-input w-full bg-muted/30 px-4 py-2 text-foreground/70">
-          {device?.name || '(連接設備後自動填入)'}
+          {device?.name || '(連線設備後自動填入)'}
         </div>
         <p className="text-xs text-foreground/50 mt-1">由 ADB 自動獲取的設備名稱，不可編輯</p>
       </div>
@@ -145,13 +146,14 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
         >
           取消
         </button>
-        <button
+        <Button
           type="submit"
           disabled={submitting}
-          className="ui-btn ui-btn-md ui-btn-primary"
+          loading={submitting}
+          className="ui-btn-md ui-btn-primary"
         >
-          {submitting ? '提交中...' : device ? '更新' : '創建'}
-        </button>
+          {device ? '更新' : '建立'}
+        </Button>
       </div>
     </form>
   )

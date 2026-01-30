@@ -9,21 +9,21 @@ export default function NewRoomPage() {
 
   const handleSubmit = async (room: Partial<QuestRoom>) => {
     await roomApi.create(room)
-    alert('房間創建成功')
+    alert('房間已建立')
     navigate('/quest/rooms')
   }
 
   return (
     <QuestPageShell
-      title="創建新房間"
-      subtitle="建立新的房間與設備配置"
+      title="建立新房間"
+      subtitle="建立新房間與設備配置"
       maxWidth="sm"
       actions={
         <button
           onClick={() => navigate('/quest/rooms')}
           className="ui-btn ui-btn-md ui-btn-muted"
         >
-          回到房間列表
+          返回房間列表
         </button>
       }
     >

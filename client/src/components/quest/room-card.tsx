@@ -1,4 +1,5 @@
 import { type QuestRoom } from '@/services/quest-types'
+import Button from '@/components/button'
 
 interface RoomCardProps {
   room: QuestRoom
@@ -7,6 +8,10 @@ interface RoomCardProps {
   onDelete?: (roomId: string) => void
   onManageDevices?: (roomId: string) => void
   onControl?: (roomId: string) => void
+  controlLoading?: boolean
+  manageDevicesLoading?: boolean
+  editLoading?: boolean
+  deleteLoading?: boolean
 }
 
 export default function RoomCard({
@@ -16,6 +21,10 @@ export default function RoomCard({
   onDelete,
   onManageDevices,
   onControl,
+  controlLoading,
+  manageDevicesLoading,
+  editLoading,
+  deleteLoading,
 }: RoomCardProps) {
   return (
     <div className="surface-card surface-card-hover p-5">
@@ -62,36 +71,44 @@ export default function RoomCard({
       {/* 操作按鈕 */}
       <div className="flex flex-wrap gap-2">
         {onControl && (
-          <button
+          <Button
             onClick={() => onControl(room.room_id)}
-            className="ui-btn ui-btn-xs ui-btn-primary"
+            className="ui-btn-xs ui-btn-primary"
+            loading={controlLoading}
+            disabled={controlLoading}
           >
             控制
-          </button>
+          </Button>
         )}
         {onManageDevices && (
-          <button
+          <Button
             onClick={() => onManageDevices(room.room_id)}
-            className="ui-btn ui-btn-xs ui-btn-muted"
+            className="ui-btn-xs ui-btn-muted"
+            loading={manageDevicesLoading}
+            disabled={manageDevicesLoading}
           >
             管理設備
-          </button>
+          </Button>
         )}
         {onEdit && (
-          <button
+          <Button
             onClick={() => onEdit(room.room_id)}
-            className="ui-btn ui-btn-xs ui-btn-muted"
+            className="ui-btn-xs ui-btn-muted"
+            loading={editLoading}
+            disabled={editLoading}
           >
             編輯
-          </button>
+          </Button>
         )}
         {onDelete && (
-          <button
+          <Button
             onClick={() => onDelete(room.room_id)}
-            className="ui-btn ui-btn-xs ui-btn-danger"
+            className="ui-btn-xs ui-btn-danger"
+            loading={deleteLoading}
+            disabled={deleteLoading}
           >
             刪除
-          </button>
+          </Button>
         )}
       </div>
     </div>

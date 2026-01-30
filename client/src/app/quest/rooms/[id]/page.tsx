@@ -20,7 +20,7 @@ export default function EditRoomPage() {
         setRoom(data)
       } catch (error) {
         console.error('Failed to load room:', error)
-        alert('載入房間失敗')
+        alert('載入房間失敗，請稍後再試')
         navigate('/quest/rooms')
       } finally {
         setLoading(false)
@@ -35,11 +35,11 @@ export default function EditRoomPage() {
     
     try {
       await roomApi.patch(id, updatedRoom)
-      alert('房間更新成功')
+      alert('房間已更新')
       navigate('/quest/rooms')
     } catch (error) {
       console.error('Failed to update room:', error)
-      alert('更新失敗')
+      alert('更新失敗，請稍後再試')
       throw error
     }
   }
@@ -47,7 +47,7 @@ export default function EditRoomPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background p-6 flex items-center justify-center">
-        <div className="text-foreground">載入中...</div>
+        <div className="text-foreground">載入中…</div>
       </div>
     )
   }
@@ -71,7 +71,7 @@ export default function EditRoomPage() {
             onClick={() => navigate('/quest/rooms')}
             className="ui-btn ui-btn-md ui-btn-muted"
           >
-            回到房間列表
+            返回房間列表
           </button>
           <button
             onClick={() => navigate(`/quest/rooms/${id}/devices`)}

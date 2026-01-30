@@ -4,6 +4,7 @@ import { actionApi, deviceApi } from '@/services/quest-api'
 import { QUEST_ACTION_TYPES, type QuestAction, QuestDevice } from '@/services/quest-types'
 import { getDisplayName } from '@/lib/utils/device'
 import QuestPageShell from '@/components/quest/quest-page-shell'
+import Button from '@/components/button'
 
 const getActionTypeText = (type: string) => {
   switch (type) {
@@ -60,6 +61,8 @@ export default function ActionsPage() {
   const [showExecuteModal, setShowExecuteModal] = useState(false)
   const [selectedAction, setSelectedAction] = useState<QuestAction | null>(null)
   const [selectedDevices, setSelectedDevices] = useState<string[]>([])
+  const [actionPending, setActionPending] = useState<Record<string, 'delete'>>({})
+  const [executePending, setExecutePending] = useState(false)
 
   const loadData = async () => {
     try {
@@ -102,7 +105,8 @@ export default function ActionsPage() {
 
   const handleConfirmExecute = async () => {
     if (!selectedAction || selectedDevices.length === 0) return
-
+    if (executePending) return
+    setExecutePending(true)
     try {
       const result = await actionApi.executeBatch({
         action_id: selectedAction.action_id,
@@ -110,9 +114,7 @@ export default function ActionsPage() {
         max_workers: 5,
       })
 
-      alert(
-        `批量執行完成\n成功: ${result.success_count}\n失敗: ${result.failed_count}`,
-      )
+      alert(`批次執行完成\n成功: ${result.success_count}\n失敗: ${result.failed_count}`)
 
       setShowExecuteModal(false)
       setSelectedAction(null)
@@ -120,19 +122,28 @@ export default function ActionsPage() {
       await loadData()
     } catch (error) {
       console.error('Failed to execute action:', error)
-      alert('執行失敗')
+      alert('執行失敗，請稍後再試')
+    } finally {
+      setExecutePending(false)
     }
   }
 
   const handleDelete = async (actionId: string) => {
     if (!confirm('確定要刪除這個動作嗎？')) return
-
+    if (actionPending[actionId]) return
+    setActionPending((prev) => ({ ...prev, [actionId]: 'delete' }))
     try {
       await actionApi.delete(actionId)
       await loadData()
     } catch (error) {
       console.error('Failed to delete action:', error)
-      alert('刪除失敗')
+      alert('刪除失敗，請稍後再試')
+    } finally {
+      setActionPending((prev) => {
+        const next = { ...prev }
+        delete next[actionId]
+        return next
+      })
     }
   }
 
@@ -152,7 +163,7 @@ export default function ActionsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-xl text-foreground">加載中...</div>
+        <div className="text-xl text-foreground">載入中…</div>
       </div>
     )
   }
@@ -160,21 +171,21 @@ export default function ActionsPage() {
   return (
     <QuestPageShell
       title="動作管理"
-      subtitle={`下次更新: ${countdown} 秒`}
+      subtitle={`下次更新 ${countdown} 秒`}
       actions={
         <button
           onClick={() => navigate('/quest/actions/new')}
           className="ui-btn ui-btn-md ui-btn-primary"
         >
-          + 創建動作
+          + 建立動作
         </button>
       }
     >
       {actions.length === 0 ? (
         <div className="surface-card p-10 text-center">
           <div className="text-5xl">⚡</div>
-          <div className="mt-4 text-lg font-semibold text-foreground">還沒有動作</div>
-          <div className="mt-2 text-sm text-foreground/70">點擊上方按鈕創建您的第一個動作</div>
+          <div className="mt-4 text-lg font-semibold text-foreground">尚無動作</div>
+          <div className="mt-2 text-sm text-foreground/70">點擊上方按鈕建立第一個動作</div>
         </div>
       ) : (
         <div className="surface-card overflow-hidden">
@@ -220,24 +231,26 @@ export default function ActionsPage() {
                     : '—'}
                 </div>
                 <div className="col-span-2 flex flex-wrap items-start justify-end gap-2">
-                  <button
+                  <Button
                     onClick={() => handleExecute(action.action_id)}
-                    className="ui-btn ui-btn-xs ui-btn-primary"
+                    className="ui-btn-xs ui-btn-primary"
                   >
                     執行
-                  </button>
+                  </Button>
                   <button
                     onClick={() => navigate(`/quest/actions/${action.action_id}`)}
                     className="ui-btn ui-btn-xs ui-btn-muted"
                   >
                     編輯
                   </button>
-                  <button
+                  <Button
                     onClick={() => handleDelete(action.action_id)}
-                    className="ui-btn ui-btn-xs ui-btn-danger"
+                    className="ui-btn-xs ui-btn-danger"
+                    loading={actionPending[action.action_id] === 'delete'}
+                    disabled={!!actionPending[action.action_id]}
                   >
                     刪除
-                  </button>
+                  </Button>
                 </div>
               </div>
             )
@@ -247,7 +260,7 @@ export default function ActionsPage() {
 
       {/* 執行動作模態框 */}
       {showExecuteModal && selectedAction && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
           <div className="surface-card w-full max-w-2xl max-h-[80vh] overflow-y-auto p-6 mx-4">
             <h2 className="text-2xl font-bold text-foreground mb-4">
               執行動作: {selectedAction.name}
@@ -307,13 +320,14 @@ export default function ActionsPage() {
               >
                 取消
               </button>
-              <button
+              <Button
                 onClick={handleConfirmExecute}
-                disabled={selectedDevices.length === 0}
-                className="ui-btn ui-btn-md ui-btn-primary"
+                disabled={selectedDevices.length === 0 || executePending}
+                loading={executePending}
+                className="ui-btn-md ui-btn-primary"
               >
                 執行 ({selectedDevices.length} 個設備)
-              </button>
+              </Button>
             </div>
           </div>
         </div>

@@ -127,6 +127,7 @@ export const RoomState = () => {
                 key={player.device_id + player.sequence}
                 player={player}
                 handleChangeSequence={handleChangeSequence}
+                displayName={player.device_id}
               />
             )
           })}

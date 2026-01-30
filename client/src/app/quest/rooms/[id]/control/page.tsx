@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { SERVER } from '@/environment'
+import { DEFAULT_POLL_INTERVAL_SECONDS, SERVER } from '@/environment'
 import Button from '@/components/button'
 import PlayerInfo from '@/components/player-info'
-import { controlApi, roomApi, simpleApi } from '@/services/quest-api'
+import { controlApi, deviceApi, roomApi, scrcpyApi, simpleApi } from '@/services/quest-api'
+import { QUEST_DEVICE_STATUS, type QuestDevice } from '@/services/quest-types'
+import { getDisplayName } from '@/lib/utils/device'
 import type { PlayerData, RoomInfoData } from '@/interfaces/room.interface'
 import QuestPageShell from '@/components/quest/quest-page-shell'
 
@@ -18,12 +20,19 @@ export default function RoomControlPage() {
   const host = SERVER.replace(/^https?:\/\//, '')
 
   const [playerData, setPlayerData] = useState<PlayerData[]>([])
-  const [webSocketData, setWebSocketData] = useState<RoomInfoData | null>(null)
+  const [deviceMap, setDeviceMap] = useState<Map<string, QuestDevice>>(new Map())
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>(
     'connecting',
   )
   const [selectedOption, setSelectedOption] = useState('')
   const [moveState, setMoveState] = useState('')
+  const [countdown, setCountdown] = useState(DEFAULT_POLL_INTERVAL_SECONDS)
+
+  const [forceMovePending, setForceMovePending] = useState(false)
+  const [sequencePendingIds, setSequencePendingIds] = useState<Set<string>>(new Set())
+  const [deviceActionPending, setDeviceActionPending] = useState<
+    Record<string, 'connect' | 'disconnect' | 'monitor'>
+  >({})
 
   const [roomList, setRoomList] = useState<{ value: string; label: string }[]>([])
 
@@ -39,19 +48,53 @@ export default function RoomControlPage() {
 
   const loadControlData = async () => {
     try {
-      const questRooms = await roomApi.getAll()
+      const [questRooms, devices] = await Promise.all([
+        roomApi.getAll(),
+        deviceApi.getAll(),
+      ])
       const roomOptions = questRooms
         .map((room) => ({ value: room.room_id, label: room.name }))
         .sort((a, b) => a.label.localeCompare(b.label))
       setRoomList(roomOptions)
+      setDeviceMap(new Map(devices.map((device) => [device.device_id, device])))
     } catch (error) {
       console.error('Failed to load control data:', error)
+    }
+  }
+
+  const refreshDeviceStatuses = async () => {
+    try {
+      const devices = await deviceApi.getAll()
+      setDeviceMap(new Map(devices.map((device) => [device.device_id, device])))
+    } catch (error) {
+      console.error('Failed to refresh device statuses:', error)
     }
   }
 
   useEffect(() => {
     loadControlData()
   }, [])
+
+  useEffect(() => {
+    if (!roomId) return
+
+    refreshDeviceStatuses()
+    const interval = setInterval(() => {
+      if (document.hidden) return
+      refreshDeviceStatuses()
+      setCountdown(DEFAULT_POLL_INTERVAL_SECONDS)
+    }, DEFAULT_POLL_INTERVAL_SECONDS * 1000)
+
+    const countdownInterval = setInterval(() => {
+      if (document.hidden) return
+      setCountdown((prev) => (prev > 0 ? prev - 1 : 0))
+    }, 1000)
+
+    return () => {
+      clearInterval(interval)
+      clearInterval(countdownInterval)
+    }
+  }, [roomId])
 
   useEffect(() => {
     if (!roomId) return
@@ -73,7 +116,6 @@ export default function RoomControlPage() {
 
     ws.onmessage = (event) => {
       const data: RoomInfoData = JSON.parse(event.data)
-      setWebSocketData(data)
       setPlayerData(data.players)
     }
 
@@ -94,26 +136,130 @@ export default function RoomControlPage() {
 
   const handleChangeSequence = async (player: string, seq: number) => {
     if (!roomId) return
-
+    setSequencePendingIds((prev) => {
+      const next = new Set(prev)
+      next.add(player)
+      return next
+    })
     try {
       await controlApi.assignSeq(roomId, player, seq)
     } catch (error) {
       console.error('Failed to assign sequence:', error)
+    } finally {
+      setSequencePendingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(player)
+        return next
+      })
     }
   }
 
   const handleForceAllMove = async () => {
     if (!roomId || selectedOption === '') return
-
+    setForceMovePending(true)
     try {
       await simpleApi.forceAllMove(roomId, selectedOption)
       setMoveState('success')
     } catch (error) {
       console.error('Failed to send move command:', error)
       setMoveState('failed')
+    } finally {
+      setForceMovePending(false)
     }
   }
 
+  const handleConnect = async (deviceId: string) => {
+    if (deviceActionPending[deviceId]) return
+    setDeviceActionPending((prev) => ({ ...prev, [deviceId]: 'connect' }))
+    try {
+      await deviceApi.connect(deviceId)
+      await loadControlData()
+    } catch (error) {
+      console.error('Failed to connect device:', error)
+      alert('連線失敗，請稍後再試')
+    } finally {
+      setDeviceActionPending((prev) => {
+        const next = { ...prev }
+        delete next[deviceId]
+        return next
+      })
+    }
+  }
+
+  const handleDisconnect = async (deviceId: string) => {
+    if (deviceActionPending[deviceId]) return
+    setDeviceActionPending((prev) => ({ ...prev, [deviceId]: 'disconnect' }))
+    try {
+      await deviceApi.disconnect(deviceId)
+      await loadControlData()
+    } catch (error) {
+      console.error('Failed to disconnect device:', error)
+      alert('斷開失敗，請稍後再試')
+    } finally {
+      setDeviceActionPending((prev) => {
+        const next = { ...prev }
+        delete next[deviceId]
+        return next
+      })
+    }
+  }
+
+  const handleMonitor = async (deviceId: string) => {
+    if (deviceActionPending[deviceId]) return
+    setDeviceActionPending((prev) => ({ ...prev, [deviceId]: 'monitor' }))
+    try {
+      await scrcpyApi.start(deviceId)
+      alert('已啟動監看視窗')
+    } catch (error: unknown) {
+      console.error('Failed to start scrcpy:', error)
+      const message = error instanceof Error ? error.message : ''
+      alert(message || '啟動監看失敗，請稍後再試')
+    } finally {
+      setDeviceActionPending((prev) => {
+        const next = { ...prev }
+        delete next[deviceId]
+        return next
+      })
+    }
+  }
+
+  const getAdbStatusText = (status?: QuestDevice['status']) => {
+    switch (status) {
+      case QUEST_DEVICE_STATUS.ONLINE:
+        return '在線'
+      case QUEST_DEVICE_STATUS.OFFLINE:
+        return '離線'
+      case QUEST_DEVICE_STATUS.CONNECTING:
+        return '連線中'
+      case QUEST_DEVICE_STATUS.ERROR:
+        return '錯誤'
+      case QUEST_DEVICE_STATUS.DISCONNECTED:
+        return '手動斷開'
+      default:
+        return '未知'
+    }
+  }
+
+  const getAdbStatusBadgeClass = (status?: QuestDevice['status']) => {
+    switch (status) {
+      case QUEST_DEVICE_STATUS.ONLINE:
+        return 'ui-badge-success'
+      case QUEST_DEVICE_STATUS.CONNECTING:
+        return 'ui-badge-warning'
+      case QUEST_DEVICE_STATUS.ERROR:
+        return 'ui-badge-danger'
+      case QUEST_DEVICE_STATUS.OFFLINE:
+      case QUEST_DEVICE_STATUS.DISCONNECTED:
+      default:
+        return 'ui-badge-muted'
+    }
+  }
+
+  type AdbStatus = (typeof QUEST_DEVICE_STATUS)[keyof typeof QUEST_DEVICE_STATUS]
+
+  const isQuestDeviceStatus = (status?: string): status is AdbStatus => {
+    return !!status && (Object.values(QUEST_DEVICE_STATUS) as string[]).includes(status)
+  }
 
   const options = Array.from({ length: TotalChapters }, (_, i) => i.toString())
 
@@ -150,7 +296,7 @@ export default function RoomControlPage() {
             onClick={() => navigate('/quest/rooms')}
             className="ui-btn ui-btn-md ui-btn-muted"
           >
-            回到房間列表
+            返回房間列表
           </button>
           <button
             onClick={() => navigate(`/quest/rooms/${roomId}`)}
@@ -170,25 +316,6 @@ export default function RoomControlPage() {
         <div className="grid grid-cols-1 gap-6">
           <div className="space-y-6">
             <div className="surface-card p-6">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-xl font-bold text-foreground">即時狀態</h2>
-                  <p className="text-foreground/70">
-                    {webSocketData
-                      ? `Player Count: ${webSocketData.player_count}`
-                      : 'No data available'}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-foreground/70">
-                  <div className="w-3 h-3 rounded-full bg-primary" />
-                  <span>Ready</span>
-                  <div className="w-3 h-3 rounded-full bg-muted" />
-                  <span>Not Ready</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="surface-card p-6">
               <h2 className="text-xl font-bold text-foreground mb-4">強制移動</h2>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-foreground/70">Force all move to chapter</span>
@@ -207,26 +334,107 @@ export default function RoomControlPage() {
                     </option>
                   ))}
                 </select>
-                <Button disabled={selectedOption === ''} onClick={handleForceAllMove}>
+                <Button
+                  disabled={selectedOption === ''}
+                  loading={forceMovePending}
+                  onClick={handleForceAllMove}
+                >
                   Go
                 </Button>
-                {moveState === 'success' && <span className="text-success">Move command sent!</span>}
+                {moveState === 'success' && <span className="text-success">已送出指令</span>}
                 {moveState === 'failed' && (
-                  <span className="text-danger">Failed to send move command.</span>
+                  <span className="text-danger">送出失敗，請稍後再試</span>
                 )}
               </div>
             </div>
 
             <div className="surface-card p-6">
-              <h2 className="text-xl font-bold text-foreground mb-4">房間內玩家</h2>
-              <div className="flex flex-wrap gap-4 py-1">
-                {sortedRoomPlayers.map((player) => (
-                  <PlayerInfo
-                    key={player.device_id + player.sequence}
-                    player={player}
-                    handleChangeSequence={handleChangeSequence}
-                  />
-                ))}
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-foreground">房間內玩家</h2>
+                <span className="ui-badge ui-badge-muted text-xs">
+                  下次更新 {countdown} 秒
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-4">
+                {sortedRoomPlayers.map((player) => {
+                  const device = deviceMap.get(player.device_id)
+                  const alias = device ? getDisplayName(device) : player.device_id
+                  const adbStatus = isQuestDeviceStatus(device?.status) ? device?.status : undefined
+                  const isAdbOnline = adbStatus === QUEST_DEVICE_STATUS.ONLINE
+                  const isAdbConnecting = adbStatus === QUEST_DEVICE_STATUS.CONNECTING
+                  const devicePendingAction = deviceActionPending[player.device_id]
+                  const isDevicePending = !!devicePendingAction
+                  const batteryText = isAdbOnline && device?.battery !== undefined && device?.battery !== null
+                    ? `${device.battery}%`
+                    : '—'
+                  const temperatureText = isAdbOnline && device?.temperature !== undefined && device?.temperature !== null
+                    ? `${device.temperature}°C`
+                    : '—'
+
+                  return (
+                    <div key={player.device_id + player.sequence} className="surface-panel p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="space-y-1">
+                          <div className="text-sm font-semibold text-foreground">{alias}</div>
+                          <div className="text-xs text-foreground/50 font-mono">
+                            {player.device_id}
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-foreground/60">
+                          <span className="uppercase tracking-wide">電量</span>
+                          <span className="font-semibold text-foreground">{batteryText}</span>
+                          <span className="text-foreground/40">|</span>
+                          <span className="uppercase tracking-wide">溫度</span>
+                          <span className="font-semibold text-foreground">{temperatureText}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`ui-badge ${getAdbStatusBadgeClass(adbStatus)}`}>
+                            ADB {getAdbStatusText(adbStatus)}
+                          </span>
+                          {!isAdbOnline && !isAdbConnecting && (
+                            <Button
+                              onClick={() => handleConnect(player.device_id)}
+                              className="ui-btn-xs ui-btn-primary"
+                              loading={devicePendingAction === 'connect'}
+                              disabled={isDevicePending}
+                            >
+                              連線
+                            </Button>
+                          )}
+                          {isAdbOnline && (
+                            <>
+                              <Button
+                                onClick={() => handleDisconnect(player.device_id)}
+                                className="ui-btn-xs ui-btn-danger"
+                                loading={devicePendingAction === 'disconnect'}
+                                disabled={isDevicePending}
+                              >
+                                斷開
+                              </Button>
+                              <Button
+                                onClick={() => handleMonitor(player.device_id)}
+                                className="ui-btn-xs ui-btn-accent"
+                                loading={devicePendingAction === 'monitor'}
+                                disabled={isDevicePending}
+                              >
+                                監看
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-3">
+                        <PlayerInfo
+                          player={player}
+                          handleChangeSequence={handleChangeSequence}
+                          displayName={alias}
+                          adbStatus={adbStatus}
+                          sequenceLoading={sequencePendingIds.has(player.device_id)}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </div>

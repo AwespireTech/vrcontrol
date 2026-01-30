@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { QuestRoom } from '@/services/quest-types'
+import Button from '@/components/button'
 
 interface RoomFormProps {
   room?: QuestRoom
@@ -40,7 +41,7 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
       })
     } catch (error) {
       console.error('Failed to submit form:', error)
-      alert('提交失敗')
+      alert('提交失敗，請稍後再試')
     } finally {
       setSubmitting(false)
     }
@@ -125,13 +126,14 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
         >
           取消
         </button>
-        <button
+        <Button
           type="submit"
           disabled={submitting}
-          className="ui-btn ui-btn-md ui-btn-primary"
+          loading={submitting}
+          className="ui-btn-md ui-btn-primary"
         >
-          {submitting ? '提交中...' : room ? '更新' : '創建'}
-        </button>
+          {room ? '更新' : '建立'}
+        </Button>
       </div>
     </form>
   )

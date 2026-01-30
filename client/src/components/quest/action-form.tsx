@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { QuestAction } from '@/services/quest-types'
+import Button from '@/components/button'
 import { QUEST_ACTION_TYPES } from '@/services/quest-types'
 
 interface ActionFormProps {
@@ -120,7 +121,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
       })
     } catch (error) {
       console.error('Failed to submit form:', error)
-      alert('提交失敗')
+      alert('提交失敗，請稍後再試')
     } finally {
       setSubmitting(false)
     }
@@ -272,13 +273,14 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
         >
           取消
         </button>
-        <button
+        <Button
           type="submit"
           disabled={submitting}
-          className="ui-btn ui-btn-md ui-btn-primary"
+          loading={submitting}
+          className="ui-btn-md ui-btn-primary"
         >
-          {submitting ? '提交中...' : action ? '更新' : '創建'}
-        </button>
+          {action ? '更新' : '建立'}
+        </Button>
       </div>
     </form>
   )

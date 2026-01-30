@@ -10,7 +10,7 @@ type NavItem = {
 
 const buildItems = (): NavItem[] => [
   { label: 'Quest 總覽', to: '/quest', icon: '🧭', exact: true },
-  { label: '裝置', to: '/quest/devices', icon: '📱' },
+  { label: '設備', to: '/quest/devices', icon: '📱' },
   { label: '房間', to: '/quest/rooms', icon: '🏠' },
   { label: '動作', to: '/quest/actions', icon: '⚡' },
   { label: '監控', to: '/quest/monitoring', icon: '🛰️' },

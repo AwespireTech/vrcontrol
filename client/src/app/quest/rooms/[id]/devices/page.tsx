@@ -4,6 +4,51 @@ import { roomApi, deviceApi } from '@/services/quest-api'
 import type { QuestRoom, QuestDevice } from '@/services/quest-types'
 import { getDisplayName } from '@/lib/utils/device'
 import QuestPageShell from '@/components/quest/quest-page-shell'
+import Button from '@/components/button'
+
+const getStatusText = (status: QuestDevice['status']) => {
+  switch (status) {
+    case 'online':
+      return '在線'
+    case 'offline':
+      return '離線'
+    case 'connecting':
+      return '連線中'
+    case 'error':
+      return '錯誤'
+    case 'disconnected':
+      return '手動斷開'
+    default:
+      return '未知'
+  }
+}
+
+const getAdbStatusBadgeClass = (status: QuestDevice['status']) => {
+  switch (status) {
+    case 'online':
+      return 'ui-badge-success'
+    case 'connecting':
+      return 'ui-badge-warning'
+    case 'error':
+      return 'ui-badge-danger'
+    case 'offline':
+    case 'disconnected':
+    default:
+      return 'ui-badge-muted'
+  }
+}
+
+const getWsStatusText = (status?: QuestDevice['ws_status']) => {
+  if (status === 'connected') return '已連線'
+  if (status === 'disconnected') return '未連線'
+  return '未知'
+}
+
+const getWsStatusBadgeClass = (status?: QuestDevice['ws_status']) => {
+  if (status === 'connected') return 'ui-badge-success'
+  if (status === 'disconnected') return 'ui-badge-muted'
+  return 'ui-badge-muted'
+}
 
 export default function RoomDevicesPage() {
   const navigate = useNavigate()
@@ -13,6 +58,7 @@ export default function RoomDevicesPage() {
   const [roomNameMap, setRoomNameMap] = useState<Map<string, string>>(new Map())
   const [roomDevices, setRoomDevices] = useState<QuestDevice[]>([])
   const [loading, setLoading] = useState(true)
+  const [devicePending, setDevicePending] = useState<Record<string, 'add' | 'remove'>>({})
 
   const loadData = useCallback(async () => {
     if (!id) return
@@ -34,7 +80,7 @@ export default function RoomDevicesPage() {
       setRoomDevices(devices)
     } catch (error) {
       console.error('Failed to load data:', error)
-      alert('載入數據失敗')
+      alert('載入資料失敗，請稍後再試')
     } finally {
       setLoading(false)
     }
@@ -46,6 +92,7 @@ export default function RoomDevicesPage() {
 
   const handleAddDevice = async (device: QuestDevice) => {
     if (!id) return
+    if (devicePending[device.device_id]) return
 
     if (device.room_id && device.room_id !== id) {
       const currentRoomName = roomNameMap.get(device.room_id) || device.room_id
@@ -55,36 +102,51 @@ export default function RoomDevicesPage() {
       if (!confirmed) return
     }
 
+    setDevicePending((prev) => ({ ...prev, [device.device_id]: 'add' }))
     try {
       if (device.room_id) {
         await roomApi.removeDevice(device.room_id, device.device_id)
       }
       await roomApi.addDevice(id, device.device_id)
       await loadData()
-      alert(device.room_id ? '設備已移入房間' : '設備添加成功')
+      alert(device.room_id ? '設備已移入房間' : '設備已加入房間')
     } catch (error) {
       console.error('Failed to add device:', error)
-      alert('添加設備失敗')
+      alert('加入設備失敗，請稍後再試')
+    } finally {
+      setDevicePending((prev) => {
+        const next = { ...prev }
+        delete next[device.device_id]
+        return next
+      })
     }
   }
 
   const handleRemoveDevice = async (deviceId: string) => {
     if (!id) return
+    if (devicePending[deviceId]) return
 
+    setDevicePending((prev) => ({ ...prev, [deviceId]: 'remove' }))
     try {
       await roomApi.removeDevice(id, deviceId)
       await loadData()
-      alert('設備移除成功')
+      alert('設備已移除')
     } catch (error) {
       console.error('Failed to remove device:', error)
-      alert('移除設備失敗')
+      alert('移除設備失敗，請稍後再試')
+    } finally {
+      setDevicePending((prev) => {
+        const next = { ...prev }
+        delete next[deviceId]
+        return next
+      })
     }
   }
 
   if (loading) {
     return (
       <div className="min-h-screen bg-background p-6 flex items-center justify-center">
-        <div className="text-foreground/70">載入中...</div>
+        <div className="text-foreground/70">載入中…</div>
       </div>
     )
   }
@@ -97,7 +159,7 @@ export default function RoomDevicesPage() {
     )
   }
 
-  // 可以添加的設備（不在房間中的設備）
+  // 可以加入的設備（不在房間中的設備）
   const availableDevices = allDevices.filter(
     d => !room.device_ids?.includes(d.device_id)
   )
@@ -113,7 +175,7 @@ export default function RoomDevicesPage() {
             onClick={() => navigate('/quest/rooms')}
             className="ui-btn ui-btn-md ui-btn-muted"
           >
-            回到房間列表
+            返回房間列表
           </button>
           <button
             onClick={() => navigate(`/quest/rooms/${id}/control`)}
@@ -133,7 +195,7 @@ export default function RoomDevicesPage() {
             
             {roomDevices.length === 0 ? (
               <div className="text-center py-8 text-foreground/50">
-                此房間還沒有設備
+                此房間尚無設備
               </div>
             ) : (
               <div className="space-y-3">
@@ -147,37 +209,44 @@ export default function RoomDevicesPage() {
                       <div className="text-sm text-foreground/50">
                         {device.ip}:{device.port}
                       </div>
-                      <div className="mt-1">
-                        <span
-                          className={`ui-badge ${
-                            device.status === 'online' ? 'ui-badge-success' : 'ui-badge-muted'
-                          }`}
-                        >
-                          {device.status}
-                        </span>
-                      </div>
                     </div>
-                    <button
+                      <div className="mt-2 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="w-9 text-[11px] uppercase tracking-wide text-foreground/50">ADB</span>
+                          <span className={`ui-badge ${getAdbStatusBadgeClass(device.status)}`}>
+                            {getStatusText(device.status)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-9 text-[11px] uppercase tracking-wide text-foreground/50">WS</span>
+                          <span className={`ui-badge ${getWsStatusBadgeClass(device.ws_status)}`}>
+                            {getWsStatusText(device.ws_status)}
+                          </span>
+                        </div>
+                      </div>
+                    <Button
                       onClick={() => handleRemoveDevice(device.device_id)}
-                      className="ui-btn ui-btn-md ui-btn-danger"
+                      className="ui-btn-md ui-btn-danger"
+                      loading={devicePending[device.device_id] === 'remove'}
+                      disabled={!!devicePending[device.device_id]}
                     >
                       移除
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
             )}
           </div>
 
-          {/* 可添加的設備 */}
+          {/* 可加入的設備 */}
           <div className="surface-card p-6">
             <h2 className="text-xl font-bold text-foreground mb-4">
-              可添加的設備 ({availableDevices.length})
+              可加入的設備 ({availableDevices.length})
             </h2>
             
             {availableDevices.length === 0 ? (
               <div className="text-center py-8 text-foreground/50">
-                沒有可添加的設備
+                尚無可加入的設備
               </div>
             ) : (
               <div className="space-y-3">
@@ -191,31 +260,38 @@ export default function RoomDevicesPage() {
                       <div className="text-sm text-foreground/50">
                         {device.ip}:{device.port}
                       </div>
+                    </div>
                       {device.room_id && device.room_id !== room.room_id && (
                         <div className="mt-1 text-xs text-warning">
                           目前房間：{roomNameMap.get(device.room_id) || device.room_id}
                         </div>
                       )}
-                      <div className="mt-1">
-                        <span
-                          className={`ui-badge ${
-                            device.status === 'online' ? 'ui-badge-success' : 'ui-badge-muted'
-                          }`}
-                        >
-                          {device.status}
-                        </span>
+                      <div className="mt-2 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="w-9 text-[11px] uppercase tracking-wide text-foreground/50">ADB</span>
+                          <span className={`ui-badge ${getAdbStatusBadgeClass(device.status)}`}>
+                            {getStatusText(device.status)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-9 text-[11px] uppercase tracking-wide text-foreground/50">WS</span>
+                          <span className={`ui-badge ${getWsStatusBadgeClass(device.ws_status)}`}>
+                            {getWsStatusText(device.ws_status)}
+                          </span>
+                        </div>
                       </div>
-                    </div>
-                    <button
+                    <Button
                       onClick={() => handleAddDevice(device)}
-                      className={`ui-btn ui-btn-md ${
+                      className={`ui-btn-md ${
                         device.room_id && device.room_id !== room.room_id
                           ? 'ui-btn-accent'
                           : 'ui-btn-success'
                       }`}
+                      loading={devicePending[device.device_id] === 'add'}
+                      disabled={!!devicePending[device.device_id]}
                     >
-                      {device.room_id && device.room_id !== room.room_id ? '移入' : '添加'}
-                    </button>
+                      {device.room_id && device.room_id !== room.room_id ? '移入' : '加入'}
+                    </Button>
                   </div>
                 ))}
               </div>
