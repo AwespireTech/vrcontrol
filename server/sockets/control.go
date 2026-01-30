@@ -29,7 +29,7 @@ func (r *Room) GetRoomUpdate() model.RoomUpdate {
 			Players:     []model.PlayerStatus{},
 		}
 	}
-	if r.Players == nil || len(r.Players) == 0 {
+	if len(r.Players) == 0 {
 		return model.RoomUpdate{
 			RoomID:      r.RoomID,
 			PlayerCount: 0,
