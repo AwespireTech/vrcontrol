@@ -10,11 +10,13 @@ const PlayerInfo = ({
   handleChangeSequence,
   displayName,
   adbStatus,
+  sequenceLoading,
 }: {
   player: PlayerData
   handleChangeSequence: (player: string, seq: number) => void
   displayName?: string
   adbStatus?: 'online' | 'offline' | 'connecting' | 'error' | 'disconnected'
+  sequenceLoading?: boolean
 }) => {
   dayjs.extend(isSameOrBefore)
 
@@ -64,6 +66,7 @@ const PlayerInfo = ({
             />
             <Button
               className="ml-1"
+              loading={sequenceLoading}
               onClick={() => handleChangeSequence(player.device_id, numberInput)}
             >
               指派

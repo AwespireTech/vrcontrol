@@ -4,6 +4,7 @@ import { getDisplayName } from '@/lib/utils/device'
 import { actionApi, deviceApi, roomApi, scrcpyApi, preferenceApi } from '@/services/quest-api'
 import { QUEST_ACTION_TYPES, QUEST_DEVICE_STATUS, type QuestAction, type QuestDevice, type IsolationDevice, ScrcpySession, ScrcpySystemInfo, UserPreference } from '@/services/quest-types'
 import QuestPageShell from '@/components/quest/quest-page-shell'
+import Button from '@/components/button'
 import {
   DEFAULT_BATCH_SIZE,
   DEFAULT_MAX_CONCURRENCY,
@@ -25,6 +26,12 @@ export default function DevicesPage() {
   const [loading, setLoading] = useState(true)
   const [countdown, setCountdown] = useState(DEFAULT_POLL_INTERVAL_SECONDS)
   const [roomUpdatingIds, setRoomUpdatingIds] = useState<Record<string, boolean>>({})
+  const [deviceActionPending, setDeviceActionPending] = useState<
+    Record<string, 'connect' | 'disconnect' | 'monitor' | 'delete' | 'execute'>
+  >({})
+  const [isolationPending, setIsolationPending] = useState<Record<string, 'create' | 'update'>>({})
+  const [scrcpyStopPending, setScrcpyStopPending] = useState<Record<string, boolean>>({})
+  const [refreshScrcpyPending, setRefreshScrcpyPending] = useState(false)
   
   // Scrcpy 相關狀態
   const [scrcpySystemInfo, setScrcpySystemInfo] = useState<ScrcpySystemInfo | null>(null)
@@ -308,7 +315,9 @@ export default function DevicesPage() {
 
   const handleCreateFromIsolation = async (entry: IsolationDevice) => {
     if (!entry.valid || !isValidClientId(entry.client_id)) return
+    if (isolationPending[entry.client_id]) return
     const draft = isolationDrafts[entry.client_id]
+    setIsolationPending((prev) => ({ ...prev, [entry.client_id]: 'create' }))
     try {
       await deviceApi.create({
         device_id: entry.client_id,
@@ -320,12 +329,20 @@ export default function DevicesPage() {
     } catch (error) {
       console.error('Failed to create device from isolation:', error)
       alert('建立設備失敗')
+    } finally {
+      setIsolationPending((prev) => {
+        const next = { ...prev }
+        delete next[entry.client_id]
+        return next
+      })
     }
   }
 
   const handleUpdateFromIsolation = async (entry: IsolationDevice) => {
     if (!entry.valid || !isValidClientId(entry.client_id)) return
+    if (isolationPending[entry.client_id]) return
     const deviceId = getDeviceIdFromClient(entry.client_id)
+    setIsolationPending((prev) => ({ ...prev, [entry.client_id]: 'update' }))
     try {
       await deviceApi.patch(deviceId, {
         ip: entry.ip,
@@ -335,6 +352,12 @@ export default function DevicesPage() {
     } catch (error) {
       console.error('Failed to update device from isolation:', error)
       alert('更新設備失敗')
+    } finally {
+      setIsolationPending((prev) => {
+        const next = { ...prev }
+        delete next[entry.client_id]
+        return next
+      })
     }
   }
 
@@ -387,6 +410,8 @@ export default function DevicesPage() {
   }
 
   const handleConnect = async (deviceId: string) => {
+    if (deviceActionPending[deviceId]) return
+    setDeviceActionPending((prev) => ({ ...prev, [deviceId]: 'connect' }))
     try {
       await deviceApi.connect(deviceId)
       await loadDevices()
@@ -417,16 +442,30 @@ export default function DevicesPage() {
     } catch (error) {
       console.error('Failed to connect device:', error)
       alert('連接失敗')
+    } finally {
+      setDeviceActionPending((prev) => {
+        const next = { ...prev }
+        delete next[deviceId]
+        return next
+      })
     }
   }
 
   const handleDisconnect = async (deviceId: string) => {
+    if (deviceActionPending[deviceId]) return
+    setDeviceActionPending((prev) => ({ ...prev, [deviceId]: 'disconnect' }))
     try {
       await deviceApi.disconnect(deviceId)
       await loadDevices()
     } catch (error) {
       console.error('Failed to disconnect device:', error)
       alert('斷開失敗')
+    } finally {
+      setDeviceActionPending((prev) => {
+        const next = { ...prev }
+        delete next[deviceId]
+        return next
+      })
     }
   }
 
@@ -458,7 +497,9 @@ export default function DevicesPage() {
   const handleExecuteAction = async (deviceId: string) => {
     const actionId = selectedActionIds[deviceId]
     if (!actionId) return
+    if (deviceActionPending[deviceId]) return
 
+    setDeviceActionPending((prev) => ({ ...prev, [deviceId]: 'execute' }))
     setActionRunningIds((prev) => ({ ...prev, [deviceId]: true }))
     try {
       const result = await actionApi.executeBatch({
@@ -472,18 +513,30 @@ export default function DevicesPage() {
       alert('執行動作失敗')
     } finally {
       setActionRunningIds((prev) => ({ ...prev, [deviceId]: false }))
+      setDeviceActionPending((prev) => {
+        const next = { ...prev }
+        delete next[deviceId]
+        return next
+      })
     }
   }
 
   const handleDelete = async (deviceId: string) => {
     if (!confirm('確定要刪除這個設備嗎？')) return
-
+    if (deviceActionPending[deviceId]) return
+    setDeviceActionPending((prev) => ({ ...prev, [deviceId]: 'delete' }))
     try {
       await deviceApi.delete(deviceId)
       await loadDevices()
     } catch (error) {
       console.error('Failed to delete device:', error)
       alert('刪除失敗')
+    } finally {
+      setDeviceActionPending((prev) => {
+        const next = { ...prev }
+        delete next[deviceId]
+        return next
+      })
     }
   }
 
@@ -494,6 +547,9 @@ export default function DevicesPage() {
       return
     }
 
+    if (deviceActionPending[deviceId]) return
+    setDeviceActionPending((prev) => ({ ...prev, [deviceId]: 'monitor' }))
+
     try {
       await scrcpyApi.start(deviceId)
       alert('已啟動監看視窗')
@@ -502,11 +558,19 @@ export default function DevicesPage() {
       console.error('Failed to start scrcpy:', error)
       const message = error instanceof Error ? error.message : ''
       alert(message || '啟動監看失敗')
+    } finally {
+      setDeviceActionPending((prev) => {
+        const next = { ...prev }
+        delete next[deviceId]
+        return next
+      })
     }
   }
 
 
   const handleStopScrcpy = async (deviceId: string) => {
+    if (scrcpyStopPending[deviceId]) return
+    setScrcpyStopPending((prev) => ({ ...prev, [deviceId]: true }))
     try {
       await scrcpyApi.stop(deviceId)
       alert('已停止監看')
@@ -514,15 +578,21 @@ export default function DevicesPage() {
     } catch (error) {
       console.error('Failed to stop scrcpy:', error)
       alert('停止監看失敗')
+    } finally {
+      setScrcpyStopPending((prev) => ({ ...prev, [deviceId]: false }))
     }
   }
 
   const handleRefreshSessions = async () => {
+    if (refreshScrcpyPending) return
+    setRefreshScrcpyPending(true)
     try {
       const sessions = await scrcpyApi.refreshSessions()
       setScrcpySessions(sessions)
     } catch (error) {
       console.error('Failed to refresh sessions:', error)
+    } finally {
+      setRefreshScrcpyPending(false)
     }
   }
 
@@ -570,6 +640,8 @@ export default function DevicesPage() {
               device.auto_reconnect_disabled_reason,
             )
             const isActionReady = isOnline && !actionRunningIds[device.device_id]
+            const pendingAction = deviceActionPending[device.device_id]
+            const isDevicePending = !!pendingAction
 
             return (
               <div
@@ -680,39 +752,45 @@ export default function DevicesPage() {
                           </option>
                         ))}
                     </select>
-                    <button
+                    <Button
                       onClick={() => handleExecuteAction(device.device_id)}
-                      disabled={!isActionReady || !selectedActionIds[device.device_id]}
-                      className="ui-btn ui-btn-xs ui-btn-primary"
+                      disabled={!isActionReady || !selectedActionIds[device.device_id] || isDevicePending}
+                      loading={pendingAction === 'execute'}
+                      className="ui-btn-xs ui-btn-primary"
                     >
                       執行
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 <div className="col-span-3 flex flex-wrap items-start justify-end gap-2">
                   {!isOnline && !isConnecting && (
-                    <button
+                    <Button
                       onClick={() => handleConnect(device.device_id)}
-                      className="ui-btn ui-btn-xs ui-btn-primary"
+                      className="ui-btn-xs ui-btn-primary"
+                      loading={pendingAction === 'connect'}
+                      disabled={isDevicePending}
                     >
                       連接
-                    </button>
+                    </Button>
                   )}
                   {isOnline && (
                     <>
-                      <button
+                      <Button
                         onClick={() => handleDisconnect(device.device_id)}
-                        className="ui-btn ui-btn-xs ui-btn-danger"
+                        className="ui-btn-xs ui-btn-danger"
+                        loading={pendingAction === 'disconnect'}
+                        disabled={isDevicePending}
                       >
                         斷開
-                      </button>
+                      </Button>
                     </>
                   )}
                   {isOnline && (
-                    <button
+                    <Button
                       onClick={() => handleMonitor(device.device_id)}
-                      disabled={!scrcpySystemInfo?.installed}
-                      className={`ui-btn ui-btn-xs ${
+                      disabled={!scrcpySystemInfo?.installed || isDevicePending}
+                      loading={pendingAction === 'monitor'}
+                      className={`ui-btn-xs ${
                         scrcpySystemInfo?.installed
                           ? 'ui-btn-accent'
                           : 'bg-muted/50 text-foreground/50 cursor-not-allowed'
@@ -720,7 +798,7 @@ export default function DevicesPage() {
                       title={scrcpySystemInfo?.installed ? '啟動螢幕監看' : 'Scrcpy 未安裝'}
                     >
                       監看
-                    </button>
+                    </Button>
                   )}
                   <button
                     onClick={() => navigate(`/quest/devices/${device.device_id}`)}
@@ -728,12 +806,14 @@ export default function DevicesPage() {
                   >
                     編輯
                   </button>
-                  <button
+                  <Button
                     onClick={() => handleDelete(device.device_id)}
-                    className="ui-btn ui-btn-xs ui-btn-danger"
+                    className="ui-btn-xs ui-btn-danger"
+                    loading={pendingAction === 'delete'}
+                    disabled={isDevicePending}
                   >
                     刪除
-                  </button>
+                  </Button>
                 </div>
               </div>
             )
@@ -805,22 +885,24 @@ export default function DevicesPage() {
                       {matched ? (
                         <>
                           <div className="text-xs text-foreground/60">已匹配: {deviceId}</div>
-                          <button
+                          <Button
                             onClick={() => handleUpdateFromIsolation(entry)}
-                            className="ui-btn ui-btn-sm ui-btn-accent"
-                            disabled={!valid}
+                            className="ui-btn-sm ui-btn-accent"
+                            disabled={!valid || !!isolationPending[entry.client_id]}
+                            loading={isolationPending[entry.client_id] === 'update'}
                           >
                             更新設備
-                          </button>
+                          </Button>
                         </>
                       ) : (
-                        <button
+                        <Button
                           onClick={() => handleCreateFromIsolation(entry)}
-                          className="ui-btn ui-btn-sm ui-btn-primary"
-                          disabled={!valid || entry.id_matched}
+                          className="ui-btn-sm ui-btn-primary"
+                          disabled={!valid || entry.id_matched || !!isolationPending[entry.client_id]}
+                          loading={isolationPending[entry.client_id] === 'create'}
                         >
                           建立設備
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </div>
@@ -835,12 +917,13 @@ export default function DevicesPage() {
         <div className="surface-card p-6">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-bold text-foreground">監看會話</h2>
-            <button
+            <Button
               onClick={handleRefreshSessions}
-              className="ui-btn ui-btn-md ui-btn-muted"
+              className="ui-btn-md ui-btn-muted"
+              loading={refreshScrcpyPending}
             >
               刷新狀態
-            </button>
+            </Button>
           </div>
           <div className="surface-card overflow-hidden">
             <div className="grid grid-cols-12 gap-3 border-b border-border bg-surface/50 px-4 py-3 text-xs text-foreground/60">
@@ -877,12 +960,14 @@ export default function DevicesPage() {
                   </div>
                   <div className="col-span-1 flex justify-end">
                     {session.is_running && (
-                      <button
+                      <Button
                         onClick={() => handleStopScrcpy(session.device_id)}
-                        className="ui-btn ui-btn-xs ui-btn-danger"
+                        className="ui-btn-xs ui-btn-danger"
+                        loading={!!scrcpyStopPending[session.device_id]}
+                        disabled={!!scrcpyStopPending[session.device_id]}
                       >
                         停止
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>

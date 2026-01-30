@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { QuestDevice } from '@/services/quest-types'
+import Button from '@/components/button'
 
 interface DeviceFormProps {
   device?: QuestDevice
@@ -145,13 +146,14 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
         >
           取消
         </button>
-        <button
+        <Button
           type="submit"
           disabled={submitting}
-          className="ui-btn ui-btn-md ui-btn-primary"
+          loading={submitting}
+          className="ui-btn-md ui-btn-primary"
         >
-          {submitting ? '提交中...' : device ? '更新' : '創建'}
-        </button>
+          {device ? '更新' : '創建'}
+        </Button>
       </div>
     </form>
   )

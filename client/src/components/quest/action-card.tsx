@@ -1,13 +1,23 @@
 import { type QuestAction, QUEST_ACTION_TYPES } from '@/services/quest-types'
+import Button from '@/components/button'
 
 interface ActionCardProps {
   action: QuestAction
   onEdit?: (actionId: string) => void
   onDelete?: (actionId: string) => void
   onExecute?: (actionId: string) => void
+  executeLoading?: boolean
+  deleteLoading?: boolean
 }
 
-export default function ActionCard({ action, onEdit, onDelete, onExecute }: ActionCardProps) {
+export default function ActionCard({
+  action,
+  onEdit,
+  onDelete,
+  onExecute,
+  executeLoading,
+  deleteLoading,
+}: ActionCardProps) {
   const getActionTypeText = (type: string) => {
     switch (type) {
       case QUEST_ACTION_TYPES.WAKE_UP:
@@ -114,28 +124,32 @@ export default function ActionCard({ action, onEdit, onDelete, onExecute }: Acti
       {/* 操作按鈕 */}
       <div className="flex flex-wrap gap-2">
         {onExecute && (
-          <button
+          <Button
             onClick={() => onExecute(action.action_id)}
-            className="ui-btn ui-btn-xs ui-btn-primary"
+            className="ui-btn-xs ui-btn-primary"
+            loading={executeLoading}
+            disabled={executeLoading}
           >
             執行
-          </button>
+          </Button>
         )}
         {onEdit && (
-          <button
+          <Button
             onClick={() => onEdit(action.action_id)}
-            className="ui-btn ui-btn-xs ui-btn-muted"
+            className="ui-btn-xs ui-btn-muted"
           >
             編輯
-          </button>
+          </Button>
         )}
         {onDelete && (
-          <button
+          <Button
             onClick={() => onDelete(action.action_id)}
-            className="ui-btn ui-btn-xs ui-btn-danger"
+            className="ui-btn-xs ui-btn-danger"
+            loading={deleteLoading}
+            disabled={deleteLoading}
           >
             刪除
-          </button>
+          </Button>
         )}
       </div>
     </div>

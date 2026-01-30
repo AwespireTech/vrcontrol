@@ -27,6 +27,12 @@ export default function RoomControlPage() {
   const [selectedOption, setSelectedOption] = useState('')
   const [moveState, setMoveState] = useState('')
 
+  const [forceMovePending, setForceMovePending] = useState(false)
+  const [sequencePendingIds, setSequencePendingIds] = useState<Set<string>>(new Set())
+  const [deviceActionPending, setDeviceActionPending] = useState<
+    Record<string, 'connect' | 'disconnect' | 'monitor'>
+  >({})
+
   const [roomList, setRoomList] = useState<{ value: string; label: string }[]>([])
 
 
@@ -99,47 +105,77 @@ export default function RoomControlPage() {
 
   const handleChangeSequence = async (player: string, seq: number) => {
     if (!roomId) return
-
+    setSequencePendingIds((prev) => {
+      const next = new Set(prev)
+      next.add(player)
+      return next
+    })
     try {
       await controlApi.assignSeq(roomId, player, seq)
     } catch (error) {
       console.error('Failed to assign sequence:', error)
+    } finally {
+      setSequencePendingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(player)
+        return next
+      })
     }
   }
 
   const handleForceAllMove = async () => {
     if (!roomId || selectedOption === '') return
-
+    setForceMovePending(true)
     try {
       await simpleApi.forceAllMove(roomId, selectedOption)
       setMoveState('success')
     } catch (error) {
       console.error('Failed to send move command:', error)
       setMoveState('failed')
+    } finally {
+      setForceMovePending(false)
     }
   }
 
   const handleConnect = async (deviceId: string) => {
+    if (deviceActionPending[deviceId]) return
+    setDeviceActionPending((prev) => ({ ...prev, [deviceId]: 'connect' }))
     try {
       await deviceApi.connect(deviceId)
       await loadControlData()
     } catch (error) {
       console.error('Failed to connect device:', error)
       alert('連接失敗')
+    } finally {
+      setDeviceActionPending((prev) => {
+        const next = { ...prev }
+        delete next[deviceId]
+        return next
+      })
     }
   }
 
   const handleDisconnect = async (deviceId: string) => {
+    if (deviceActionPending[deviceId]) return
+    setDeviceActionPending((prev) => ({ ...prev, [deviceId]: 'disconnect' }))
     try {
       await deviceApi.disconnect(deviceId)
       await loadControlData()
     } catch (error) {
       console.error('Failed to disconnect device:', error)
       alert('斷開失敗')
+    } finally {
+      setDeviceActionPending((prev) => {
+        const next = { ...prev }
+        delete next[deviceId]
+        return next
+      })
     }
   }
 
   const handleMonitor = async (deviceId: string) => {
+    if (deviceActionPending[deviceId]) return
+    setDeviceActionPending((prev) => ({ ...prev, [deviceId]: 'monitor' }))
     try {
       await scrcpyApi.start(deviceId)
       alert('已啟動監看視窗')
@@ -147,6 +183,12 @@ export default function RoomControlPage() {
       console.error('Failed to start scrcpy:', error)
       const message = error instanceof Error ? error.message : ''
       alert(message || '啟動監看失敗')
+    } finally {
+      setDeviceActionPending((prev) => {
+        const next = { ...prev }
+        delete next[deviceId]
+        return next
+      })
     }
   }
 
@@ -182,7 +224,9 @@ export default function RoomControlPage() {
     }
   }
 
-  const isQuestDeviceStatus = (status?: string): status is QuestDevice['status'] => {
+  type AdbStatus = (typeof QUEST_DEVICE_STATUS)[keyof typeof QUEST_DEVICE_STATUS]
+
+  const isQuestDeviceStatus = (status?: string): status is AdbStatus => {
     return !!status && (Object.values(QUEST_DEVICE_STATUS) as string[]).includes(status)
   }
 
@@ -259,7 +303,11 @@ export default function RoomControlPage() {
                     </option>
                   ))}
                 </select>
-                <Button disabled={selectedOption === ''} onClick={handleForceAllMove}>
+                <Button
+                  disabled={selectedOption === ''}
+                  loading={forceMovePending}
+                  onClick={handleForceAllMove}
+                >
                   Go
                 </Button>
                 {moveState === 'success' && <span className="text-success">Move command sent!</span>}
@@ -275,9 +323,11 @@ export default function RoomControlPage() {
                 {sortedRoomPlayers.map((player) => {
                   const device = deviceMap.get(player.device_id)
                   const alias = device ? getDisplayName(device) : player.device_id
-                  const adbStatus = isQuestDeviceStatus(device?.status) ? device.status : undefined
+                  const adbStatus = isQuestDeviceStatus(device?.status) ? device?.status : undefined
                   const isAdbOnline = adbStatus === QUEST_DEVICE_STATUS.ONLINE
                   const isAdbConnecting = adbStatus === QUEST_DEVICE_STATUS.CONNECTING
+                  const devicePendingAction = deviceActionPending[player.device_id]
+                  const isDevicePending = !!devicePendingAction
 
                   return (
                     <div key={player.device_id + player.sequence} className="surface-panel p-4">
@@ -293,27 +343,33 @@ export default function RoomControlPage() {
                             ADB {getAdbStatusText(adbStatus)}
                           </span>
                           {!isAdbOnline && !isAdbConnecting && (
-                            <button
+                            <Button
                               onClick={() => handleConnect(player.device_id)}
-                              className="ui-btn ui-btn-xs ui-btn-primary"
+                              className="ui-btn-xs ui-btn-primary"
+                              loading={devicePendingAction === 'connect'}
+                              disabled={isDevicePending}
                             >
                               連接
-                            </button>
+                            </Button>
                           )}
                           {isAdbOnline && (
                             <>
-                              <button
+                              <Button
                                 onClick={() => handleDisconnect(player.device_id)}
-                                className="ui-btn ui-btn-xs ui-btn-danger"
+                                className="ui-btn-xs ui-btn-danger"
+                                loading={devicePendingAction === 'disconnect'}
+                                disabled={isDevicePending}
                               >
                                 斷開
-                              </button>
-                              <button
+                              </Button>
+                              <Button
                                 onClick={() => handleMonitor(player.device_id)}
-                                className="ui-btn ui-btn-xs ui-btn-accent"
+                                className="ui-btn-xs ui-btn-accent"
+                                loading={devicePendingAction === 'monitor'}
+                                disabled={isDevicePending}
                               >
                                 監看
-                              </button>
+                              </Button>
                             </>
                           )}
                         </div>
@@ -324,6 +380,7 @@ export default function RoomControlPage() {
                           handleChangeSequence={handleChangeSequence}
                           displayName={alias}
                           adbStatus={adbStatus}
+                          sequenceLoading={sequencePendingIds.has(player.device_id)}
                         />
                       </div>
                     </div>

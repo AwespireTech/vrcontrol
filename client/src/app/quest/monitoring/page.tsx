@@ -4,6 +4,7 @@ import { QUEST_DEVICE_STATUS, type QuestDevice } from '@/services/quest-types'
 import { getDisplayName } from '@/lib/utils/device'
 import { useMonitoringStatus } from '@/hooks/useMonitoringStatus'
 import QuestPageShell from '@/components/quest/quest-page-shell'
+import Button from '@/components/button'
 
 type StatusFilter = 'all' | QuestDevice['status']
 type AutoReconnectFilter = 'all' | 'enabled' | 'disabled'
@@ -70,6 +71,11 @@ export default function QuestMonitoringPage() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
   const [autoReconnectFilter, setAutoReconnectFilter] = useState<AutoReconnectFilter>('all')
+  const [batchPending, setBatchPending] = useState<
+    null | 'enable' | 'disable' | 'reset' | 'refresh'
+  >(null)
+  const [rowPending, setRowPending] = useState<Record<string, 'toggle' | 'reset'>>({})
+  const [monitoringPending, setMonitoringPending] = useState<null | 'runOnce' | 'toggle'>(null)
 
   const load = async () => {
     try {
@@ -103,6 +109,8 @@ export default function QuestMonitoringPage() {
   const filteredIds = useMemo(() => filteredDevices.map((d) => d.device_id), [filteredDevices])
 
   const toggleMonitoring = async () => {
+    if (monitoringPending) return
+    setMonitoringPending('toggle')
     try {
       if (!monitoring.known) {
         await monitoring.refresh()
@@ -118,21 +126,29 @@ export default function QuestMonitoringPage() {
     } catch (error) {
       console.error('Failed to toggle monitoring:', error)
       alert('操作失敗')
+    } finally {
+      setMonitoringPending(null)
     }
   }
 
   const runOnce = async () => {
+    if (monitoringPending) return
+    setMonitoringPending('runOnce')
     try {
       await monitoringApi.runOnce()
       await load()
     } catch (error) {
       console.error('Failed to run monitoring once:', error)
       alert('操作失敗')
+    } finally {
+      setMonitoringPending(null)
     }
   }
 
   const setAutoReconnectBatch = async (enabled: boolean) => {
     if (filteredIds.length === 0) return
+    if (batchPending) return
+    setBatchPending(enabled ? 'enable' : 'disable')
     try {
       const result = await deviceApi.setAutoReconnectEnabledBatch(filteredIds, enabled)
       setBatchResult({
@@ -143,11 +159,15 @@ export default function QuestMonitoringPage() {
     } catch (error) {
       console.error('Failed to set auto reconnect batch:', error)
       alert('批次操作失敗')
+    } finally {
+      setBatchPending(null)
     }
   }
 
   const resetBatch = async () => {
     if (filteredIds.length === 0) return
+    if (batchPending) return
+    setBatchPending('reset')
     try {
       const result = await deviceApi.resetAutoReconnectBatch(filteredIds)
       setBatchResult({
@@ -158,26 +178,54 @@ export default function QuestMonitoringPage() {
     } catch (error) {
       console.error('Failed to reset auto reconnect batch:', error)
       alert('批次重置失敗')
+    } finally {
+      setBatchPending(null)
     }
   }
 
   const setAutoReconnectOne = async (deviceId: string, enabled: boolean) => {
+    if (rowPending[deviceId]) return
+    setRowPending((prev) => ({ ...prev, [deviceId]: 'toggle' }))
     try {
       await deviceApi.patch(deviceId, { auto_reconnect_enabled: enabled })
       await load()
     } catch (error) {
       console.error('Failed to set auto reconnect:', error)
       alert('更新失敗')
+    } finally {
+      setRowPending((prev) => {
+        const next = { ...prev }
+        delete next[deviceId]
+        return next
+      })
     }
   }
 
   const resetOne = async (deviceId: string) => {
+    if (rowPending[deviceId]) return
+    setRowPending((prev) => ({ ...prev, [deviceId]: 'reset' }))
     try {
       await deviceApi.resetAutoReconnect(deviceId)
       await load()
     } catch (error) {
       console.error('Failed to reset auto reconnect:', error)
       alert('重置失敗')
+    } finally {
+      setRowPending((prev) => {
+        const next = { ...prev }
+        delete next[deviceId]
+        return next
+      })
+    }
+  }
+
+  const handleRefresh = async () => {
+    if (batchPending) return
+    setBatchPending('refresh')
+    try {
+      await load()
+    } finally {
+      setBatchPending(null)
     }
   }
 
@@ -195,25 +243,27 @@ export default function QuestMonitoringPage() {
       subtitle="篩選設備並批次設定自動重連／重置狀態"
       actions={
         <div className="flex flex-wrap gap-2">
-          <button
+          <Button
             onClick={runOnce}
-              className="ui-btn ui-btn-md ui-btn-accent"
+            className="ui-btn-md ui-btn-accent"
+            loading={monitoringPending === 'runOnce'}
           >
             手動執行一次
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={toggleMonitoring}
             disabled={!monitoring.known || monitoring.loading}
-              className={`ui-btn ui-btn-md transition-colors ${
+            loading={monitoringPending === 'toggle'}
+            className={`ui-btn-md transition-colors ${
               !monitoring.known
-                  ? 'ui-btn-muted'
+                ? 'ui-btn-muted'
                 : monitoring.running
-                    ? 'ui-btn-danger'
-                    : 'ui-btn-success'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  ? 'ui-btn-danger'
+                  : 'ui-btn-success'
+            }`}
           >
             {!monitoring.known ? '狀態未知' : monitoring.running ? '停止監控' : '啟動監控'}
-          </button>
+          </Button>
         </div>
       }
     >
@@ -254,33 +304,37 @@ export default function QuestMonitoringPage() {
             <div className="text-sm text-foreground/70">
               將套用於目前篩選的 <span className="font-semibold text-foreground">{filteredIds.length}</span> 台
             </div>
-            <button
+            <Button
               onClick={() => setAutoReconnectBatch(true)}
-              disabled={filteredIds.length === 0}
-              className="ui-btn ui-btn-md ui-btn-success"
+              disabled={filteredIds.length === 0 || batchPending !== null}
+              loading={batchPending === 'enable'}
+              className="ui-btn-md ui-btn-success"
             >
               全選（啟用重連）
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setAutoReconnectBatch(false)}
-              disabled={filteredIds.length === 0}
-              className="ui-btn ui-btn-md ui-btn-muted"
+              disabled={filteredIds.length === 0 || batchPending !== null}
+              loading={batchPending === 'disable'}
+              className="ui-btn-md ui-btn-muted"
             >
               不選（停用重連）
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={resetBatch}
-              disabled={filteredIds.length === 0}
-              className="ui-btn ui-btn-md ui-btn-primary"
+              disabled={filteredIds.length === 0 || batchPending !== null}
+              loading={batchPending === 'reset'}
+              className="ui-btn-md ui-btn-primary"
             >
               批次重置
-            </button>
-            <button
-              onClick={load}
-              className="ui-btn ui-btn-md ui-btn-muted ml-auto"
+            </Button>
+            <Button
+              onClick={handleRefresh}
+              className="ui-btn-md ui-btn-muted ml-auto"
+              loading={batchPending === 'refresh'}
             >
               重新整理
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -376,6 +430,7 @@ export default function QuestMonitoringPage() {
                         type="checkbox"
                         checked={Boolean(d.auto_reconnect_enabled)}
                         onChange={(e) => setAutoReconnectOne(d.device_id, e.target.checked)}
+                        disabled={!!rowPending[d.device_id]}
                       />
                       {d.auto_reconnect_enabled ? '啟用' : '停用'}
                     </label>
@@ -391,13 +446,15 @@ export default function QuestMonitoringPage() {
                   </div>
 
                   <div className="col-span-1 flex justify-end">
-                    <button
+                    <Button
                       onClick={() => resetOne(d.device_id)}
-                      className="ui-btn ui-btn-xs ui-btn-accent"
+                      className="ui-btn-xs ui-btn-accent"
                       title="依規則重置自動重連狀態"
+                      loading={rowPending[d.device_id] === 'reset'}
+                      disabled={!!rowPending[d.device_id]}
                     >
                       重置
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )

@@ -1,5 +1,6 @@
 import { type QuestDevice, QUEST_DEVICE_STATUS } from '@/services/quest-types'
 import { getDisplayName } from '@/lib/utils/device'
+import Button from '@/components/button'
 
 export type StatusErrorType = 'idle' | 'ok' | 'timeout' | 'adb-error'
 
@@ -14,6 +15,11 @@ interface DeviceCardProps {
   scrcpyInstalled?: boolean
   statusErrorType?: StatusErrorType
   pingTooltipText?: string
+  connectLoading?: boolean
+  disconnectLoading?: boolean
+  pingLoading?: boolean
+  monitorLoading?: boolean
+  deleteLoading?: boolean
 }
 
 export default function DeviceCard({
@@ -27,6 +33,11 @@ export default function DeviceCard({
   scrcpyInstalled = false,
   statusErrorType = 'idle',
   pingTooltipText,
+  connectLoading,
+  disconnectLoading,
+  pingLoading,
+  monitorLoading,
+  deleteLoading,
 }: DeviceCardProps) {
 
   const getAutoReconnectDisabledReasonText = (reason?: QuestDevice['auto_reconnect_disabled_reason']) => {
@@ -156,33 +167,40 @@ export default function DeviceCard({
       {/* 操作按鈕 */}
       <div className="flex flex-wrap gap-2">
         {!isOnline && !isConnecting && onConnect && (
-          <button
+          <Button
             onClick={() => onConnect(device.device_id)}
-            className="ui-btn ui-btn-xs ui-btn-primary"
+            className="ui-btn-xs ui-btn-primary"
+            loading={connectLoading}
+            disabled={connectLoading}
           >
             連接
-          </button>
+          </Button>
         )}
         {isOnline && onDisconnect && (
-          <button
+          <Button
             onClick={() => onDisconnect(device.device_id)}
-            className="ui-btn ui-btn-xs ui-btn-danger"
+            className="ui-btn-xs ui-btn-danger"
+            loading={disconnectLoading}
+            disabled={disconnectLoading}
           >
             斷開
-          </button>
+          </Button>
         )}
         {isOnline && onPing && (
-          <button
+          <Button
             onClick={() => onPing(device.device_id)}
-            className="ui-btn ui-btn-xs ui-btn-success"
+            className="ui-btn-xs ui-btn-success"
+            loading={pingLoading}
+            disabled={pingLoading}
           >
             Ping
-          </button>
+          </Button>
         )}
         {isOnline && onMonitor && (
-          <button
+          <Button
             onClick={() => onMonitor(device.device_id)}
-            disabled={!scrcpyInstalled}
+            disabled={!scrcpyInstalled || monitorLoading}
+            loading={monitorLoading}
             className={`ui-btn ui-btn-xs ${
               scrcpyInstalled
                 ? 'ui-btn-accent'
@@ -191,23 +209,25 @@ export default function DeviceCard({
             title={scrcpyInstalled ? '啟動螢幕監看' : 'Scrcpy 未安裝'}
           >
             監看
-          </button>
+          </Button>
         )}
         {onEdit && (
-          <button
+          <Button
             onClick={() => onEdit(device.device_id)}
-            className="ui-btn ui-btn-xs ui-btn-muted"
+            className="ui-btn-xs ui-btn-muted"
           >
             編輯
-          </button>
+          </Button>
         )}
         {onDelete && (
-          <button
+          <Button
             onClick={() => onDelete(device.device_id)}
-            className="ui-btn ui-btn-xs ui-btn-danger"
+            className="ui-btn-xs ui-btn-danger"
+            loading={deleteLoading}
+            disabled={deleteLoading}
           >
             刪除
-          </button>
+          </Button>
         )}
       </div>
     </div>

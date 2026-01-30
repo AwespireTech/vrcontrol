@@ -3,6 +3,7 @@ import { monitoringApi, scrcpyApi, preferenceApi } from '@/services/quest-api'
 import { ScrcpyConfigForm } from '@/components/quest/scrcpy-config-form'
 import type { ScrcpyConfig, ScrcpySystemInfo, UserPreference } from '@/services/quest-types'
 import QuestPageShell from '@/components/quest/quest-page-shell'
+import Button from '@/components/button'
 import {
   DEFAULT_BATCH_SIZE,
   DEFAULT_MAX_CONCURRENCY,
@@ -21,6 +22,9 @@ export default function QuestSettingsPage() {
   // 使用者偏好狀態
   const [preference, setPreference] = useState<UserPreference | null>(null)
   const [preferenceChanged, setPreferenceChanged] = useState(false)
+  const [savingPreference, setSavingPreference] = useState(false)
+  const [savingScrcpyConfig, setSavingScrcpyConfig] = useState(false)
+  const [settingInterval, setSettingInterval] = useState(false)
 
   const loadSettings = async () => {
     try {
@@ -47,12 +51,16 @@ export default function QuestSettingsPage() {
   }, [])
 
   const handleSetInterval = async () => {
+    if (settingInterval) return
+    setSettingInterval(true)
     try {
       await monitoringApi.setInterval(monitoringInterval)
       alert(`監控間隔已設置為 ${monitoringInterval} 秒`)
     } catch (error) {
       console.error('Failed to set interval:', error)
       alert('設置失敗')
+    } finally {
+      setSettingInterval(false)
     }
   }
 
@@ -63,7 +71,9 @@ export default function QuestSettingsPage() {
 
   const handleSaveScrcpyConfig = async () => {
     if (!scrcpyConfig) return
+    if (savingScrcpyConfig) return
     
+    setSavingScrcpyConfig(true)
     try {
       await scrcpyApi.updateConfig(scrcpyConfig)
       setScrcpyConfigChanged(false)
@@ -71,6 +81,8 @@ export default function QuestSettingsPage() {
     } catch (error) {
       console.error('Failed to save scrcpy config:', error)
       alert('保存配置失敗')
+    } finally {
+      setSavingScrcpyConfig(false)
     }
   }
 
@@ -82,7 +94,9 @@ export default function QuestSettingsPage() {
 
   const handleSavePreference = async () => {
     if (!preference) return
+    if (savingPreference) return
     
+    setSavingPreference(true)
     try {
       const updated = await preferenceApi.update(preference)
       setPreference(updated)
@@ -91,6 +105,8 @@ export default function QuestSettingsPage() {
     } catch (error) {
       console.error('Failed to save preference:', error)
       alert('保存設定失敗')
+    } finally {
+      setSavingPreference(false)
     }
   }
 
@@ -233,17 +249,18 @@ export default function QuestSettingsPage() {
                 </div>
 
                 <div className="flex justify-end">
-                  <button
+                  <Button
                     onClick={handleSavePreference}
-                    disabled={!preferenceChanged}
-                    className={`ui-btn ui-btn-md transition-colors ${
+                    disabled={!preferenceChanged || savingPreference}
+                    loading={savingPreference}
+                    className={`ui-btn-md transition-colors ${
                       preferenceChanged
                         ? 'ui-btn-primary'
                         : 'bg-muted/50 text-foreground/50 cursor-not-allowed'
                     }`}
                   >
                     保存設定
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}
@@ -273,12 +290,13 @@ export default function QuestSettingsPage() {
                     className="ui-input px-4 py-2"
                   />
                   <span className="text-foreground/70">秒</span>
-                  <button
+                  <Button
                     onClick={handleSetInterval}
-                    className="ui-btn ui-btn-md ui-btn-primary"
+                    className="ui-btn-md ui-btn-primary"
+                    loading={settingInterval}
                   >
                     應用
-                  </button>
+                  </Button>
                 </div>
                 <p className="text-xs text-foreground/50 mt-2">
                   設置監控服務檢查設備連接狀態的時間間隔 (1-300 秒)
@@ -333,9 +351,10 @@ export default function QuestSettingsPage() {
                 />
 
                 <div className="mt-6 flex justify-end">
-                  <button
+                  <Button
                     onClick={handleSaveScrcpyConfig}
-                    disabled={!scrcpyConfigChanged || !scrcpySystemInfo?.installed}
+                    disabled={!scrcpyConfigChanged || !scrcpySystemInfo?.installed || savingScrcpyConfig}
+                    loading={savingScrcpyConfig}
                     className={`ui-btn ui-btn-md transition-colors ${
                       scrcpyConfigChanged && scrcpySystemInfo?.installed
                         ? 'ui-btn-primary'
@@ -343,7 +362,7 @@ export default function QuestSettingsPage() {
                     }`}
                   >
                     保存配置
-                  </button>
+                  </Button>
                 </div>
               </div>
             )}

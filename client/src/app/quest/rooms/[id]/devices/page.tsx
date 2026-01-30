@@ -4,6 +4,7 @@ import { roomApi, deviceApi } from '@/services/quest-api'
 import type { QuestRoom, QuestDevice } from '@/services/quest-types'
 import { getDisplayName } from '@/lib/utils/device'
 import QuestPageShell from '@/components/quest/quest-page-shell'
+import Button from '@/components/button'
 
 const getStatusText = (status: QuestDevice['status']) => {
   switch (status) {
@@ -57,6 +58,7 @@ export default function RoomDevicesPage() {
   const [roomNameMap, setRoomNameMap] = useState<Map<string, string>>(new Map())
   const [roomDevices, setRoomDevices] = useState<QuestDevice[]>([])
   const [loading, setLoading] = useState(true)
+  const [devicePending, setDevicePending] = useState<Record<string, 'add' | 'remove'>>({})
 
   const loadData = useCallback(async () => {
     if (!id) return
@@ -90,6 +92,7 @@ export default function RoomDevicesPage() {
 
   const handleAddDevice = async (device: QuestDevice) => {
     if (!id) return
+    if (devicePending[device.device_id]) return
 
     if (device.room_id && device.room_id !== id) {
       const currentRoomName = roomNameMap.get(device.room_id) || device.room_id
@@ -99,6 +102,7 @@ export default function RoomDevicesPage() {
       if (!confirmed) return
     }
 
+    setDevicePending((prev) => ({ ...prev, [device.device_id]: 'add' }))
     try {
       if (device.room_id) {
         await roomApi.removeDevice(device.room_id, device.device_id)
@@ -109,12 +113,20 @@ export default function RoomDevicesPage() {
     } catch (error) {
       console.error('Failed to add device:', error)
       alert('添加設備失敗')
+    } finally {
+      setDevicePending((prev) => {
+        const next = { ...prev }
+        delete next[device.device_id]
+        return next
+      })
     }
   }
 
   const handleRemoveDevice = async (deviceId: string) => {
     if (!id) return
+    if (devicePending[deviceId]) return
 
+    setDevicePending((prev) => ({ ...prev, [deviceId]: 'remove' }))
     try {
       await roomApi.removeDevice(id, deviceId)
       await loadData()
@@ -122,6 +134,12 @@ export default function RoomDevicesPage() {
     } catch (error) {
       console.error('Failed to remove device:', error)
       alert('移除設備失敗')
+    } finally {
+      setDevicePending((prev) => {
+        const next = { ...prev }
+        delete next[deviceId]
+        return next
+      })
     }
   }
 
@@ -206,12 +224,14 @@ export default function RoomDevicesPage() {
                           </span>
                         </div>
                       </div>
-                    <button
+                    <Button
                       onClick={() => handleRemoveDevice(device.device_id)}
-                      className="ui-btn ui-btn-md ui-btn-danger"
+                      className="ui-btn-md ui-btn-danger"
+                      loading={devicePending[device.device_id] === 'remove'}
+                      disabled={!!devicePending[device.device_id]}
                     >
                       移除
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>
@@ -260,16 +280,18 @@ export default function RoomDevicesPage() {
                           </span>
                         </div>
                       </div>
-                    <button
+                    <Button
                       onClick={() => handleAddDevice(device)}
-                      className={`ui-btn ui-btn-md ${
+                      className={`ui-btn-md ${
                         device.room_id && device.room_id !== room.room_id
                           ? 'ui-btn-accent'
                           : 'ui-btn-success'
                       }`}
+                      loading={devicePending[device.device_id] === 'add'}
+                      disabled={!!devicePending[device.device_id]}
                     >
                       {device.room_id && device.room_id !== room.room_id ? '移入' : '添加'}
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>

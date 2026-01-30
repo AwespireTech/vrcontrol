@@ -4,6 +4,7 @@ import { roomApi, deviceApi } from '@/services/quest-api'
 import type { QuestRoom } from '@/services/quest-types'
 import { getDisplayName } from '@/lib/utils/device'
 import QuestPageShell from '@/components/quest/quest-page-shell'
+import Button from '@/components/button'
 
 export default function RoomsPage() {
   const navigate = useNavigate()
@@ -11,6 +12,7 @@ export default function RoomsPage() {
   const [deviceNameMap, setDeviceNameMap] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
   const [countdown, setCountdown] = useState(5)
+  const [roomPending, setRoomPending] = useState<Record<string, 'delete'>>({})
 
   const loadData = async () => {
     try {
@@ -51,13 +53,20 @@ export default function RoomsPage() {
 
   const handleDelete = async (roomId: string) => {
     if (!confirm('確定要刪除這個房間嗎？')) return
-
+    if (roomPending[roomId]) return
+    setRoomPending((prev) => ({ ...prev, [roomId]: 'delete' }))
     try {
       await roomApi.delete(roomId)
       await loadData()
     } catch (error) {
       console.error('Failed to delete room:', error)
       alert('刪除失敗')
+    } finally {
+      setRoomPending((prev) => {
+        const next = { ...prev }
+        delete next[roomId]
+        return next
+      })
     }
   }
 
@@ -148,12 +157,14 @@ export default function RoomsPage() {
                 >
                   編輯
                 </button>
-                <button
+                <Button
                   onClick={() => handleDelete(room.room_id)}
-                  className="ui-btn ui-btn-xs ui-btn-danger"
+                  className="ui-btn-xs ui-btn-danger"
+                  loading={roomPending[room.room_id] === 'delete'}
+                  disabled={!!roomPending[room.room_id]}
                 >
                   刪除
-                </button>
+                </Button>
               </div>
             </div>
           ))}
