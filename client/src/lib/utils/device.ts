@@ -1,4 +1,4 @@
-import type { QuestDevice } from '@/services/quest-types'
+import type { QuestDevice } from "@/services/quest-types"
 
 /**
  * 獲取設備的顯示名稱

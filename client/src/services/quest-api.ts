@@ -16,7 +16,7 @@ import {
   type ScrcpyBatchStartResponse,
   type UserPreference,
   type BatchStatusResponse,
-} from './quest-types'
+} from "./quest-types"
 
 const QUEST_CONTROL_BASE = `${QUEST_API_BASE}/control`
 const QUEST_SIMPLE_BASE = `${QUEST_API_BASE}/simple`
@@ -48,90 +48,92 @@ export const deviceApi = {
   // 創建設備
   create: async (device: Partial<QuestDevice>): Promise<QuestDevice> => {
     const res = await fetch(`${QUEST_API_BASE}/devices`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(device),
     })
     const data: ApiResponse<QuestDevice> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to create device')
+    if (!data.success) throw new Error(data.error || "Failed to create device")
     return data.data!
   },
 
   // 取代設備（PUT = replace）
   replace: async (deviceId: string, device: QuestDevice): Promise<QuestDevice> => {
-    const { room_id: _roomId, ...safeDevice } = device
+    const { room_id, ...safeDevice } = device
+    void room_id
     const res = await fetch(`${QUEST_API_BASE}/devices/${deviceId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(safeDevice),
     })
     const data: ApiResponse<QuestDevice> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to update device')
+    if (!data.success) throw new Error(data.error || "Failed to update device")
     return data.data!
   },
 
   // 局部更新設備（PATCH = strict whitelist on server）
   patch: async (deviceId: string, patch: Partial<QuestDevice>): Promise<QuestDevice> => {
-    const { room_id: _roomId, ...safePatch } = patch
+    const { room_id, ...safePatch } = patch
+    void room_id
     const res = await fetch(`${QUEST_API_BASE}/devices/${deviceId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(safePatch),
     })
     const data: ApiResponse<QuestDevice> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to patch device')
+    if (!data.success) throw new Error(data.error || "Failed to patch device")
     return data.data!
   },
 
   // 刪除設備
   delete: async (deviceId: string): Promise<void> => {
     const res = await fetch(`${QUEST_API_BASE}/devices/${deviceId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     })
     const data: ApiResponse<void> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to delete device')
+    if (!data.success) throw new Error(data.error || "Failed to delete device")
   },
 
   // 連接設備
   connect: async (deviceId: string): Promise<void> => {
     const res = await fetch(`${QUEST_API_BASE}/devices/${deviceId}/connect`, {
-      method: 'POST',
+      method: "POST",
     })
     const data: ApiResponse<void> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to connect device')
+    if (!data.success) throw new Error(data.error || "Failed to connect device")
   },
 
   // 斷開設備
   disconnect: async (deviceId: string): Promise<void> => {
     const res = await fetch(`${QUEST_API_BASE}/devices/${deviceId}/disconnect`, {
-      method: 'POST',
+      method: "POST",
     })
     const data: ApiResponse<void> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to disconnect device')
+    if (!data.success) throw new Error(data.error || "Failed to disconnect device")
   },
 
   // 獲取設備狀態
   getStatus: async (deviceId: string): Promise<QuestDevice> => {
     const res = await fetch(`${QUEST_API_BASE}/devices/${deviceId}/status`)
     const data: ApiResponse<QuestDevice> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to get device status')
+    if (!data.success) throw new Error(data.error || "Failed to get device status")
     return data.data!
   },
 
   // Ping 設備
   ping: async (deviceId: string): Promise<void> => {
     const res = await fetch(`${QUEST_API_BASE}/devices/${deviceId}/ping`, {
-      method: 'POST',
+      method: "POST",
     })
     const data: ApiResponse<void> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to ping device')
+    if (!data.success) throw new Error(data.error || "Failed to ping device")
   },
 
   // 批量連接
   connectBatch: async (deviceIds: string[], maxWorkers?: number): Promise<BatchExecuteResponse> => {
     const res = await fetch(`${QUEST_API_BASE}/devices/batch/connect`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ device_ids: deviceIds, max_workers: maxWorkers }),
     })
     return await res.json()
@@ -140,18 +142,21 @@ export const deviceApi = {
   // 批量 Ping
   pingBatch: async (deviceIds: string[], maxWorkers?: number): Promise<BatchExecuteResponse> => {
     const res = await fetch(`${QUEST_API_BASE}/devices/batch/ping`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ device_ids: deviceIds, max_workers: maxWorkers }),
     })
     return await res.json()
   },
 
   // 批量獲取設備狀態
-  getStatusBatch: async (deviceIds: string[], maxWorkers?: number): Promise<BatchStatusResponse> => {
+  getStatusBatch: async (
+    deviceIds: string[],
+    maxWorkers?: number,
+  ): Promise<BatchStatusResponse> => {
     const res = await fetch(`${QUEST_API_BASE}/devices/batch/status`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ device_ids: deviceIds, max_workers: maxWorkers }),
     })
     return await res.json()
@@ -161,10 +166,15 @@ export const deviceApi = {
   setAutoReconnectEnabledBatch: async (
     deviceIds: string[],
     enabled: boolean,
-  ): Promise<{ total: number; success_count: number; failed_count: number; failed: Record<string, string> }> => {
+  ): Promise<{
+    total: number
+    success_count: number
+    failed_count: number
+    failed: Record<string, string>
+  }> => {
     const res = await fetch(`${QUEST_API_BASE}/devices/batch/auto-reconnect`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ device_ids: deviceIds, enabled }),
     })
     const data: ApiResponse<{
@@ -173,27 +183,32 @@ export const deviceApi = {
       failed_count: number
       failed: Record<string, string>
     }> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to update auto-reconnect settings')
+    if (!data.success) throw new Error(data.error || "Failed to update auto-reconnect settings")
     return data.data!
   },
 
   // 重置單台設備自動重連狀態
   resetAutoReconnect: async (deviceId: string): Promise<QuestDevice> => {
     const res = await fetch(`${QUEST_API_BASE}/devices/${deviceId}/auto-reconnect/reset`, {
-      method: 'POST',
+      method: "POST",
     })
     const data: ApiResponse<QuestDevice> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to reset auto-reconnect status')
+    if (!data.success) throw new Error(data.error || "Failed to reset auto-reconnect status")
     return data.data!
   },
 
   // 批次重置自動重連狀態
   resetAutoReconnectBatch: async (
     deviceIds: string[],
-  ): Promise<{ total: number; success_count: number; failed_count: number; failed: Record<string, string> }> => {
+  ): Promise<{
+    total: number
+    success_count: number
+    failed_count: number
+    failed: Record<string, string>
+  }> => {
     const res = await fetch(`${QUEST_API_BASE}/devices/batch/auto-reconnect/reset`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ device_ids: deviceIds }),
     })
     const data: ApiResponse<{
@@ -202,7 +217,8 @@ export const deviceApi = {
       failed_count: number
       failed: Record<string, string>
     }> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to reset auto-reconnect status (batch)')
+    if (!data.success)
+      throw new Error(data.error || "Failed to reset auto-reconnect status (batch)")
     return data.data!
   },
 }
@@ -227,66 +243,65 @@ export const roomApi = {
   // 創建房間
   create: async (room: Partial<QuestRoom>): Promise<QuestRoom> => {
     const res = await fetch(`${QUEST_API_BASE}/rooms`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(room),
     })
     const data: ApiResponse<QuestRoom> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to create room')
+    if (!data.success) throw new Error(data.error || "Failed to create room")
     return data.data!
   },
 
   // 取代房間（PUT = replace）
   replace: async (roomId: string, room: QuestRoom): Promise<QuestRoom> => {
     const res = await fetch(`${QUEST_API_BASE}/rooms/${roomId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(room),
     })
     const data: ApiResponse<QuestRoom> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to update room')
+    if (!data.success) throw new Error(data.error || "Failed to update room")
     return data.data!
   },
 
   // 局部更新房間（PATCH = strict whitelist on server）
   patch: async (roomId: string, patch: Partial<QuestRoom>): Promise<QuestRoom> => {
     const res = await fetch(`${QUEST_API_BASE}/rooms/${roomId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     })
     const data: ApiResponse<QuestRoom> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to patch room')
+    if (!data.success) throw new Error(data.error || "Failed to patch room")
     return data.data!
   },
 
   // 刪除房間
   delete: async (roomId: string): Promise<void> => {
     const res = await fetch(`${QUEST_API_BASE}/rooms/${roomId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     })
     const data: ApiResponse<void> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to delete room')
+    if (!data.success) throw new Error(data.error || "Failed to delete room")
   },
 
   // 添加設備到房間
   addDevice: async (roomId: string, deviceId: string): Promise<void> => {
     const res = await fetch(`${QUEST_API_BASE}/rooms/${roomId}/devices/${deviceId}`, {
-      method: 'POST',
+      method: "POST",
     })
     const data: ApiResponse<void> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to add device to room')
+    if (!data.success) throw new Error(data.error || "Failed to add device to room")
   },
 
   // 從房間移除設備
   removeDevice: async (roomId: string, deviceId: string): Promise<void> => {
     const res = await fetch(`${QUEST_API_BASE}/rooms/${roomId}/devices/${deviceId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     })
     const data: ApiResponse<void> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to remove device from room')
+    if (!data.success) throw new Error(data.error || "Failed to remove device from room")
   },
-
 }
 
 // ============ 控制 API（鏡像 /control） ============
@@ -295,7 +310,7 @@ export const controlApi = {
   // 指派序列
   assignSeq: async (roomId: string, clientId: string, seq: number): Promise<void> => {
     await fetch(`${QUEST_CONTROL_BASE}/assignseq/${roomId}/${clientId}/${seq}`, {
-      method: 'POST',
+      method: "POST",
     })
   },
 }
@@ -329,53 +344,53 @@ export const actionApi = {
   // 創建動作
   create: async (action: Partial<QuestAction>): Promise<QuestAction> => {
     const res = await fetch(`${QUEST_API_BASE}/actions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(action),
     })
     const data: ApiResponse<QuestAction> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to create action')
+    if (!data.success) throw new Error(data.error || "Failed to create action")
     return data.data!
   },
 
   // 取代動作（PUT = replace）
   replace: async (actionId: string, action: QuestAction): Promise<QuestAction> => {
     const res = await fetch(`${QUEST_API_BASE}/actions/${actionId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(action),
     })
     const data: ApiResponse<QuestAction> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to update action')
+    if (!data.success) throw new Error(data.error || "Failed to update action")
     return data.data!
   },
 
   // 局部更新動作（PATCH = strict whitelist on server）
   patch: async (actionId: string, patch: Partial<QuestAction>): Promise<QuestAction> => {
     const res = await fetch(`${QUEST_API_BASE}/actions/${actionId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patch),
     })
     const data: ApiResponse<QuestAction> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to patch action')
+    if (!data.success) throw new Error(data.error || "Failed to patch action")
     return data.data!
   },
 
   // 刪除動作
   delete: async (actionId: string): Promise<void> => {
     const res = await fetch(`${QUEST_API_BASE}/actions/${actionId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     })
     const data: ApiResponse<void> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to delete action')
+    if (!data.success) throw new Error(data.error || "Failed to delete action")
   },
 
   // 執行動作
   execute: async (actionId: string, deviceId: string): Promise<ExecutionResult> => {
     const res = await fetch(`${QUEST_API_BASE}/actions/${actionId}/execute`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ device_id: deviceId }),
     })
     const data: ApiResponse<ExecutionResult> = await res.json()
@@ -385,8 +400,8 @@ export const actionApi = {
   // 批量執行動作
   executeBatch: async (request: BatchExecuteRequest): Promise<BatchExecuteResponse> => {
     const res = await fetch(`${QUEST_API_BASE}/actions/batch/execute`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
     })
     return await res.json()
@@ -399,17 +414,19 @@ export const monitoringApi = {
   // 獲取監控狀態
   getStatus: async (): Promise<MonitoringStatus> => {
     const res = await fetch(`${QUEST_API_BASE}/monitoring/status`)
-    const payload: any = await res.json()
+    const payload = (await res.json()) as
+      | { success?: boolean; data?: { running?: boolean }; running?: boolean; error?: string }
+      | undefined
 
     if (!payload?.success) {
-      throw new Error(payload?.error || 'Failed to get monitoring status')
+      throw new Error(payload?.error || "Failed to get monitoring status")
     }
 
     // New format: { success: true, data: { running: boolean } }
     // Legacy format: { success: true, running: boolean }
     const running = payload?.data?.running ?? payload?.running
-    if (typeof running !== 'boolean') {
-      throw new Error('Invalid monitoring status response')
+    if (typeof running !== "boolean") {
+      throw new Error("Invalid monitoring status response")
     }
 
     return { running }
@@ -418,39 +435,39 @@ export const monitoringApi = {
   // 啟動監控
   start: async (): Promise<void> => {
     const res = await fetch(`${QUEST_API_BASE}/monitoring/start`, {
-      method: 'POST',
+      method: "POST",
     })
     const data: ApiResponse<void> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to start monitoring')
+    if (!data.success) throw new Error(data.error || "Failed to start monitoring")
   },
 
   // 停止監控
   stop: async (): Promise<void> => {
     const res = await fetch(`${QUEST_API_BASE}/monitoring/stop`, {
-      method: 'POST',
+      method: "POST",
     })
     const data: ApiResponse<void> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to stop monitoring')
+    if (!data.success) throw new Error(data.error || "Failed to stop monitoring")
   },
 
   // 設置監控間隔
   setInterval: async (intervalSeconds: number): Promise<void> => {
     const res = await fetch(`${QUEST_API_BASE}/monitoring/interval`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ interval: intervalSeconds }),
     })
     const data: ApiResponse<void> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to set monitoring interval')
+    if (!data.success) throw new Error(data.error || "Failed to set monitoring interval")
   },
 
   // 手動執行一次監控
   runOnce: async (): Promise<void> => {
     const res = await fetch(`${QUEST_API_BASE}/monitoring/run-once`, {
-      method: 'POST',
+      method: "POST",
     })
     const data: ApiResponse<void> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to run monitoring')
+    if (!data.success) throw new Error(data.error || "Failed to run monitoring")
   },
 }
 
@@ -467,30 +484,30 @@ export const scrcpyApi = {
   // 啟動單個設備的 scrcpy
   start: async (deviceId: string, config?: Partial<ScrcpyConfig>): Promise<void> => {
     const res = await fetch(`${QUEST_API_BASE}/scrcpy/start/${deviceId}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: config ? JSON.stringify(config) : undefined,
     })
     const data: ApiResponse<void> = await res.json()
     if (!res.ok || !data.success) {
-      throw new Error(data.error || data.message || 'Failed to start scrcpy')
+      throw new Error(data.error || data.message || "Failed to start scrcpy")
     }
   },
 
   // 停止設備的 scrcpy
   stop: async (deviceId: string): Promise<void> => {
     const res = await fetch(`${QUEST_API_BASE}/scrcpy/stop/${deviceId}`, {
-      method: 'POST',
+      method: "POST",
     })
     const data: ApiResponse<void> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to stop scrcpy')
+    if (!data.success) throw new Error(data.error || "Failed to stop scrcpy")
   },
 
   // 批量啟動多個設備的 scrcpy
   startBatch: async (request: ScrcpyBatchStartRequest): Promise<ScrcpyBatchStartResponse> => {
     const res = await fetch(`${QUEST_API_BASE}/scrcpy/batch/start`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
     })
     return await res.json()
@@ -506,7 +523,7 @@ export const scrcpyApi = {
   // 刷新會話狀態
   refreshSessions: async (): Promise<ScrcpySession[]> => {
     const res = await fetch(`${QUEST_API_BASE}/scrcpy/sessions/refresh`, {
-      method: 'POST',
+      method: "POST",
     })
     const data: ApiResponse<ScrcpySession[]> = await res.json()
     return data.data || []
@@ -522,12 +539,12 @@ export const scrcpyApi = {
   // 更新 scrcpy 配置
   updateConfig: async (config: ScrcpyConfig): Promise<void> => {
     const res = await fetch(`${QUEST_API_BASE}/scrcpy/config`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(config),
     })
     const data: ApiResponse<void> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to update scrcpy config')
+    if (!data.success) throw new Error(data.error || "Failed to update scrcpy config")
   },
 }
 
@@ -544,12 +561,12 @@ export const preferenceApi = {
   // 更新使用者偏好
   update: async (preference: Partial<UserPreference>): Promise<UserPreference> => {
     const res = await fetch(`${QUEST_API_BASE}/preferences`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(preference),
     })
     const data: ApiResponse<UserPreference> = await res.json()
-    if (!data.success) throw new Error(data.error || 'Failed to update preference')
+    if (!data.success) throw new Error(data.error || "Failed to update preference")
     return data.data!
   },
 }

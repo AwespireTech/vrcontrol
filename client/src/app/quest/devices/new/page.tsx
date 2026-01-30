@@ -1,16 +1,16 @@
-import { useNavigate } from 'react-router-dom'
-import { deviceApi } from '@/services/quest-api'
-import DeviceForm from '@/components/quest/device-form'
-import type { QuestDevice } from '@/services/quest-types'
-import QuestPageShell from '@/components/quest/quest-page-shell'
+import { useNavigate } from "react-router-dom"
+import { deviceApi } from "@/services/quest-api"
+import DeviceForm from "@/components/quest/device-form"
+import type { QuestDevice } from "@/services/quest-types"
+import QuestPageShell from "@/components/quest/quest-page-shell"
 
 export default function NewDevicePage() {
   const navigate = useNavigate()
 
   const handleSubmit = async (device: Partial<QuestDevice>) => {
     await deviceApi.create(device)
-    alert('設備已建立')
-    navigate('/quest/devices')
+    alert("設備已建立")
+    navigate("/quest/devices")
   }
 
   return (
@@ -20,7 +20,7 @@ export default function NewDevicePage() {
       maxWidth="sm"
       actions={
         <button
-          onClick={() => navigate('/quest/devices')}
+          onClick={() => navigate("/quest/devices")}
           className="ui-btn ui-btn-md ui-btn-muted"
         >
           返回設備列表
@@ -28,7 +28,7 @@ export default function NewDevicePage() {
       }
     >
       <div className="surface-card p-6">
-        <DeviceForm onSubmit={handleSubmit} onCancel={() => navigate('/quest/devices')} />
+        <DeviceForm onSubmit={handleSubmit} onCancel={() => navigate("/quest/devices")} />
       </div>
     </QuestPageShell>
   )

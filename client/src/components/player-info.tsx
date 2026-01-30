@@ -15,7 +15,7 @@ const PlayerInfo = ({
   player: PlayerData
   handleChangeSequence: (player: string, seq: number) => void
   displayName?: string
-  adbStatus?: 'online' | 'offline' | 'connecting' | 'error' | 'disconnected'
+  adbStatus?: "online" | "offline" | "connecting" | "error" | "disconnected"
   sequenceLoading?: boolean
 }) => {
   dayjs.extend(isSameOrBefore)
@@ -43,14 +43,18 @@ const PlayerInfo = ({
         <div>
           <div className="text-[11px] uppercase tracking-wide text-foreground/50">玩家狀態</div>
           <div className="mt-1 flex items-center leading-5">
-            <span className={`ui-badge ${player.ready_to_move ? "ui-badge-success" : "ui-badge-muted"}`}>
+            <span
+              className={`ui-badge ${player.ready_to_move ? "ui-badge-success" : "ui-badge-muted"}`}
+            >
               {player.ready_to_move ? "Ready" : "Not Ready"}
             </span>
           </div>
         </div>
         <div>
           <div className="text-[11px] uppercase tracking-wide text-foreground/50">Chapter</div>
-          <div className="mt-1 text-sm font-semibold text-foreground leading-5">{player.chapter}</div>
+          <div className="mt-1 text-sm font-semibold leading-5 text-foreground">
+            {player.chapter}
+          </div>
         </div>
         <div>
           <div className="text-[11px] uppercase tracking-wide text-foreground/50">Sequence</div>
@@ -59,7 +63,7 @@ const PlayerInfo = ({
             <span className="text-foreground/40">→</span>
             <input
               type="number"
-              className="w-14 ui-input px-2 py-1 text-xs"
+              className="ui-input w-14 px-2 py-1 text-xs"
               value={numberInput}
               onChange={handleNumberChange}
               min={0}
@@ -74,14 +78,18 @@ const PlayerInfo = ({
           </div>
         </div>
         <div>
-          <div className="text-[11px] uppercase tracking-wide text-foreground/50">Head Position</div>
-          <div className="mt-1 text-foreground/70 font-mono leading-5">
+          <div className="text-[11px] uppercase tracking-wide text-foreground/50">
+            Head Position
+          </div>
+          <div className="mt-1 font-mono leading-5 text-foreground/70">
             ({player.head_position.x}, {player.head_position.y}, {player.head_position.z})
           </div>
         </div>
         <div>
           <div className="text-[11px] uppercase tracking-wide text-foreground/50">最後更新</div>
-          <div className={`mt-1 leading-5 ${isStale ? "font-semibold text-danger" : "text-foreground/60"}`}>
+          <div
+            className={`mt-1 leading-5 ${isStale ? "font-semibold text-danger" : "text-foreground/60"}`}
+          >
             {lastUpdateTime.format("YYYY/MM/DD HH:mm:ss")}
           </div>
         </div>

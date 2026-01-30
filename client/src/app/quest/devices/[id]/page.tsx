@@ -1,15 +1,15 @@
-import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { deviceApi, roomApi } from '@/services/quest-api'
-import DeviceForm from '@/components/quest/device-form'
-import type { QuestDevice } from '@/services/quest-types'
-import QuestPageShell from '@/components/quest/quest-page-shell'
+import { useEffect, useState } from "react"
+import { useNavigate, useParams } from "react-router-dom"
+import { deviceApi, roomApi } from "@/services/quest-api"
+import DeviceForm from "@/components/quest/device-form"
+import type { QuestDevice } from "@/services/quest-types"
+import QuestPageShell from "@/components/quest/quest-page-shell"
 
 export default function EditDevicePage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
   const [device, setDevice] = useState<QuestDevice | null>(null)
-  const [roomName, setRoomName] = useState<string>('')
+  const [roomName, setRoomName] = useState<string>("")
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -23,12 +23,12 @@ export default function EditDevicePage() {
           const room = await roomApi.get(data.room_id)
           setRoomName(room?.name || data.room_id)
         } else {
-          setRoomName('')
+          setRoomName("")
         }
       } catch (error) {
-        console.error('Failed to load device:', error)
-        alert('載入設備失敗，請稍後再試')
-        navigate('/quest/devices')
+        console.error("Failed to load device:", error)
+        alert("載入設備失敗，請稍後再試")
+        navigate("/quest/devices")
       } finally {
         setLoading(false)
       }
@@ -39,21 +39,21 @@ export default function EditDevicePage() {
 
   const handleSubmit = async (updatedDevice: Partial<QuestDevice>) => {
     if (!id) return
-    
+
     try {
       await deviceApi.patch(id, updatedDevice)
-      alert('設備已更新')
-      navigate('/quest/devices')
+      alert("設備已更新")
+      navigate("/quest/devices")
     } catch (error) {
-      console.error('Failed to update device:', error)
-      alert('更新失敗，請稍後再試')
+      console.error("Failed to update device:", error)
+      alert("更新失敗，請稍後再試")
       throw error
     }
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background p-6 flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-background p-6">
         <div className="text-foreground">載入中…</div>
       </div>
     )
@@ -61,7 +61,7 @@ export default function EditDevicePage() {
 
   if (!device) {
     return (
-      <div className="min-h-screen bg-background p-6 flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-background p-6">
         <div className="text-danger">設備不存在</div>
       </div>
     )
@@ -74,7 +74,7 @@ export default function EditDevicePage() {
       maxWidth="sm"
       actions={
         <button
-          onClick={() => navigate('/quest/devices')}
+          onClick={() => navigate("/quest/devices")}
           className="ui-btn ui-btn-md ui-btn-muted"
         >
           返回設備列表
@@ -86,15 +86,13 @@ export default function EditDevicePage() {
           <div className="flex items-center justify-between">
             <span className="text-foreground/70">Ping 狀態:</span>
             <span className="text-foreground">
-              {device.ping_status || 'unknown'} ({device.ping_ms ?? 0} ms)
+              {device.ping_status || "unknown"} ({device.ping_ms ?? 0} ms)
             </span>
           </div>
           <div className="mt-2 flex items-center justify-between">
             <span className="text-foreground/70">所屬房間:</span>
             <div className="flex items-center gap-2">
-              <span className="text-foreground">
-                {roomName || '未指派'}
-              </span>
+              <span className="text-foreground">{roomName || "未指派"}</span>
               {device.room_id && (
                 <button
                   onClick={() => navigate(`/quest/rooms/${device.room_id}/devices`)}
@@ -109,7 +107,7 @@ export default function EditDevicePage() {
         <DeviceForm
           device={device}
           onSubmit={handleSubmit}
-          onCancel={() => navigate('/quest/devices')}
+          onCancel={() => navigate("/quest/devices")}
         />
       </div>
     </QuestPageShell>

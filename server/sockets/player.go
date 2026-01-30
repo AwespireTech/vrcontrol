@@ -6,9 +6,10 @@ import (
 	"log"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"vrcontrol/server/model"
 	"vrcontrol/server/utilities"
+
+	"github.com/gorilla/websocket"
 )
 
 type Player struct {
@@ -20,7 +21,7 @@ type Player struct {
 	InChannel         chan []byte
 	Sequence          int
 	LastUpdate        time.Time
-	Message						string
+	Message           string
 	HeadPosition      model.Vector3f
 	HeadForward       model.Vector3f
 	LeftHandPosition  model.Vector3f

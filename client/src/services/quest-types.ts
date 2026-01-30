@@ -5,31 +5,31 @@ export const QUEST_API_BASE = `${SERVER}/api/quest`
 
 // Quest 設備狀態
 export const QUEST_DEVICE_STATUS = {
-  ONLINE: 'online',
-  OFFLINE: 'offline',
-  CONNECTING: 'connecting',
-  ERROR: 'error',
-  DISCONNECTED: 'disconnected'
+  ONLINE: "online",
+  OFFLINE: "offline",
+  CONNECTING: "connecting",
+  ERROR: "error",
+  DISCONNECTED: "disconnected",
 } as const
 
 // Quest 設備 Ping 狀態
 export const QUEST_DEVICE_PING_STATUS = {
-  OK: 'ok',
-  FAIL: 'fail',
-  TIMEOUT: 'timeout',
-  UNKNOWN: 'unknown'
+  OK: "ok",
+  FAIL: "fail",
+  TIMEOUT: "timeout",
+  UNKNOWN: "unknown",
 } as const
 
 // Quest 動作類型
 export const QUEST_ACTION_TYPES = {
-  WAKE_UP: 'wake_up',
-  SLEEP: 'sleep',
-  LAUNCH_APP: 'launch_app',
-  STOP_APP: 'stop_app',
-  RESTART_APP: 'restart_app',
-  KEEP_AWAKE: 'keep_awake',
-  SEND_KEY: 'send_key',
-  INSTALL_APK: 'install_apk'
+  WAKE_UP: "wake_up",
+  SLEEP: "sleep",
+  LAUNCH_APP: "launch_app",
+  STOP_APP: "stop_app",
+  RESTART_APP: "restart_app",
+  KEEP_AWAKE: "keep_awake",
+  SEND_KEY: "send_key",
+  INSTALL_APK: "install_apk",
 } as const
 
 // API 響應類型
@@ -64,17 +64,17 @@ export interface QuestDevice {
 
   // 自動重連狀態（由後端維護）
   auto_reconnect_disabled_reason?:
-    | 'manual_disconnect'
-    | 'max_retries_exhausted'
-    | 'adb_not_found'
-    | 'adb_connect_failed'
-    | 'unknown'
+    | "manual_disconnect"
+    | "max_retries_exhausted"
+    | "adb_not_found"
+    | "adb_connect_failed"
+    | "unknown"
   auto_reconnect_retry_count?: number
   auto_reconnect_next_attempt_at?: string
   auto_reconnect_last_error?: string
 
   // WebSocket 連線狀態
-  ws_status?: 'connected' | 'disconnected'
+  ws_status?: "connected" | "disconnected"
   ws_last_seen?: string
 
   last_seen: string
@@ -166,36 +166,36 @@ export interface MonitoringStatus {
 
 // Scrcpy 配置
 export interface ScrcpyConfig {
-  bitrate: string          // 視訊位元率 (e.g., "8M", "16M")
-  max_size: number         // 最大螢幕寬度
-  max_fps: number          // 最大幀率
-  window_width?: number    // 視窗寬度
-  window_height?: number   // 視窗高度
-  window_x?: number        // 視窗 X 位置
-  window_y?: number        // 視窗 Y 位置
-  stay_awake: boolean      // 保持設備清醒
-  show_touches: boolean    // 顯示觸控點
-  fullscreen: boolean      // 全螢幕模式
-  always_on_top: boolean   // 視窗置頂
+  bitrate: string // 視訊位元率 (e.g., "8M", "16M")
+  max_size: number // 最大螢幕寬度
+  max_fps: number // 最大幀率
+  window_width?: number // 視窗寬度
+  window_height?: number // 視窗高度
+  window_x?: number // 視窗 X 位置
+  window_y?: number // 視窗 Y 位置
+  stay_awake: boolean // 保持設備清醒
+  show_touches: boolean // 顯示觸控點
+  fullscreen: boolean // 全螢幕模式
+  always_on_top: boolean // 視窗置頂
   turn_screen_off: boolean // 關閉設備螢幕
-  enable_audio: boolean    // 啟用音訊轉發
-  render_driver: string    // 渲染驅動
+  enable_audio: boolean // 啟用音訊轉發
+  render_driver: string // 渲染驅動
 }
 
 // Scrcpy 會話
 export interface ScrcpySession {
-  device_id: string        // 設備 ID
-  process_id: number       // 進程 PID
-  started_at: string       // 啟動時間
-  is_running: boolean      // 是否運行中
+  device_id: string // 設備 ID
+  process_id: number // 進程 PID
+  started_at: string // 啟動時間
+  is_running: boolean // 是否運行中
 }
 
 // Scrcpy 系統信息
 export interface ScrcpySystemInfo {
-  installed: boolean       // 是否已安裝
-  version: string          // 版本號
-  path: string            // 執行檔路徑
-  error_message: string    // 錯誤訊息
+  installed: boolean // 是否已安裝
+  version: string // 版本號
+  path: string // 執行檔路徑
+  error_message: string // 錯誤訊息
 }
 
 // Scrcpy 批量啟動請求
@@ -215,12 +215,12 @@ export interface ScrcpyBatchStartResponse {
 
 // 使用者偏好
 export interface UserPreference {
-  poll_interval_sec: number    // 輪詢間隔（秒）
-  batch_size: number            // 批次大小
-  max_concurrency: number       // 最大併發數
+  poll_interval_sec: number // 輪詢間隔（秒）
+  batch_size: number // 批次大小
+  max_concurrency: number // 最大併發數
   reconnect_cooldown_sec: number // 自動重連冷卻（秒）
-  reconnect_max_retries: number  // 自動重連最大重試次數
-  updated_at: string            // 更新時間
+  reconnect_max_retries: number // 自動重連最大重試次數
+  updated_at: string // 更新時間
 }
 
 // 批量狀態查詢結果項

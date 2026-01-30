@@ -1,12 +1,12 @@
-import { Outlet } from 'react-router-dom'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import type { PointerEvent as ReactPointerEvent } from 'react'
-import QuestSidebar from './quest-sidebar.tsx'
+import { Outlet } from "react-router-dom"
+import { useCallback, useEffect, useRef, useState } from "react"
+import type { PointerEvent as ReactPointerEvent } from "react"
+import QuestSidebar from "./quest-sidebar.tsx"
 
 const SIDEBAR_MIN_WIDTH = 220
 const SIDEBAR_MAX_WIDTH = 420
 const SIDEBAR_COLLAPSED_WIDTH = 68
-const SMALL_SCREEN_QUERY = '(max-width: 1024px)'
+const SMALL_SCREEN_QUERY = "(max-width: 1024px)"
 
 export default function QuestLayout() {
   const [sidebarWidth, setSidebarWidth] = useState(296)
@@ -16,34 +16,40 @@ export default function QuestLayout() {
   const dragStartXRef = useRef(0)
   const dragStartWidthRef = useRef(296)
 
-  const handlePointerMove = useCallback((event: PointerEvent) => {
-    if (!dragging) return
-    const delta = event.clientX - dragStartXRef.current
-    const nextWidth = Math.min(
-      SIDEBAR_MAX_WIDTH,
-      Math.max(SIDEBAR_MIN_WIDTH, dragStartWidthRef.current + delta)
-    )
-    setSidebarWidth(nextWidth)
-  }, [dragging])
+  const handlePointerMove = useCallback(
+    (event: PointerEvent) => {
+      if (!dragging) return
+      const delta = event.clientX - dragStartXRef.current
+      const nextWidth = Math.min(
+        SIDEBAR_MAX_WIDTH,
+        Math.max(SIDEBAR_MIN_WIDTH, dragStartWidthRef.current + delta),
+      )
+      setSidebarWidth(nextWidth)
+    },
+    [dragging],
+  )
 
   const handlePointerUp = useCallback(() => {
     setDragging(false)
-    document.body.style.userSelect = ''
-    document.body.style.cursor = ''
-    window.removeEventListener('pointermove', handlePointerMove)
-    window.removeEventListener('pointerup', handlePointerUp)
+    document.body.style.userSelect = ""
+    document.body.style.cursor = ""
+    window.removeEventListener("pointermove", handlePointerMove)
+    window.removeEventListener("pointerup", handlePointerUp)
   }, [handlePointerMove])
 
-  const handlePointerDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (collapsed) return
-    setDragging(true)
-    dragStartXRef.current = event.clientX
-    dragStartWidthRef.current = sidebarWidth
-    document.body.style.userSelect = 'none'
-    document.body.style.cursor = 'col-resize'
-    window.addEventListener('pointermove', handlePointerMove)
-    window.addEventListener('pointerup', handlePointerUp)
-  }, [collapsed, handlePointerMove, handlePointerUp, sidebarWidth])
+  const handlePointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if (collapsed) return
+      setDragging(true)
+      dragStartXRef.current = event.clientX
+      dragStartWidthRef.current = sidebarWidth
+      document.body.style.userSelect = "none"
+      document.body.style.cursor = "col-resize"
+      window.addEventListener("pointermove", handlePointerMove)
+      window.addEventListener("pointerup", handlePointerUp)
+    },
+    [collapsed, handlePointerMove, handlePointerUp, sidebarWidth],
+  )
 
   useEffect(() => {
     const media = window.matchMedia(SMALL_SCREEN_QUERY)
@@ -55,8 +61,8 @@ export default function QuestLayout() {
 
   useEffect(() => {
     return () => {
-      window.removeEventListener('pointermove', handlePointerMove)
-      window.removeEventListener('pointerup', handlePointerUp)
+      window.removeEventListener("pointermove", handlePointerMove)
+      window.removeEventListener("pointerup", handlePointerUp)
     }
   }, [handlePointerMove, handlePointerUp])
 
@@ -76,7 +82,7 @@ export default function QuestLayout() {
         onResizePointerDown={handlePointerDown}
       />
       <div
-        className={`relative min-h-screen w-full box-border ${dragging ? '' : 'transition-[padding] duration-200'}`}
+        className={`relative box-border min-h-screen w-full ${dragging ? "" : "transition-[padding] duration-200"}`}
         style={{ paddingLeft: collapsed ? SIDEBAR_COLLAPSED_WIDTH : sidebarWidth }}
       >
         <div className="min-h-screen w-full">

@@ -80,7 +80,7 @@ export const RoomState = () => {
         <span>Force all move to chapter</span>
         <select
           id="mySelect"
-          className={`mx-2 place-self-center max-h-40 overflow-y-auto ui-select px-2 py-1 text-center ${
+          className={`ui-select mx-2 max-h-40 place-self-center overflow-y-auto px-2 py-1 text-center ${
             selectedOption === "" ? "text-foreground/50" : ""
           }`}
           value={selectedOption}
@@ -113,7 +113,9 @@ export const RoomState = () => {
           Go
         </Button>
         {moveState === "success" && <span className="text-success">Move command sent!</span>}
-        {moveState === "failed" && <span className="text-danger">Failed to send move command.</span>}
+        {moveState === "failed" && (
+          <span className="text-danger">Failed to send move command.</span>
+        )}
       </div>
 
       {/* <p>Player Info:</p> */}

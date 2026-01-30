@@ -1,9 +1,9 @@
-'use client'
+"use client"
 
-import { useState } from 'react'
-import type { QuestAction } from '@/services/quest-types'
-import Button from '@/components/button'
-import { QUEST_ACTION_TYPES } from '@/services/quest-types'
+import { useState } from "react"
+import type { QuestAction } from "@/services/quest-types"
+import Button from "@/components/button"
+import { QUEST_ACTION_TYPES } from "@/services/quest-types"
 
 interface ActionFormProps {
   action?: QuestAction
@@ -13,10 +13,10 @@ interface ActionFormProps {
 
 export default function ActionForm({ action, onSubmit, onCancel }: ActionFormProps) {
   const [formData, setFormData] = useState({
-    name: action?.name || '',
-    description: action?.description || '',
+    name: action?.name || "",
+    description: action?.description || "",
     action_type: action?.action_type || QUEST_ACTION_TYPES.WAKE_UP,
-    params: action?.params ? JSON.stringify(action.params, null, 2) : '{}',
+    params: action?.params ? JSON.stringify(action.params, null, 2) : "{}",
   })
   const [submitting, setSubmitting] = useState(false)
 
@@ -26,17 +26,17 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
       case QUEST_ACTION_TYPES.LAUNCH_APP:
       case QUEST_ACTION_TYPES.STOP_APP:
       case QUEST_ACTION_TYPES.RESTART_APP:
-        if (!('package' in params) || typeof params.package !== 'string') {
-          return 'Missing required parameter: package (string)'
+        if (!("package" in params) || typeof params.package !== "string") {
+          return "Missing required parameter: package (string)"
         }
-        if (params.package.trim() === '') {
+        if (params.package.trim() === "") {
           return 'Parameter "package" cannot be empty'
         }
         break
 
       case QUEST_ACTION_TYPES.SEND_KEY:
-        if (!('keycode' in params) || typeof params.keycode !== 'number') {
-          return 'Missing required parameter: keycode (number)'
+        if (!("keycode" in params) || typeof params.keycode !== "number") {
+          return "Missing required parameter: keycode (number)"
         }
         if (params.keycode <= 0) {
           return 'Parameter "keycode" must be a positive number'
@@ -44,46 +44,54 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
         break
 
       case QUEST_ACTION_TYPES.INSTALL_APK:
-        if (!('apk_path' in params) || typeof params.apk_path !== 'string') {
-          return 'Missing required parameter: apk_path (string)'
+        if (!("apk_path" in params) || typeof params.apk_path !== "string") {
+          return "Missing required parameter: apk_path (string)"
         }
-        if (params.apk_path.trim() === '') {
+        if (params.apk_path.trim() === "") {
           return 'Parameter "apk_path" cannot be empty'
         }
         break
     }
 
     // Validate optional parameter types if present
-    if ('activity' in params && params.activity !== undefined && typeof params.activity !== 'string') {
+    if (
+      "activity" in params &&
+      params.activity !== undefined &&
+      typeof params.activity !== "string"
+    ) {
       return 'Parameter "activity" must be a string'
     }
-    if ('delay' in params && params.delay !== undefined && typeof params.delay !== 'number') {
+    if ("delay" in params && params.delay !== undefined && typeof params.delay !== "number") {
       return 'Parameter "delay" must be a number'
     }
-    if ('repeat' in params && params.repeat !== undefined && typeof params.repeat !== 'number') {
+    if ("repeat" in params && params.repeat !== undefined && typeof params.repeat !== "number") {
       return 'Parameter "repeat" must be a number'
     }
-    if ('force' in params && params.force !== undefined && typeof params.force !== 'boolean') {
+    if ("force" in params && params.force !== undefined && typeof params.force !== "boolean") {
       return 'Parameter "force" must be a boolean'
     }
-    if ('replace' in params && params.replace !== undefined && typeof params.replace !== 'boolean') {
+    if (
+      "replace" in params &&
+      params.replace !== undefined &&
+      typeof params.replace !== "boolean"
+    ) {
       return 'Parameter "replace" must be a boolean'
     }
     if (
-      'grant_permissions' in params &&
+      "grant_permissions" in params &&
       params.grant_permissions !== undefined &&
-      typeof params.grant_permissions !== 'boolean'
+      typeof params.grant_permissions !== "boolean"
     ) {
       return 'Parameter "grant_permissions" must be a boolean'
     }
     if (
-      'duration_seconds' in params &&
+      "duration_seconds" in params &&
       params.duration_seconds !== undefined &&
-      typeof params.duration_seconds !== 'number'
+      typeof params.duration_seconds !== "number"
     ) {
       return 'Parameter "duration_seconds" must be a number'
     }
-    if ('timeout' in params && params.timeout !== undefined && typeof params.timeout !== 'number') {
+    if ("timeout" in params && params.timeout !== undefined && typeof params.timeout !== "number") {
       return 'Parameter "timeout" must be a number'
     }
 
@@ -100,7 +108,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
       try {
         params = JSON.parse(formData.params)
       } catch {
-        alert('參數格式錯誤，請輸入有效的 JSON')
+        alert("參數格式錯誤，請輸入有效的 JSON")
         setSubmitting(false)
         return
       }
@@ -120,8 +128,8 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
         params,
       })
     } catch (error) {
-      console.error('Failed to submit form:', error)
-      alert('提交失敗，請稍後再試')
+      console.error("Failed to submit form:", error)
+      alert("提交失敗，請稍後再試")
     } finally {
       setSubmitting(false)
     }
@@ -142,8 +150,8 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
       case QUEST_ACTION_TYPES.LAUNCH_APP:
         return JSON.stringify(
           {
-            package: 'com.example.app',
-            activity: '.MainActivity',
+            package: "com.example.app",
+            activity: ".MainActivity",
           },
           null,
           2,
@@ -152,7 +160,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
       case QUEST_ACTION_TYPES.RESTART_APP:
         return JSON.stringify(
           {
-            package: 'com.example.app',
+            package: "com.example.app",
           },
           null,
           2,
@@ -176,13 +184,13 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
       case QUEST_ACTION_TYPES.INSTALL_APK:
         return JSON.stringify(
           {
-            apk_path: '/path/to/app.apk',
+            apk_path: "/path/to/app.apk",
           },
           null,
           2,
         )
       default:
-        return '{}'
+        return "{}"
     }
   }
 
@@ -198,9 +206,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <label className="block text-sm font-semibold text-foreground mb-2">
-          動作名稱 *
-        </label>
+        <label className="mb-2 block text-sm font-semibold text-foreground">動作名稱 *</label>
         <input
           type="text"
           name="name"
@@ -213,9 +219,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-foreground mb-2">
-          動作類型 *
-        </label>
+        <label className="mb-2 block text-sm font-semibold text-foreground">動作類型 *</label>
         <select
           name="action_type"
           value={formData.action_type}
@@ -235,9 +239,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-foreground mb-2">
-          動作描述
-        </label>
+        <label className="mb-2 block text-sm font-semibold text-foreground">動作描述</label>
         <textarea
           name="description"
           value={formData.description}
@@ -249,9 +251,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
       </div>
 
       <div>
-        <label className="block text-sm font-semibold text-foreground mb-2">
-          參數配置 (JSON)
-        </label>
+        <label className="mb-2 block text-sm font-semibold text-foreground">參數配置 (JSON)</label>
         <textarea
           name="params"
           value={formData.params}
@@ -260,17 +260,11 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
           className="ui-input w-full px-4 py-2 font-mono text-sm"
           placeholder='{"key": "value"}'
         />
-        <p className="text-xs text-foreground/50 mt-1">
-          依動作類型填入參數，格式為 JSON。
-        </p>
+        <p className="mt-1 text-xs text-foreground/50">依動作類型填入參數，格式為 JSON。</p>
       </div>
 
       <div className="flex justify-end gap-3 border-t border-border/70 pt-4">
-        <button
-          type="button"
-          onClick={onCancel}
-          className="ui-btn ui-btn-md ui-btn-muted"
-        >
+        <button type="button" onClick={onCancel} className="ui-btn ui-btn-md ui-btn-muted">
           取消
         </button>
         <Button
@@ -279,7 +273,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
           loading={submitting}
           className="ui-btn-md ui-btn-primary"
         >
-          {action ? '更新' : '建立'}
+          {action ? "更新" : "建立"}
         </Button>
       </div>
     </form>

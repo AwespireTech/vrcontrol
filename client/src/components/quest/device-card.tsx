@@ -1,8 +1,8 @@
-import { type QuestDevice, QUEST_DEVICE_STATUS } from '@/services/quest-types'
-import { getDisplayName } from '@/lib/utils/device'
-import Button from '@/components/button'
+import { type QuestDevice, QUEST_DEVICE_STATUS } from "@/services/quest-types"
+import { getDisplayName } from "@/lib/utils/device"
+import Button from "@/components/button"
 
-export type StatusErrorType = 'idle' | 'ok' | 'timeout' | 'adb-error'
+export type StatusErrorType = "idle" | "ok" | "timeout" | "adb-error"
 
 interface DeviceCardProps {
   device: QuestDevice
@@ -31,7 +31,7 @@ export default function DeviceCard({
   onPing,
   onMonitor,
   scrcpyInstalled = false,
-  statusErrorType = 'idle',
+  statusErrorType = "idle",
   pingTooltipText,
   connectLoading,
   disconnectLoading,
@@ -39,73 +39,89 @@ export default function DeviceCard({
   monitorLoading,
   deleteLoading,
 }: DeviceCardProps) {
-
-  const getAutoReconnectDisabledReasonText = (reason?: QuestDevice['auto_reconnect_disabled_reason']) => {
+  const getAutoReconnectDisabledReasonText = (
+    reason?: QuestDevice["auto_reconnect_disabled_reason"],
+  ) => {
     switch (reason) {
-      case 'manual_disconnect':
-        return '手動斷開（不自動重連）'
-      case 'max_retries_exhausted':
-        return '自動重連已達上限'
-      case 'adb_not_found':
-        return '找不到 ADB（請確認已安裝並加入 PATH）'
-      case 'adb_connect_failed':
-        return 'ADB 連線失敗（重試後停止）'
-      case 'unknown':
-        return '未知錯誤（重試後停止）'
+      case "manual_disconnect":
+        return "手動斷開（不自動重連）"
+      case "max_retries_exhausted":
+        return "自動重連已達上限"
+      case "adb_not_found":
+        return "找不到 ADB（請確認已安裝並加入 PATH）"
+      case "adb_connect_failed":
+        return "ADB 連線失敗（重試後停止）"
+      case "unknown":
+        return "未知錯誤（重試後停止）"
       default:
-        return ''
+        return ""
     }
   }
   const getStatusColor = (status: string) => {
     switch (status) {
       case QUEST_DEVICE_STATUS.ONLINE:
-        return 'bg-success'
+        return "bg-success"
       case QUEST_DEVICE_STATUS.OFFLINE:
-        return 'bg-muted'
+        return "bg-muted"
       case QUEST_DEVICE_STATUS.CONNECTING:
-        return 'bg-warning'
+        return "bg-warning"
       case QUEST_DEVICE_STATUS.ERROR:
-        return 'bg-danger'
+        return "bg-danger"
       case QUEST_DEVICE_STATUS.DISCONNECTED:
-        return 'bg-muted'
+        return "bg-muted"
       default:
-        return 'bg-muted'
+        return "bg-muted"
     }
   }
 
   const getStatusText = (status: string) => {
     switch (status) {
       case QUEST_DEVICE_STATUS.ONLINE:
-        return '在線'
+        return "在線"
       case QUEST_DEVICE_STATUS.OFFLINE:
-        return '離線'
+        return "離線"
       case QUEST_DEVICE_STATUS.CONNECTING:
-        return '連線中'
+        return "連線中"
       case QUEST_DEVICE_STATUS.ERROR:
-        return '錯誤'
+        return "錯誤"
       case QUEST_DEVICE_STATUS.DISCONNECTED:
-        return '手動斷開'
+        return "手動斷開"
       default:
-        return '未知'
+        return "未知"
     }
   }
 
   const isOnline = device.status === QUEST_DEVICE_STATUS.ONLINE
   const isConnecting = device.status === QUEST_DEVICE_STATUS.CONNECTING
-  const disabledReasonText = getAutoReconnectDisabledReasonText(device.auto_reconnect_disabled_reason)
+  const disabledReasonText = getAutoReconnectDisabledReasonText(
+    device.auto_reconnect_disabled_reason,
+  )
   const shouldShowAutoReconnectDisabled = Boolean(device.auto_reconnect_disabled_reason)
 
   const renderStatusValue = (value: number | string, unit: string) => {
-    if (statusErrorType === 'idle') {
+    if (statusErrorType === "idle") {
       return <span className="text-foreground/50">-</span>
     }
-    if (statusErrorType === 'timeout') {
-      return <span className="text-foreground/50" title="狀態查詢逾時">?</span>
+    if (statusErrorType === "timeout") {
+      return (
+        <span className="text-foreground/50" title="狀態查詢逾時">
+          ?
+        </span>
+      )
     }
-    if (statusErrorType === 'adb-error') {
-      return <span className="text-foreground/50" title="ADB 查詢失敗">X</span>
+    if (statusErrorType === "adb-error") {
+      return (
+        <span className="text-foreground/50" title="ADB 查詢失敗">
+          X
+        </span>
+      )
     }
-    return <span className="text-foreground">{value}{unit}</span>
+    return (
+      <span className="text-foreground">
+        {value}
+        {unit}
+      </span>
+    )
   }
 
   return (
@@ -114,7 +130,7 @@ export default function DeviceCard({
       <div className="mb-3 flex items-center justify-between">
         <h3 className="text-lg font-semibold text-foreground">{getDisplayName(device)}</h3>
         <div className="flex items-center gap-2" title={pingTooltipText}>
-          <span className={`w-3 h-3 rounded-full ${getStatusColor(device.status)}`} />
+          <span className={`h-3 w-3 rounded-full ${getStatusColor(device.status)}`} />
           <span className="text-sm text-foreground/70">{getStatusText(device.status)}</span>
         </div>
       </div>
@@ -123,12 +139,9 @@ export default function DeviceCard({
       <div className="mb-4 space-y-2 text-sm">
         {shouldShowAutoReconnectDisabled && (
           <div className="rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-warning">
-            {disabledReasonText || '自動重連已停用'}
+            {disabledReasonText || "自動重連已停用"}
             {device.auto_reconnect_last_error ? (
-              <span
-                className="ml-2 text-foreground/70"
-                title={device.auto_reconnect_last_error}
-              >
+              <span className="ml-2 text-foreground/70" title={device.auto_reconnect_last_error}>
                 （詳情）
               </span>
             ) : null}
@@ -154,11 +167,11 @@ export default function DeviceCard({
           <>
             <div className="flex justify-between">
               <span className="text-foreground/70">電量:</span>
-              {renderStatusValue(device.battery, '%')}
+              {renderStatusValue(device.battery, "%")}
             </div>
             <div className="flex justify-between">
               <span className="text-foreground/70">溫度:</span>
-              {renderStatusValue(device.temperature, '°C')}
+              {renderStatusValue(device.temperature, "°C")}
             </div>
           </>
         )}
@@ -203,19 +216,16 @@ export default function DeviceCard({
             loading={monitorLoading}
             className={`ui-btn ui-btn-xs ${
               scrcpyInstalled
-                ? 'ui-btn-accent'
-                : 'bg-muted/50 text-foreground/50 cursor-not-allowed'
+                ? "ui-btn-accent"
+                : "cursor-not-allowed bg-muted/50 text-foreground/50"
             }`}
-            title={scrcpyInstalled ? '啟動螢幕監看' : 'Scrcpy 未安裝'}
+            title={scrcpyInstalled ? "啟動螢幕監看" : "Scrcpy 未安裝"}
           >
             監看
           </Button>
         )}
         {onEdit && (
-          <Button
-            onClick={() => onEdit(device.device_id)}
-            className="ui-btn-xs ui-btn-muted"
-          >
+          <Button onClick={() => onEdit(device.device_id)} className="ui-btn-xs ui-btn-muted">
             編輯
           </Button>
         )}

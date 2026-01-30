@@ -7,9 +7,10 @@ import (
 	"maps"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"vrcontrol/server/model"
 	"vrcontrol/server/utilities"
+
+	"github.com/gorilla/websocket"
 )
 
 type Controller struct {
@@ -28,7 +29,7 @@ func (r *Room) GetRoomUpdate() model.RoomUpdate {
 			Players:     []model.PlayerStatus{},
 		}
 	}
-	if r.Players == nil || len(r.Players) == 0 {
+	if len(r.Players) == 0 {
 		return model.RoomUpdate{
 			RoomID:      r.RoomID,
 			PlayerCount: 0,
