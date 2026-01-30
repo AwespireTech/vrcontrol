@@ -78,25 +78,35 @@ npm run dev
 
 ## API 概覽
 
-Quest API 皆以 `/api/quest` 為前綴：
+Quest API 皆以 `/api/quest` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)）：
 
 ### 設備管理
 - `GET /api/quest/devices`
+- `GET /api/quest/devices/isolation`
+- `GET /api/quest/devices/:id`
 - `POST /api/quest/devices`
+- `PUT /api/quest/devices/:id`
+- `PATCH /api/quest/devices/:id`
+- `DELETE /api/quest/devices/:id`
 - `POST /api/quest/devices/:id/connect`
 - `POST /api/quest/devices/:id/disconnect`
 - `GET /api/quest/devices/:id/status`
 - `POST /api/quest/devices/batch/connect`
 - `POST /api/quest/devices/batch/ping`
+- `POST /api/quest/devices/batch/status`
+- `POST /api/quest/devices/batch/auto-reconnect`
+- `POST /api/quest/devices/:id/auto-reconnect/reset`
+- `POST /api/quest/devices/batch/auto-reconnect/reset`
 
 ### 房間管理
 - `GET /api/quest/rooms`
+- `GET /api/quest/rooms/:id`
 - `POST /api/quest/rooms`
+- `PUT /api/quest/rooms/:id`
+- `PATCH /api/quest/rooms/:id`
+- `DELETE /api/quest/rooms/:id`
 - `POST /api/quest/rooms/:id/devices/:deviceId`
-- `POST /api/quest/rooms/:id/socket/start`
-- `POST /api/quest/rooms/:id/socket/stop`
-- `GET /api/quest/rooms/:id/socket/info`
-- `POST /api/quest/rooms/:id/parameters/sync`
+- `DELETE /api/quest/rooms/:id/devices/:deviceId`
 
 ### 動作管理
 - `GET /api/quest/actions`
