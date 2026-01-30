@@ -699,7 +699,7 @@ export default function DevicesPage() {
                 <div className="col-span-2 text-xs text-foreground/70">
                   {device.room_id ? (
                     <button
-                      onClick={() => navigate(`/quest/rooms/${device.room_id}/devices`)}
+                      onClick={() => navigate(`/quest/rooms/${device.room_id}/control`)}
                       className="text-left cursor-pointer group"
                     >
                       <div className="font-semibold text-foreground group-hover:underline">

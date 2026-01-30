@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { SERVER } from '@/environment'
+import { DEFAULT_POLL_INTERVAL_SECONDS, SERVER } from '@/environment'
 import Button from '@/components/button'
 import PlayerInfo from '@/components/player-info'
 import { controlApi, deviceApi, roomApi, scrcpyApi, simpleApi } from '@/services/quest-api'
@@ -26,6 +26,7 @@ export default function RoomControlPage() {
   )
   const [selectedOption, setSelectedOption] = useState('')
   const [moveState, setMoveState] = useState('')
+  const [countdown, setCountdown] = useState(DEFAULT_POLL_INTERVAL_SECONDS)
 
   const [forceMovePending, setForceMovePending] = useState(false)
   const [sequencePendingIds, setSequencePendingIds] = useState<Set<string>>(new Set())
@@ -61,9 +62,39 @@ export default function RoomControlPage() {
     }
   }
 
+  const refreshDeviceStatuses = async () => {
+    try {
+      const devices = await deviceApi.getAll()
+      setDeviceMap(new Map(devices.map((device) => [device.device_id, device])))
+    } catch (error) {
+      console.error('Failed to refresh device statuses:', error)
+    }
+  }
+
   useEffect(() => {
     loadControlData()
   }, [])
+
+  useEffect(() => {
+    if (!roomId) return
+
+    refreshDeviceStatuses()
+    const interval = setInterval(() => {
+      if (document.hidden) return
+      refreshDeviceStatuses()
+      setCountdown(DEFAULT_POLL_INTERVAL_SECONDS)
+    }, DEFAULT_POLL_INTERVAL_SECONDS * 1000)
+
+    const countdownInterval = setInterval(() => {
+      if (document.hidden) return
+      setCountdown((prev) => (prev > 0 ? prev - 1 : 0))
+    }, 1000)
+
+    return () => {
+      clearInterval(interval)
+      clearInterval(countdownInterval)
+    }
+  }, [roomId])
 
   useEffect(() => {
     if (!roomId) return
@@ -318,7 +349,12 @@ export default function RoomControlPage() {
             </div>
 
             <div className="surface-card p-6">
-              <h2 className="text-xl font-bold text-foreground mb-4">房間內玩家</h2>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xl font-bold text-foreground">房間內玩家</h2>
+                <span className="ui-badge ui-badge-muted text-xs">
+                  下次更新: {countdown} 秒
+                </span>
+              </div>
               <div className="grid grid-cols-1 gap-4">
                 {sortedRoomPlayers.map((player) => {
                   const device = deviceMap.get(player.device_id)
@@ -328,15 +364,28 @@ export default function RoomControlPage() {
                   const isAdbConnecting = adbStatus === QUEST_DEVICE_STATUS.CONNECTING
                   const devicePendingAction = deviceActionPending[player.device_id]
                   const isDevicePending = !!devicePendingAction
+                  const batteryText = isAdbOnline && device?.battery !== undefined && device?.battery !== null
+                    ? `${device.battery}%`
+                    : '—'
+                  const temperatureText = isAdbOnline && device?.temperature !== undefined && device?.temperature !== null
+                    ? `${device.temperature}°C`
+                    : '—'
 
                   return (
                     <div key={player.device_id + player.sequence} className="surface-panel p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div>
+                      <div className="flex flex-wrap items-start justify-between gap-2">
+                        <div className="space-y-1">
                           <div className="text-sm font-semibold text-foreground">{alias}</div>
                           <div className="text-xs text-foreground/50 font-mono">
                             {player.device_id}
                           </div>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 text-xs text-foreground/60">
+                          <span className="uppercase tracking-wide">電量</span>
+                          <span className="font-semibold text-foreground">{batteryText}</span>
+                          <span className="text-foreground/40">|</span>
+                          <span className="uppercase tracking-wide">溫度</span>
+                          <span className="font-semibold text-foreground">{temperatureText}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className={`ui-badge ${getAdbStatusBadgeClass(adbStatus)}`}>
