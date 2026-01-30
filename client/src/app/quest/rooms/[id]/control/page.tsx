@@ -176,7 +176,7 @@ export default function RoomControlPage() {
       await loadControlData()
     } catch (error) {
       console.error('Failed to connect device:', error)
-      alert('連接失敗')
+      alert('連線失敗，請稍後再試')
     } finally {
       setDeviceActionPending((prev) => {
         const next = { ...prev }
@@ -194,7 +194,7 @@ export default function RoomControlPage() {
       await loadControlData()
     } catch (error) {
       console.error('Failed to disconnect device:', error)
-      alert('斷開失敗')
+      alert('斷開失敗，請稍後再試')
     } finally {
       setDeviceActionPending((prev) => {
         const next = { ...prev }
@@ -213,7 +213,7 @@ export default function RoomControlPage() {
     } catch (error: unknown) {
       console.error('Failed to start scrcpy:', error)
       const message = error instanceof Error ? error.message : ''
-      alert(message || '啟動監看失敗')
+      alert(message || '啟動監看失敗，請稍後再試')
     } finally {
       setDeviceActionPending((prev) => {
         const next = { ...prev }
@@ -230,7 +230,7 @@ export default function RoomControlPage() {
       case QUEST_DEVICE_STATUS.OFFLINE:
         return '離線'
       case QUEST_DEVICE_STATUS.CONNECTING:
-        return '連接中'
+        return '連線中'
       case QUEST_DEVICE_STATUS.ERROR:
         return '錯誤'
       case QUEST_DEVICE_STATUS.DISCONNECTED:
@@ -296,7 +296,7 @@ export default function RoomControlPage() {
             onClick={() => navigate('/quest/rooms')}
             className="ui-btn ui-btn-md ui-btn-muted"
           >
-            回到房間列表
+            返回房間列表
           </button>
           <button
             onClick={() => navigate(`/quest/rooms/${roomId}`)}
@@ -341,9 +341,9 @@ export default function RoomControlPage() {
                 >
                   Go
                 </Button>
-                {moveState === 'success' && <span className="text-success">Move command sent!</span>}
+                {moveState === 'success' && <span className="text-success">已送出指令</span>}
                 {moveState === 'failed' && (
-                  <span className="text-danger">Failed to send move command.</span>
+                  <span className="text-danger">送出失敗，請稍後再試</span>
                 )}
               </div>
             </div>
@@ -352,7 +352,7 @@ export default function RoomControlPage() {
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-bold text-foreground">房間內玩家</h2>
                 <span className="ui-badge ui-badge-muted text-xs">
-                  下次更新: {countdown} 秒
+                  下次更新 {countdown} 秒
                 </span>
               </div>
               <div className="grid grid-cols-1 gap-4">
@@ -398,7 +398,7 @@ export default function RoomControlPage() {
                               loading={devicePendingAction === 'connect'}
                               disabled={isDevicePending}
                             >
-                              連接
+                              連線
                             </Button>
                           )}
                           {isAdbOnline && (

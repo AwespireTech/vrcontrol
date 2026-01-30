@@ -80,7 +80,7 @@ export default function DeviceCard({
       case QUEST_DEVICE_STATUS.OFFLINE:
         return '離線'
       case QUEST_DEVICE_STATUS.CONNECTING:
-        return '連接中'
+        return '連線中'
       case QUEST_DEVICE_STATUS.ERROR:
         return '錯誤'
       case QUEST_DEVICE_STATUS.DISCONNECTED:
@@ -173,7 +173,7 @@ export default function DeviceCard({
             loading={connectLoading}
             disabled={connectLoading}
           >
-            連接
+            連線
           </Button>
         )}
         {isOnline && onDisconnect && (

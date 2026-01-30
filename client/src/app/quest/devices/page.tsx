@@ -190,7 +190,7 @@ export default function DevicesPage() {
     }
   }
 
-  // 當設備列表或偏好設定更新時，執行一次狀態刷新
+  // 當設備列表或偏好設定更新時，執行一次狀態更新
   useEffect(() => {
     if (devices.length > 0 && preference) {
       refreshOnlineStatuses()
@@ -240,7 +240,7 @@ export default function DevicesPage() {
       case QUEST_DEVICE_STATUS.OFFLINE:
         return '離線'
       case QUEST_DEVICE_STATUS.CONNECTING:
-        return '連接中'
+        return '連線中'
       case QUEST_DEVICE_STATUS.ERROR:
         return '錯誤'
       case QUEST_DEVICE_STATUS.DISCONNECTED:
@@ -328,7 +328,7 @@ export default function DevicesPage() {
       alert('設備建立成功')
     } catch (error) {
       console.error('Failed to create device from isolation:', error)
-      alert('建立設備失敗')
+      alert('建立設備失敗，請稍後再試')
     } finally {
       setIsolationPending((prev) => {
         const next = { ...prev }
@@ -351,7 +351,7 @@ export default function DevicesPage() {
       alert('設備資訊更新成功')
     } catch (error) {
       console.error('Failed to update device from isolation:', error)
-      alert('更新設備失敗')
+      alert('更新設備失敗，請稍後再試')
     } finally {
       setIsolationPending((prev) => {
         const next = { ...prev }
@@ -416,7 +416,7 @@ export default function DevicesPage() {
       await deviceApi.connect(deviceId)
       await loadDevices()
       
-      // 連接成功後立即查詢狀態
+      // 連線成功後立即查詢狀態
       try {
         const status = await deviceApi.getStatus(deviceId)
         setDevices((prevDevices) =>
@@ -441,7 +441,7 @@ export default function DevicesPage() {
       }
     } catch (error) {
       console.error('Failed to connect device:', error)
-      alert('連接失敗')
+      alert('連線失敗，請稍後再試')
     } finally {
       setDeviceActionPending((prev) => {
         const next = { ...prev }
@@ -459,7 +459,7 @@ export default function DevicesPage() {
       await loadDevices()
     } catch (error) {
       console.error('Failed to disconnect device:', error)
-      alert('斷開失敗')
+      alert('斷開失敗，請稍後再試')
     } finally {
       setDeviceActionPending((prev) => {
         const next = { ...prev }
@@ -488,7 +488,7 @@ export default function DevicesPage() {
       await loadDevices()
     } catch (error) {
       console.error('Failed to assign room:', error)
-      alert('房間指派失敗')
+      alert('房間指派失敗，請稍後再試')
     } finally {
       setRoomUpdatingIds((prev) => ({ ...prev, [device.device_id]: false }))
     }
@@ -507,10 +507,10 @@ export default function DevicesPage() {
         device_ids: [deviceId],
         max_workers: 1,
       })
-      alert(`執行完成：成功 ${result.success_count}，失敗 ${result.failed_count}`)
+      alert(`執行完成：成功 ${result.success_count}、失敗 ${result.failed_count}`)
     } catch (error) {
       console.error('Failed to execute action:', error)
-      alert('執行動作失敗')
+      alert('執行動作失敗，請稍後再試')
     } finally {
       setActionRunningIds((prev) => ({ ...prev, [deviceId]: false }))
       setDeviceActionPending((prev) => {
@@ -530,7 +530,7 @@ export default function DevicesPage() {
       await loadDevices()
     } catch (error) {
       console.error('Failed to delete device:', error)
-      alert('刪除失敗')
+      alert('刪除失敗，請稍後再試')
     } finally {
       setDeviceActionPending((prev) => {
         const next = { ...prev }
@@ -543,7 +543,7 @@ export default function DevicesPage() {
 
   const handleMonitor = async (deviceId: string) => {
     if (!scrcpySystemInfo?.installed) {
-      alert('Scrcpy 未安裝，請先安裝 scrcpy')
+      alert('Scrcpy 尚未安裝，請先安裝 Scrcpy')
       return
     }
 
@@ -557,7 +557,7 @@ export default function DevicesPage() {
     } catch (error: unknown) {
       console.error('Failed to start scrcpy:', error)
       const message = error instanceof Error ? error.message : ''
-      alert(message || '啟動監看失敗')
+      alert(message || '啟動監看失敗，請稍後再試')
     } finally {
       setDeviceActionPending((prev) => {
         const next = { ...prev }
@@ -577,7 +577,7 @@ export default function DevicesPage() {
       await loadScrcpyInfo()
     } catch (error) {
       console.error('Failed to stop scrcpy:', error)
-      alert('停止監看失敗')
+      alert('停止監看失敗，請稍後再試')
     } finally {
       setScrcpyStopPending((prev) => ({ ...prev, [deviceId]: false }))
     }
@@ -600,7 +600,7 @@ export default function DevicesPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-xl text-foreground">加載中...</div>
+        <div className="text-xl text-foreground">載入中…</div>
       </div>
     )
   }
@@ -608,14 +608,14 @@ export default function DevicesPage() {
   return (
     <QuestPageShell
       title="設備管理"
-      subtitle={`下次更新: ${countdown} 秒`}
+      subtitle={`下次更新 ${countdown} 秒`}
       actions={
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => navigate('/quest/devices/new')}
             className="ui-btn ui-btn-md ui-btn-primary"
           >
-            + 添加設備
+            + 建立設備
           </button>
         </div>
       }
@@ -770,7 +770,7 @@ export default function DevicesPage() {
                       loading={pendingAction === 'connect'}
                       disabled={isDevicePending}
                     >
-                      連接
+                      連線
                     </Button>
                   )}
                   {isOnline && (
@@ -866,13 +866,13 @@ export default function DevicesPage() {
                       )}
                       {valid && !entry.id_matched && (
                         <div className="mt-2 text-xs text-foreground/60">
-                          未建立設備，可直接建立
+                          尚未建立設備，可直接建立
                         </div>
                       )}
                     </div>
                     <div className="lg:col-span-5 grid grid-cols-1 gap-3">
                       <div>
-                        <div className="text-xs text-foreground/60">Alias</div>
+                        <div className="text-xs text-foreground/60">顯示名稱</div>
                         <input
                           value={draft.alias}
                           onChange={(e) => handleIsolationDraftChange(entry.client_id, e.target.value)}
@@ -922,7 +922,7 @@ export default function DevicesPage() {
               className="ui-btn-md ui-btn-muted"
               loading={refreshScrcpyPending}
             >
-              刷新狀態
+              重新整理狀態
             </Button>
           </div>
           <div className="surface-card overflow-hidden">

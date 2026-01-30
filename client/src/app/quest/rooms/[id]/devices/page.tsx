@@ -13,7 +13,7 @@ const getStatusText = (status: QuestDevice['status']) => {
     case 'offline':
       return '離線'
     case 'connecting':
-      return '連接中'
+      return '連線中'
     case 'error':
       return '錯誤'
     case 'disconnected':
@@ -80,7 +80,7 @@ export default function RoomDevicesPage() {
       setRoomDevices(devices)
     } catch (error) {
       console.error('Failed to load data:', error)
-      alert('載入數據失敗')
+      alert('載入資料失敗，請稍後再試')
     } finally {
       setLoading(false)
     }
@@ -109,10 +109,10 @@ export default function RoomDevicesPage() {
       }
       await roomApi.addDevice(id, device.device_id)
       await loadData()
-      alert(device.room_id ? '設備已移入房間' : '設備添加成功')
+      alert(device.room_id ? '設備已移入房間' : '設備已加入房間')
     } catch (error) {
       console.error('Failed to add device:', error)
-      alert('添加設備失敗')
+      alert('加入設備失敗，請稍後再試')
     } finally {
       setDevicePending((prev) => {
         const next = { ...prev }
@@ -130,10 +130,10 @@ export default function RoomDevicesPage() {
     try {
       await roomApi.removeDevice(id, deviceId)
       await loadData()
-      alert('設備移除成功')
+      alert('設備已移除')
     } catch (error) {
       console.error('Failed to remove device:', error)
-      alert('移除設備失敗')
+      alert('移除設備失敗，請稍後再試')
     } finally {
       setDevicePending((prev) => {
         const next = { ...prev }
@@ -146,7 +146,7 @@ export default function RoomDevicesPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background p-6 flex items-center justify-center">
-        <div className="text-foreground/70">載入中...</div>
+        <div className="text-foreground/70">載入中…</div>
       </div>
     )
   }
@@ -159,7 +159,7 @@ export default function RoomDevicesPage() {
     )
   }
 
-  // 可以添加的設備（不在房間中的設備）
+  // 可以加入的設備（不在房間中的設備）
   const availableDevices = allDevices.filter(
     d => !room.device_ids?.includes(d.device_id)
   )
@@ -175,7 +175,7 @@ export default function RoomDevicesPage() {
             onClick={() => navigate('/quest/rooms')}
             className="ui-btn ui-btn-md ui-btn-muted"
           >
-            回到房間列表
+            返回房間列表
           </button>
           <button
             onClick={() => navigate(`/quest/rooms/${id}/control`)}
@@ -195,7 +195,7 @@ export default function RoomDevicesPage() {
             
             {roomDevices.length === 0 ? (
               <div className="text-center py-8 text-foreground/50">
-                此房間還沒有設備
+                此房間尚無設備
               </div>
             ) : (
               <div className="space-y-3">
@@ -238,15 +238,15 @@ export default function RoomDevicesPage() {
             )}
           </div>
 
-          {/* 可添加的設備 */}
+          {/* 可加入的設備 */}
           <div className="surface-card p-6">
             <h2 className="text-xl font-bold text-foreground mb-4">
-              可添加的設備 ({availableDevices.length})
+              可加入的設備 ({availableDevices.length})
             </h2>
             
             {availableDevices.length === 0 ? (
               <div className="text-center py-8 text-foreground/50">
-                沒有可添加的設備
+                尚無可加入的設備
               </div>
             ) : (
               <div className="space-y-3">
@@ -290,7 +290,7 @@ export default function RoomDevicesPage() {
                       loading={devicePending[device.device_id] === 'add'}
                       disabled={!!devicePending[device.device_id]}
                     >
-                      {device.room_id && device.room_id !== room.room_id ? '移入' : '添加'}
+                      {device.room_id && device.room_id !== room.room_id ? '移入' : '加入'}
                     </Button>
                   </div>
                 ))}

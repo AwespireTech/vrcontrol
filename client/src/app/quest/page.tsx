@@ -36,13 +36,13 @@ export default function QuestPage() {
   return (
     <QuestPageShell
       title="Quest 設備管理"
-      subtitle="管理 Meta Quest 設備、房間和動作"
+      subtitle="管理 Meta Quest 設備、房間與動作"
       actions={
         <Link
           to="/quest/settings"
           className="ui-btn ui-btn-md ui-btn-outline inline-flex items-center gap-2"
         >
-          ⚙️ 系統設置
+          ⚙️ 系統設定
         </Link>
       }
     >
@@ -76,25 +76,25 @@ export default function QuestPage() {
             to: '/quest/devices',
             icon: '📱',
             title: '設備管理',
-            desc: '添加、編輯和管理 Quest 設備，查看設備狀態',
+            desc: '建立、編輯與管理 Quest 設備，查看設備狀態',
           },
           {
             to: '/quest/rooms',
             icon: '🏠',
             title: '房間管理',
-            desc: '創建房間，分配設備，管理 Socket 連接',
+            desc: '建立房間，分配設備並管理 Socket 連線',
           },
           {
             to: '/quest/actions',
             icon: '⚡',
             title: '動作管理',
-            desc: '創建和執行設備動作，批量操作設備',
+            desc: '建立與執行設備動作，支援批次操作',
           },
           {
             to: '/quest/monitoring',
             icon: '🛰️',
             title: '網絡監控',
-            desc: '背景監控會定期 ping 設備 IP，並在設備恢復可達時嘗試 ADB 重連',
+            desc: '背景監控會定期 Ping 設備 IP，並在設備恢復可達時嘗試 ADB 重連',
             meta: `目前狀態：${
               !monitoring.known ? '未知' : monitoring.running ? '運行中' : '已停止'
             }（詳情與控制請到監控頁）`,

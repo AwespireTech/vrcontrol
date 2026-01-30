@@ -60,7 +60,7 @@ export default function RoomsPage() {
       await loadData()
     } catch (error) {
       console.error('Failed to delete room:', error)
-      alert('刪除失敗')
+      alert('刪除失敗，請稍後再試')
     } finally {
       setRoomPending((prev) => {
         const next = { ...prev }
@@ -73,7 +73,7 @@ export default function RoomsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-xl text-foreground">加載中...</div>
+        <div className="text-xl text-foreground">載入中…</div>
       </div>
     )
   }
@@ -81,21 +81,21 @@ export default function RoomsPage() {
   return (
     <QuestPageShell
       title="房間管理"
-      subtitle={`下次更新: ${countdown} 秒`}
+      subtitle={`下次更新 ${countdown} 秒`}
       actions={
         <button
           onClick={() => navigate('/quest/rooms/new')}
           className="ui-btn ui-btn-md ui-btn-primary"
         >
-          + 創建房間
+          + 建立房間
         </button>
       }
     >
       {rooms.length === 0 ? (
         <div className="surface-card p-10 text-center">
           <div className="text-5xl">🏠</div>
-          <div className="mt-4 text-lg font-semibold text-foreground">還沒有房間</div>
-          <div className="mt-2 text-sm text-foreground/70">點擊上方按鈕創建您的第一個房間</div>
+          <div className="mt-4 text-lg font-semibold text-foreground">尚無房間</div>
+          <div className="mt-2 text-sm text-foreground/70">點擊上方按鈕建立第一個房間</div>
         </div>
       ) : (
         <div className="surface-card overflow-hidden">

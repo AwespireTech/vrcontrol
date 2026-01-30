@@ -41,7 +41,7 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
       })
     } catch (error) {
       console.error('Failed to submit form:', error)
-      alert('提交失敗')
+      alert('提交失敗，請稍後再試')
     } finally {
       setSubmitting(false)
     }
@@ -132,7 +132,7 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
           loading={submitting}
           className="ui-btn-md ui-btn-primary"
         >
-          {room ? '更新' : '創建'}
+          {room ? '更新' : '建立'}
         </Button>
       </div>
     </form>

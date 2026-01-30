@@ -114,9 +114,7 @@ export default function ActionsPage() {
         max_workers: 5,
       })
 
-      alert(
-        `批量執行完成\n成功: ${result.success_count}\n失敗: ${result.failed_count}`,
-      )
+      alert(`批次執行完成\n成功: ${result.success_count}\n失敗: ${result.failed_count}`)
 
       setShowExecuteModal(false)
       setSelectedAction(null)
@@ -124,7 +122,7 @@ export default function ActionsPage() {
       await loadData()
     } catch (error) {
       console.error('Failed to execute action:', error)
-      alert('執行失敗')
+      alert('執行失敗，請稍後再試')
     } finally {
       setExecutePending(false)
     }
@@ -139,7 +137,7 @@ export default function ActionsPage() {
       await loadData()
     } catch (error) {
       console.error('Failed to delete action:', error)
-      alert('刪除失敗')
+      alert('刪除失敗，請稍後再試')
     } finally {
       setActionPending((prev) => {
         const next = { ...prev }
@@ -165,7 +163,7 @@ export default function ActionsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-xl text-foreground">加載中...</div>
+        <div className="text-xl text-foreground">載入中…</div>
       </div>
     )
   }
@@ -173,21 +171,21 @@ export default function ActionsPage() {
   return (
     <QuestPageShell
       title="動作管理"
-      subtitle={`下次更新: ${countdown} 秒`}
+      subtitle={`下次更新 ${countdown} 秒`}
       actions={
         <button
           onClick={() => navigate('/quest/actions/new')}
           className="ui-btn ui-btn-md ui-btn-primary"
         >
-          + 創建動作
+          + 建立動作
         </button>
       }
     >
       {actions.length === 0 ? (
         <div className="surface-card p-10 text-center">
           <div className="text-5xl">⚡</div>
-          <div className="mt-4 text-lg font-semibold text-foreground">還沒有動作</div>
-          <div className="mt-2 text-sm text-foreground/70">點擊上方按鈕創建您的第一個動作</div>
+          <div className="mt-4 text-lg font-semibold text-foreground">尚無動作</div>
+          <div className="mt-2 text-sm text-foreground/70">點擊上方按鈕建立第一個動作</div>
         </div>
       ) : (
         <div className="surface-card overflow-hidden">

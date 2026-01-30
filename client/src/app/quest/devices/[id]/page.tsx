@@ -27,7 +27,7 @@ export default function EditDevicePage() {
         }
       } catch (error) {
         console.error('Failed to load device:', error)
-        alert('載入設備失敗')
+        alert('載入設備失敗，請稍後再試')
         navigate('/quest/devices')
       } finally {
         setLoading(false)
@@ -42,11 +42,11 @@ export default function EditDevicePage() {
     
     try {
       await deviceApi.patch(id, updatedDevice)
-      alert('設備更新成功')
+      alert('設備已更新')
       navigate('/quest/devices')
     } catch (error) {
       console.error('Failed to update device:', error)
-      alert('更新失敗')
+      alert('更新失敗，請稍後再試')
       throw error
     }
   }
@@ -54,7 +54,7 @@ export default function EditDevicePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background p-6 flex items-center justify-center">
-        <div className="text-foreground">載入中...</div>
+        <div className="text-foreground">載入中…</div>
       </div>
     )
   }
@@ -77,7 +77,7 @@ export default function EditDevicePage() {
           onClick={() => navigate('/quest/devices')}
           className="ui-btn ui-btn-md ui-btn-muted"
         >
-          回到設備列表
+          返回設備列表
         </button>
       }
     >

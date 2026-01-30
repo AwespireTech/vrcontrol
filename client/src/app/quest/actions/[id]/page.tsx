@@ -20,7 +20,7 @@ export default function EditActionPage() {
         setAction(data)
       } catch (error) {
         console.error('Failed to load action:', error)
-        alert('載入動作失敗')
+        alert('載入動作失敗，請稍後再試')
         navigate('/quest/actions')
       } finally {
         setLoading(false)
@@ -35,11 +35,11 @@ export default function EditActionPage() {
     
     try {
       await actionApi.patch(id, updatedAction)
-      alert('動作更新成功')
+      alert('動作已更新')
       navigate('/quest/actions')
     } catch (error) {
       console.error('Failed to update action:', error)
-      alert('更新失敗')
+      alert('更新失敗，請稍後再試')
       throw error
     }
   }
@@ -47,7 +47,7 @@ export default function EditActionPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background p-6 flex items-center justify-center">
-        <div className="text-foreground">載入中...</div>
+        <div className="text-foreground">載入中…</div>
       </div>
     )
   }
@@ -70,7 +70,7 @@ export default function EditActionPage() {
           onClick={() => navigate('/quest/actions')}
           className="ui-btn ui-btn-md ui-btn-muted"
         >
-          回到動作列表
+          返回動作列表
         </button>
       }
     >

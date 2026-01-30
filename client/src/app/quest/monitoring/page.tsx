@@ -16,7 +16,7 @@ function getStatusText(status: string) {
     case QUEST_DEVICE_STATUS.OFFLINE:
       return '離線'
     case QUEST_DEVICE_STATUS.CONNECTING:
-      return '連接中'
+      return '連線中'
     case QUEST_DEVICE_STATUS.ERROR:
       return '錯誤'
     case QUEST_DEVICE_STATUS.DISCONNECTED:
@@ -83,7 +83,7 @@ export default function QuestMonitoringPage() {
       setDevices(devicesData)
     } catch (error) {
       console.error('Failed to load monitoring data:', error)
-      alert('載入監控資料失敗')
+      alert('載入監控資料失敗，請稍後再試')
     } finally {
       setLoading(false)
     }
@@ -125,7 +125,7 @@ export default function QuestMonitoringPage() {
       await monitoring.refresh()
     } catch (error) {
       console.error('Failed to toggle monitoring:', error)
-      alert('操作失敗')
+      alert('操作失敗，請稍後再試')
     } finally {
       setMonitoringPending(null)
     }
@@ -139,7 +139,7 @@ export default function QuestMonitoringPage() {
       await load()
     } catch (error) {
       console.error('Failed to run monitoring once:', error)
-      alert('操作失敗')
+      alert('操作失敗，請稍後再試')
     } finally {
       setMonitoringPending(null)
     }
@@ -158,7 +158,7 @@ export default function QuestMonitoringPage() {
       await load()
     } catch (error) {
       console.error('Failed to set auto reconnect batch:', error)
-      alert('批次操作失敗')
+      alert('批次操作失敗，請稍後再試')
     } finally {
       setBatchPending(null)
     }
@@ -177,7 +177,7 @@ export default function QuestMonitoringPage() {
       await load()
     } catch (error) {
       console.error('Failed to reset auto reconnect batch:', error)
-      alert('批次重置失敗')
+      alert('批次重置失敗，請稍後再試')
     } finally {
       setBatchPending(null)
     }
@@ -191,7 +191,7 @@ export default function QuestMonitoringPage() {
       await load()
     } catch (error) {
       console.error('Failed to set auto reconnect:', error)
-      alert('更新失敗')
+      alert('更新失敗，請稍後再試')
     } finally {
       setRowPending((prev) => {
         const next = { ...prev }
@@ -209,7 +209,7 @@ export default function QuestMonitoringPage() {
       await load()
     } catch (error) {
       console.error('Failed to reset auto reconnect:', error)
-      alert('重置失敗')
+      alert('重置失敗，請稍後再試')
     } finally {
       setRowPending((prev) => {
         const next = { ...prev }
@@ -232,7 +232,7 @@ export default function QuestMonitoringPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-xl text-foreground">加載中...</div>
+        <div className="text-xl text-foreground">載入中…</div>
       </div>
     )
   }
@@ -240,7 +240,7 @@ export default function QuestMonitoringPage() {
   return (
     <QuestPageShell
       title="監控中心"
-      subtitle="篩選設備並批次設定自動重連／重置狀態"
+      subtitle="篩選設備，批次設定自動重連與重置狀態"
       actions={
         <div className="flex flex-wrap gap-2">
           <Button
@@ -286,7 +286,7 @@ export default function QuestMonitoringPage() {
               <option value={QUEST_DEVICE_STATUS.OFFLINE}>狀態：離線</option>
               <option value={QUEST_DEVICE_STATUS.ERROR}>狀態：錯誤</option>
               <option value={QUEST_DEVICE_STATUS.DISCONNECTED}>狀態：手動斷開</option>
-              <option value={QUEST_DEVICE_STATUS.CONNECTING}>狀態：連接中</option>
+              <option value={QUEST_DEVICE_STATUS.CONNECTING}>狀態：連線中</option>
             </select>
 
             <select

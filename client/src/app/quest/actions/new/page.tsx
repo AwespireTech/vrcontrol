@@ -9,21 +9,21 @@ export default function NewActionPage() {
 
   const handleSubmit = async (action: Partial<QuestAction>) => {
     await actionApi.create(action)
-    alert('動作創建成功')
+    alert('動作已建立')
     navigate('/quest/actions')
   }
 
   return (
     <QuestPageShell
-      title="創建新動作"
-      subtitle="建立新的動作範本"
+      title="建立新動作"
+      subtitle="建立新動作範本"
       maxWidth="sm"
       actions={
         <button
           onClick={() => navigate('/quest/actions')}
           className="ui-btn ui-btn-md ui-btn-muted"
         >
-          回到動作列表
+          返回動作列表
         </button>
       }
     >

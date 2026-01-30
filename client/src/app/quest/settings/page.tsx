@@ -55,10 +55,10 @@ export default function QuestSettingsPage() {
     setSettingInterval(true)
     try {
       await monitoringApi.setInterval(monitoringInterval)
-      alert(`監控間隔已設置為 ${monitoringInterval} 秒`)
+      alert(`已設定監控間隔為 ${monitoringInterval} 秒`)
     } catch (error) {
       console.error('Failed to set interval:', error)
-      alert('設置失敗')
+      alert('設定失敗，請稍後再試')
     } finally {
       setSettingInterval(false)
     }
@@ -77,10 +77,10 @@ export default function QuestSettingsPage() {
     try {
       await scrcpyApi.updateConfig(scrcpyConfig)
       setScrcpyConfigChanged(false)
-      alert('Scrcpy 配置已保存')
+      alert('已保存 Scrcpy 配置')
     } catch (error) {
       console.error('Failed to save scrcpy config:', error)
-      alert('保存配置失敗')
+      alert('保存配置失敗，請稍後再試')
     } finally {
       setSavingScrcpyConfig(false)
     }
@@ -101,10 +101,10 @@ export default function QuestSettingsPage() {
       const updated = await preferenceApi.update(preference)
       setPreference(updated)
       setPreferenceChanged(false)
-      alert('設備狀態設定已保存')
+      alert('已保存設備狀態設定')
     } catch (error) {
       console.error('Failed to save preference:', error)
-      alert('保存設定失敗')
+      alert('保存設定失敗，請稍後再試')
     } finally {
       setSavingPreference(false)
     }
@@ -113,26 +113,26 @@ export default function QuestSettingsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-xl text-foreground">加載中...</div>
+        <div className="text-xl text-foreground">載入中…</div>
       </div>
     )
   }
 
   return (
     <QuestPageShell
-      title="Quest 系統設置"
-      subtitle="偏好、監控與 Scrcpy 設定總覽"
+      title="Quest 系統設定"
+      subtitle="偏好、監控與 Scrcpy 的設定總覽"
       maxWidth="md"
     >
       <div className="space-y-6">
           {/* 設備狀態設定 */}
           <div className="surface-card p-6">
-            <h2 className="text-xl font-bold text-foreground mb-4">設備狀態設定</h2>
+            <h2 className="text-xl font-bold text-foreground mb-4">設備狀態</h2>
             
             {preference && (
               <div className="space-y-4">
                 <div className="surface-panel p-4">
-                  <p className="font-semibold text-foreground mb-3">狀態輪詢間隔</p>
+                  <p className="font-semibold text-foreground mb-3">狀態更新間隔</p>
                   <div className="flex items-center gap-3">
                     <input
                       type="number"
@@ -150,12 +150,12 @@ export default function QuestSettingsPage() {
                     <span className="text-foreground/70">秒</span>
                   </div>
                   <p className="text-xs text-foreground/50 mt-2">
-                    設定設備頁自動刷新設備狀態的時間間隔 (5-300 秒)
+                    設定設備頁自動更新設備狀態的時間間隔（5–300 秒）
                   </p>
                 </div>
 
                 <div className="surface-panel p-4">
-                  <p className="font-semibold text-foreground mb-3">批次大小</p>
+                  <p className="font-semibold text-foreground mb-3">批次數量</p>
                   <div className="flex items-center gap-3">
                     <input
                       type="number"
@@ -173,12 +173,12 @@ export default function QuestSettingsPage() {
                     <span className="text-foreground/70">台</span>
                   </div>
                   <p className="text-xs text-foreground/50 mt-2">
-                    每次批量查詢的設備數量 (1-50 台)
+                    每次批次查詢的設備數量（1–50 台）
                   </p>
                 </div>
 
                 <div className="surface-panel p-4">
-                  <p className="font-semibold text-foreground mb-3">最大併發數</p>
+                  <p className="font-semibold text-foreground mb-3">最大併發</p>
                   <div className="flex items-center gap-3">
                     <input
                       type="number"
@@ -196,12 +196,12 @@ export default function QuestSettingsPage() {
                     <span className="text-foreground/70">個</span>
                   </div>
                   <p className="text-xs text-foreground/50 mt-2">
-                    同時查詢設備狀態的最大並行數 (1-20 個)
+                    同時查詢設備狀態的最大並行數（1–20 個）
                   </p>
                 </div>
 
                 <div className="surface-panel p-4">
-                  <p className="font-semibold text-foreground mb-3">自動重連冷卻時間</p>
+                  <p className="font-semibold text-foreground mb-3">自動重連冷卻</p>
                   <div className="flex items-center gap-3">
                     <input
                       type="number"
@@ -220,12 +220,12 @@ export default function QuestSettingsPage() {
                     <span className="text-foreground/70">秒</span>
                   </div>
                   <p className="text-xs text-foreground/50 mt-2">
-                    設備離線後，兩次自動重連嘗試之間的等待時間 (5-3600 秒)
+                    設備離線後，兩次自動重連嘗試之間的等待時間（5–3600 秒）
                   </p>
                 </div>
 
                 <div className="surface-panel p-4">
-                  <p className="font-semibold text-foreground mb-3">自動重連最大重試次數</p>
+                  <p className="font-semibold text-foreground mb-3">自動重連上限</p>
                   <div className="flex items-center gap-3">
                     <input
                       type="number"
@@ -244,7 +244,7 @@ export default function QuestSettingsPage() {
                     <span className="text-foreground/70">次</span>
                   </div>
                   <p className="text-xs text-foreground/50 mt-2">
-                    0 代表不進行自動重連；達到上限後會標記為「自動重連已停用」(0-20 次)
+                    0 代表不進行自動重連；達到上限後會標記為「自動重連已停用」（0–20 次）
                   </p>
                 </div>
 
@@ -266,15 +266,15 @@ export default function QuestSettingsPage() {
             )}
           </div>
 
-          {/* 監控服務設置 */}
+          {/* 監控服務設定 */}
           <div className="surface-card p-6">
-            <h2 className="text-xl font-bold text-foreground mb-4">網絡監控服務</h2>
+            <h2 className="text-xl font-bold text-foreground mb-4">網路監控服務</h2>
 
             <div className="space-y-4">
               <div className="surface-panel p-4">
                 <p className="font-semibold text-foreground mb-2">說明</p>
                 <p className="text-sm text-foreground/70">
-                  監控的啟動/停止與手動執行已移至 Quest 總覽頁；此頁僅保留監控相關設定。
+                  監控的啟動/停止與手動執行已移至 Quest 總覽頁，此頁僅保留監控相關設定。
                 </p>
               </div>
 
@@ -299,13 +299,13 @@ export default function QuestSettingsPage() {
                   </Button>
                 </div>
                 <p className="text-xs text-foreground/50 mt-2">
-                  設置監控服務檢查設備連接狀態的時間間隔 (1-300 秒)
+                  設定監控服務檢查設備連線狀態的時間間隔（1–300 秒）
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Scrcpy 螢幕鏡像設置 */}
+          {/* Scrcpy 螢幕鏡像設定 */}
           <div className="surface-card p-6">
             <h2 className="text-xl font-bold text-foreground mb-4">Scrcpy 螢幕鏡像</h2>
 
@@ -370,19 +370,19 @@ export default function QuestSettingsPage() {
 
           {/* 系統信息 */}
           <div className="surface-card p-6">
-            <h2 className="text-xl font-bold text-foreground mb-4">系統信息</h2>
+            <h2 className="text-xl font-bold text-foreground mb-4">系統資訊</h2>
             <div className="space-y-3 text-sm">
               <div className="flex justify-between py-2 border-b border-border">
                 <span className="text-foreground/70">API 端點:</span>
                 <span className="font-mono text-foreground">/api/quest</span>
               </div>
               <div className="flex justify-between py-2 border-b border-border">
-                <span className="text-foreground/70">Socket 端口範圍:</span>
+                <span className="text-foreground/70">Socket 連線埠範圍:</span>
                 <span className="font-mono text-foreground">3000-3100</span>
               </div>
               <div className="flex justify-between py-2 border-b border-border">
-                <span className="text-foreground/70">數據存儲:</span>
-                <span className="font-mono text-foreground">JSON 文件</span>
+                <span className="text-foreground/70">資料儲存:</span>
+                <span className="font-mono text-foreground">JSON 檔案</span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-foreground/70">前端更新間隔:</span>
@@ -395,14 +395,14 @@ export default function QuestSettingsPage() {
           <div className="surface-card p-6">
             <h2 className="text-xl font-bold text-foreground mb-4">關於</h2>
             <p className="text-foreground/70 mb-2">
-              Quest 設備管理模組提供了完整的 Meta Quest 設備管理功能，包括：
+              Quest 設備管理模組提供完整的 Meta Quest 設備管理功能，包括：
             </p>
             <ul className="list-disc list-inside text-foreground/70 space-y-1 ml-4">
-              <li>設備連接和狀態監控</li>
-              <li>房間管理和 Socket Server</li>
-              <li>動作執行和批量操作</li>
+              <li>設備連線與狀態監控</li>
+              <li>房間管理與 Socket Server</li>
+              <li>動作執行與批次操作</li>
               <li>自動化網絡監控</li>
-              <li>ADB 命令集成</li>
+              <li>ADB 命令整合</li>
             </ul>
           </div>
       </div>
