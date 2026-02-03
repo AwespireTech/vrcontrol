@@ -35,19 +35,19 @@ type Room struct {
 }
 type RoomMessage struct {
 	MessageType         MessageType          `json:"message_type"`
-	PlayerPositionInfos []PlayerPositionInfo `json:"player_position_info"`
-	PlayerCount         int                  `json:"player_count"`
+	PlayerPositionInfos []PlayerPositionInfo `json:"pinf"`
+	PlayerCount         int                  `json:"pcnt"`
 }
 type PlayerPositionInfo struct {
 	DeviceID          string         `json:"device_id"`
-	HeadPosition      model.Vector3f `json:"head_position"`
-	HeadForward       model.Vector3f `json:"head_forward,omitempty"`
-	LeftHandPosition  model.Vector3f `json:"left_hand_position"`
-	LeftHandForward   model.Vector3f `json:"left_hand_forward,omitempty"`
-	RightHandPosition model.Vector3f `json:"right_hand_position"`
-	RightHandForward  model.Vector3f `json:"right_hand_forward,omitempty"`
-	LeftHandAvail     bool           `json:"left_hand_available"`
-	RightHandAvail    bool           `json:"right_hand_available"`
+	HeadPosition      model.Vector3f `json:"hpt"`
+	HeadForward       model.Vector3f `json:"hfw,omitempty"`
+	LeftHandPosition  model.Vector3f `json:"lhp"`
+	LeftHandForward   model.Vector3f `json:"lhf,omitempty"`
+	RightHandPosition model.Vector3f `json:"rhp"`
+	RightHandForward  model.Vector3f `json:"rhf,omitempty"`
+	LeftHandAvail     bool           `json:"lha"`
+	RightHandAvail    bool           `json:"rha"`
 }
 
 type ControlSignal struct {
@@ -149,6 +149,7 @@ func (r *Room) Run() {
 				eventMessage := model.EventMessage{
 					EventType: model.EventTypeShotEvent,
 					ShotEvent: &model.ShotEventMessage{
+						SType:     playerMessage.ShotEvent.SType,
 						Position:  playerMessage.ShotEvent.Position,
 						Direction: playerMessage.ShotEvent.Direction,
 					},
@@ -176,6 +177,7 @@ func (r *Room) Run() {
 					EventType: model.EventTypeLatern,
 					Latern: &model.LanternEventMessage{
 						LanternID: playerMessage.Latern.LanternID,
+						LineID:    playerMessage.Latern.LineID,
 						Postions:  playerMessage.Latern.Postions,
 					},
 				}

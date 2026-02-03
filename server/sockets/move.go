@@ -2,7 +2,8 @@ package sockets
 
 var (
 	ServerBlockChapter = []int{}
-	NoSyncChapter      = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
+	NoSyncChapter      = []int{}
+	// NoSyncChapter      = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
 )
 
 func MovementCheck(r *Room, p *Player, from int) (Movement, bool) {
