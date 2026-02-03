@@ -25,9 +25,11 @@ type MoveCommandMessage struct {
 }
 type LanternEventMessage struct {
 	LanternID int        `json:"lantern_id"`
+	LineID    int        `json:"lid"`
 	Postions  []Vector3f `json:"postions"`
 }
 type ShotEventMessage struct {
+	SType     int      `json:"type"`
 	Position  Vector3f `json:"position"`
 	Direction Vector3f `json:"direction"`
 }

@@ -44,6 +44,7 @@ type Heartbeat struct {
 type ShotEvent struct {
 	Timestamp int64    `json:"timestamp"`
 	DeviceID  string   `json:"device_id"`
+	SType     int      `json:"type"`
 	Position  Vector3f `json:"position"`
 	Direction Vector3f `json:"direction"`
 }
@@ -51,6 +52,7 @@ type Lantern struct {
 	Timestamp int64      `json:"timestamp"`
 	DeviceID  string     `json:"device_id"`
 	LanternID int        `json:"lantern_id"`
+	LineID    int        `json:"lid"`
 	Postions  []Vector3f `json:"postions"`
 }
 type ReadyToMove struct {
