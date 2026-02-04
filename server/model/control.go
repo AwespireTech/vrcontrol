@@ -30,6 +30,7 @@ type PlayerStatus struct {
 	Stage             int       `json:"chapter"`
 	Sequence          int       `json:"sequence"`
 	ReadyToMove       bool      `json:"ready_to_move"`
+	Message           string    `json:"message"`
 	LeftHandPosition  Vector3f  `json:"left_hand_position"`
 	LeftHandForward   Vector3f  `json:"left_hand_forward"`
 	RightHandPosition Vector3f  `json:"right_hand_position"`
