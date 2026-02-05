@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"vrcontrol/server/model"
+	"vrcontrol/server/quest/utils"
 )
 
 type MessageType string
@@ -315,7 +316,8 @@ func (r *Room) Run() {
 					continue
 				}
 				// Update the assigned sequence for the player
-				if seq, ok := r.AssignedSequence[signal.Target.DeiviceID]; ok {
+				normalizedID := utils.NormalizeDeviceIDKey(signal.Target.DeiviceID)
+				if seq, ok := r.AssignedSequence[normalizedID]; ok {
 					signal.Target.Sequence = seq
 					log.Println("ControlSignalTypeSeqUpdate: Player found in AssignedSequence, Sequence: ", seq)
 				} else {
@@ -390,8 +392,9 @@ func (r *Room) UpdateInfo(stop chan struct{}) {
 	}
 }
 func (r *Room) GetPlayerByDeviceID(deviceID string) *Player {
+	normalizedID := utils.NormalizeDeviceIDKey(deviceID)
 	for player := range r.Players {
-		if player.DeiviceID == deviceID {
+		if utils.NormalizeDeviceIDKey(player.DeiviceID) == normalizedID {
 			return player
 		}
 	}

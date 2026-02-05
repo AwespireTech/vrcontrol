@@ -4,6 +4,7 @@ import (
 	"strings"
 	"vrcontrol/server/quest/service"
 	"vrcontrol/server/quest/sockets"
+	"vrcontrol/server/quest/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -86,7 +87,16 @@ func updateQuestAssignedSequence(roomId string, deviceId string, seq int) {
 	if room.AssignedSequences == nil {
 		room.AssignedSequences = make(map[string]int)
 	}
-	room.AssignedSequences[deviceId] = seq
+	normalizedID := utils.NormalizeDeviceIDKey(deviceId)
+	if normalizedID == "" {
+		return
+	}
+	for key := range room.AssignedSequences {
+		if key != normalizedID && utils.NormalizeDeviceIDKey(key) == normalizedID {
+			delete(room.AssignedSequences, key)
+		}
+	}
+	room.AssignedSequences[normalizedID] = seq
 	_ = questRoomService.UpdateRoom(room)
 }
 
@@ -100,13 +110,21 @@ func getQuestAssignedSequences(roomId string) map[string]int {
 	}
 	sequences := make(map[string]int, len(room.AssignedSequences))
 	for key, value := range room.AssignedSequences {
-		sequences[key] = value
+		normalizedID := utils.NormalizeDeviceIDKey(key)
+		if normalizedID == "" {
+			continue
+		}
+		sequences[normalizedID] = value
 	}
 	return sequences
 }
 
 // AssignConnectedPlayerToRoom 將已連線且待命的玩家掛入指定房間
 func AssignConnectedPlayerToRoom(roomId, deviceId string) {
+	deviceId = utils.NormalizeDeviceIDKey(deviceId)
+	if deviceId == "" {
+		return
+	}
 	player, exists := StandbyPlayerMap[deviceId]
 	if !exists || player == nil {
 		if strings.HasPrefix(deviceId, "DEV-") && len(deviceId) > 4 {
@@ -148,6 +166,7 @@ func AssignConnectedPlayerToRoom(roomId, deviceId string) {
 
 // DisconnectWSByDeviceID 強制中斷指定設備的 WS 連線
 func DisconnectWSByDeviceID(deviceId string) {
+	deviceId = utils.NormalizeDeviceIDKey(deviceId)
 	if deviceId == "" {
 		return
 	}
@@ -190,6 +209,10 @@ func DisconnectWSByDeviceID(deviceId string) {
 
 // DetachConnectedPlayerFromRoom 從房間中移除玩家但保留 WS 連線
 func DetachConnectedPlayerFromRoom(roomId, deviceId string) {
+	deviceId = utils.NormalizeDeviceIDKey(deviceId)
+	if deviceId == "" {
+		return
+	}
 	room, ok := RoomList[roomId]
 	if !ok || room == nil {
 		return

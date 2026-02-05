@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"vrcontrol/server/model"
+	"vrcontrol/server/quest/utils"
 	"vrcontrol/server/utilities"
 
 	"github.com/gorilla/websocket"
@@ -94,13 +95,13 @@ func (p *Player) read() {
 			p.LeftHandAvail = heartbeat.LeftHandAvail
 			p.RightHandAvail = heartbeat.RightHandAvail
 			p.Stage = heartbeat.Stage
-			p.DeiviceID = heartbeat.DeviceID
+			p.DeiviceID = utils.NormalizeDeviceIDKey(heartbeat.DeviceID)
 			p.Message = heartbeat.Message
 			p.LastUpdate = utilities.TicksToDateTime(heartbeat.Timestamp)
 		case model.MessageTypeReadyToMove:
 			readyToMove := playerMessage.ReadyToMove
 			p.Stage = readyToMove.Stage
-			p.DeiviceID = readyToMove.DeviceID
+			p.DeiviceID = utils.NormalizeDeviceIDKey(readyToMove.DeviceID)
 			// p.ReadyToMove = true
 			p.ReadyToMove = readyToMove.Stage > 0
 
