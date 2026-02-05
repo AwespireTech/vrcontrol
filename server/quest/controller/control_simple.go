@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"vrcontrol/server/quest/sockets"
+	"vrcontrol/server/quest/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,7 +15,8 @@ import (
 func AssignSequence(c *gin.Context) {
 
 	r := RoomList[c.Param("roomId")]
-	p := r.GetPlayerByDeviceID(c.Param("clientId"))
+	clientID := utils.NormalizeDeviceIDKey(c.Param("clientId"))
+	p := r.GetPlayerByDeviceID(clientID)
 	if p == nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"error": "Player not found",
@@ -29,12 +31,13 @@ func AssignSequence(c *gin.Context) {
 		})
 		return
 	}
-	r.AssignedSequence[p.DeiviceID] = seq
+	deviceID := utils.NormalizeDeviceIDKey(p.DeiviceID)
+	r.AssignedSequence[deviceID] = seq
 	r.Signals <- sockets.ControlSignal{
 		Type:   sockets.ControlSignalTypeSeqUpdate,
 		Target: p,
 	}
-	updateQuestAssignedSequence(c.Param("roomId"), p.DeiviceID, seq)
+	updateQuestAssignedSequence(c.Param("roomId"), deviceID, seq)
 	c.JSON(http.StatusOK, gin.H{
 		"message":  "Sequence assigned successfully",
 		"sequence": seq,

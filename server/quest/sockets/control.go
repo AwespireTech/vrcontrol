@@ -55,6 +55,7 @@ func (r *Room) GetRoomUpdate() model.RoomUpdate {
 				Sequence:          p.Sequence,
 				Stage:             p.Stage,
 				ReadyToMove:       p.ReadyToMove,
+				Message:           p.Message,
 				HeadPosition:      p.HeadPosition,
 				HeadForward:       p.HeadForward,
 				LeftHandPosition:  p.LeftHandPosition,

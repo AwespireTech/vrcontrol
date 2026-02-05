@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"vrcontrol/server/quest/utils"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -138,13 +140,14 @@ func updateDeviceWSStatus(deviceId, status string) {
 	if questDeviceService == nil {
 		return
 	}
-	if id, ok := normalizeDeviceIDFromClient(deviceId); ok {
-		_ = questDeviceService.UpdateWSStatus(id, status)
+	if !strings.HasPrefix(strings.ToUpper(deviceId), "DEV-") {
 		return
 	}
-	if strings.HasPrefix(deviceId, "DEV-") {
-		_ = questDeviceService.UpdateWSStatus(deviceId, status)
+	normalizedID := utils.NormalizeDeviceIDKey(deviceId)
+	if normalizedID == "" || !strings.HasPrefix(normalizedID, "DEV-") {
+		return
 	}
+	_ = questDeviceService.UpdateWSStatus(normalizedID, status)
 }
 
 // GetIsolationDevices 回傳隔離區連線清單

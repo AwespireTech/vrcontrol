@@ -5,6 +5,7 @@ import (
 
 	"vrcontrol/server/quest/model"
 	"vrcontrol/server/quest/service"
+	"vrcontrol/server/quest/utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -168,7 +169,7 @@ func (c *RoomController) AddDevice(ctx *gin.Context) {
 	}
 
 	refreshDeviceRoomMapFromService()
-	AssignConnectedPlayerToRoom(roomID, deviceID)
+	AssignConnectedPlayerToRoom(roomID, utils.NormalizeDeviceIDKey(deviceID))
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -190,7 +191,7 @@ func (c *RoomController) RemoveDevice(ctx *gin.Context) {
 	}
 
 	refreshDeviceRoomMapFromService()
-	DetachConnectedPlayerFromRoom(roomID, deviceID)
+	DetachConnectedPlayerFromRoom(roomID, utils.NormalizeDeviceIDKey(deviceID))
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,

@@ -9,6 +9,7 @@ import (
 
 	"vrcontrol/server/quest/model"
 	"vrcontrol/server/quest/repository"
+	"vrcontrol/server/quest/utils"
 )
 
 // RoomService 房間管理服務
@@ -110,7 +111,11 @@ func (s *RoomService) DeleteRoom(roomID string) error {
 
 	// 移除房間內所有設備的房間關聯（以 DeviceIDs 為主）
 	for _, deviceID := range room.DeviceIDs {
-		device, err := s.deviceRepo.GetByID(deviceID)
+		normalizedID := utils.NormalizeDeviceIDKey(deviceID)
+		if normalizedID == "" {
+			continue
+		}
+		device, err := s.deviceRepo.GetByID(normalizedID)
 		if err != nil {
 			continue
 		}
@@ -128,6 +133,11 @@ func (s *RoomService) DeleteRoom(roomID string) error {
 
 // AddDeviceToRoom 添加設備到房間
 func (s *RoomService) AddDeviceToRoom(roomID, deviceID string) error {
+	normalizedID := utils.NormalizeDeviceIDKey(deviceID)
+	if normalizedID == "" {
+		return fmt.Errorf("invalid device_id")
+	}
+	deviceID = normalizedID
 	room, err := s.roomRepo.GetByID(roomID)
 	if err != nil {
 		return err
@@ -169,6 +179,11 @@ func (s *RoomService) AddDeviceToRoom(roomID, deviceID string) error {
 
 // RemoveDeviceFromRoom 從房間移除設備
 func (s *RoomService) RemoveDeviceFromRoom(roomID, deviceID string) error {
+	normalizedID := utils.NormalizeDeviceIDKey(deviceID)
+	if normalizedID == "" {
+		return fmt.Errorf("invalid device_id")
+	}
+	deviceID = normalizedID
 	if err := s.roomRepo.RemoveDevice(roomID, deviceID); err != nil {
 		return err
 	}
@@ -188,6 +203,11 @@ func (s *RoomService) RemoveDeviceFromRoom(roomID, deviceID string) error {
 
 // RemoveDeviceFromAllRooms 從所有房間移除設備並清理 assigned_sequences
 func (s *RoomService) RemoveDeviceFromAllRooms(deviceID string) error {
+	normalizedID := utils.NormalizeDeviceIDKey(deviceID)
+	if normalizedID == "" {
+		return fmt.Errorf("invalid device_id")
+	}
+	deviceID = normalizedID
 	rooms := s.roomRepo.GetAll()
 	for _, room := range rooms {
 		if room == nil {
@@ -197,17 +217,20 @@ func (s *RoomService) RemoveDeviceFromAllRooms(deviceID string) error {
 		if roomHasDevice(room, deviceID) {
 			newDeviceIDs := make([]string, 0, len(room.DeviceIDs))
 			for _, id := range room.DeviceIDs {
-				if id != deviceID {
-					newDeviceIDs = append(newDeviceIDs, id)
+				normalizedEntry := utils.NormalizeDeviceIDKey(id)
+				if normalizedEntry != deviceID {
+					newDeviceIDs = append(newDeviceIDs, normalizedEntry)
 				}
 			}
 			room.DeviceIDs = newDeviceIDs
 			changed = true
 		}
 		if room.AssignedSequences != nil {
-			if _, exists := room.AssignedSequences[deviceID]; exists {
-				delete(room.AssignedSequences, deviceID)
-				changed = true
+			for key := range room.AssignedSequences {
+				if utils.NormalizeDeviceIDKey(key) == deviceID {
+					delete(room.AssignedSequences, key)
+					changed = true
+				}
 			}
 		}
 		if changed {
@@ -227,10 +250,14 @@ func (s *RoomService) BuildAssignedRoomMap() map[string]string {
 		if device == nil || device.RoomID == "" {
 			continue
 		}
-		if _, exists := roomMap[device.DeviceID]; exists {
+		normalizedID := utils.NormalizeDeviceIDKey(device.DeviceID)
+		if normalizedID == "" {
 			continue
 		}
-		roomMap[device.DeviceID] = device.RoomID
+		if _, exists := roomMap[normalizedID]; exists {
+			continue
+		}
+		roomMap[normalizedID] = device.RoomID
 	}
 	return roomMap
 }
@@ -253,20 +280,24 @@ func (s *RoomService) ReconcileDeviceAssignmentsByRoomUpdate() (map[string]strin
 		seen := make(map[string]struct{})
 		newList := make([]string, 0, len(room.DeviceIDs))
 		for _, deviceID := range room.DeviceIDs {
-			if deviceID == "" {
+			normalizedID := utils.NormalizeDeviceIDKey(deviceID)
+			if normalizedID == "" {
 				continue
 			}
-			if _, ok := seen[deviceID]; ok {
+			if _, ok := seen[normalizedID]; ok {
 				roomChanged[room.RoomID] = true
 				continue
 			}
-			seen[deviceID] = struct{}{}
-			if _, exists := assigned[deviceID]; exists {
+			seen[normalizedID] = struct{}{}
+			if _, exists := assigned[normalizedID]; exists {
 				roomChanged[room.RoomID] = true
 				continue
 			}
-			assigned[deviceID] = room.RoomID
-			newList = append(newList, deviceID)
+			if deviceID != normalizedID {
+				roomChanged[room.RoomID] = true
+			}
+			assigned[normalizedID] = room.RoomID
+			newList = append(newList, normalizedID)
 		}
 
 		if !stringSliceEqual(room.DeviceIDs, newList) {
@@ -292,8 +323,12 @@ func (s *RoomService) ReconcileDeviceAssignmentsByRoomUpdate() (map[string]strin
 		if device == nil {
 			continue
 		}
+		normalizedID := utils.NormalizeDeviceIDKey(device.DeviceID)
+		if normalizedID == "" {
+			continue
+		}
 		targetRoomID := ""
-		if roomID, ok := assigned[device.DeviceID]; ok {
+		if roomID, ok := assigned[normalizedID]; ok {
 			targetRoomID = roomID
 		}
 		if device.RoomID != targetRoomID {
@@ -308,6 +343,11 @@ func (s *RoomService) ReconcileDeviceAssignmentsByRoomUpdate() (map[string]strin
 }
 
 func (s *RoomService) removeDeviceFromOtherRooms(targetRoomID, deviceID string) error {
+	normalizedID := utils.NormalizeDeviceIDKey(deviceID)
+	if normalizedID == "" {
+		return fmt.Errorf("invalid device_id")
+	}
+	deviceID = normalizedID
 	rooms := s.roomRepo.GetAll()
 	for _, room := range rooms {
 		if room == nil || room.RoomID == targetRoomID {
@@ -342,17 +382,18 @@ func buildAssignedRoomMapFromRooms(rooms []*model.QuestRoom) map[string]string {
 		}
 		seen := make(map[string]struct{})
 		for _, deviceID := range room.DeviceIDs {
-			if deviceID == "" {
+			normalizedID := utils.NormalizeDeviceIDKey(deviceID)
+			if normalizedID == "" {
 				continue
 			}
-			if _, ok := seen[deviceID]; ok {
+			if _, ok := seen[normalizedID]; ok {
 				continue
 			}
-			seen[deviceID] = struct{}{}
-			if _, exists := roomMap[deviceID]; exists {
+			seen[normalizedID] = struct{}{}
+			if _, exists := roomMap[normalizedID]; exists {
 				continue
 			}
-			roomMap[deviceID] = room.RoomID
+			roomMap[normalizedID] = room.RoomID
 		}
 	}
 
@@ -360,8 +401,12 @@ func buildAssignedRoomMapFromRooms(rooms []*model.QuestRoom) map[string]string {
 }
 
 func roomHasDevice(room *model.QuestRoom, deviceID string) bool {
+	normalizedID := utils.NormalizeDeviceIDKey(deviceID)
+	if normalizedID == "" {
+		return false
+	}
 	for _, id := range room.DeviceIDs {
-		if id == deviceID {
+		if utils.NormalizeDeviceIDKey(id) == normalizedID {
 			return true
 		}
 	}
