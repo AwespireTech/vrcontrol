@@ -273,6 +273,28 @@ export default function RoomControlPage() {
     }
   }
 
+  const getWsStatusText = (status?: QuestDevice["ws_status"]) => {
+    switch (status) {
+      case "connected":
+        return "已連線"
+      case "disconnected":
+        return "已中斷"
+      default:
+        return "未知"
+    }
+  }
+
+  const getWsStatusBadgeClass = (status?: QuestDevice["ws_status"]) => {
+    switch (status) {
+      case "connected":
+        return "ui-badge-success"
+      case "disconnected":
+        return "ui-badge-danger"
+      default:
+        return "ui-badge-muted"
+    }
+  }
+
   type AdbStatus = (typeof QUEST_DEVICE_STATUS)[keyof typeof QUEST_DEVICE_STATUS]
 
   const isQuestDeviceStatus = (status?: string): status is AdbStatus => {
@@ -374,6 +396,7 @@ export default function RoomControlPage() {
                 const device = deviceMap.get(player.device_id)
                 const alias = device ? getDisplayName(device) : player.device_id
                 const adbStatus = isQuestDeviceStatus(device?.status) ? device?.status : undefined
+                const wsStatus = device?.ws_status
                 const isAdbOnline = adbStatus === QUEST_DEVICE_STATUS.ONLINE
                 const isAdbConnecting = adbStatus === QUEST_DEVICE_STATUS.CONNECTING
                 const devicePendingAction = deviceActionPending[player.device_id]
@@ -404,6 +427,12 @@ export default function RoomControlPage() {
                         <span className="font-semibold text-foreground">{temperatureText}</span>
                       </div>
                       <div className="flex items-center gap-2">
+                        <span
+                          className={`ui-badge ${getWsStatusBadgeClass(wsStatus)}`}
+                          title={device?.ws_last_seen ? `最後回報: ${device.ws_last_seen}` : undefined}
+                        >
+                          WS {getWsStatusText(wsStatus)}
+                        </span>
                         <span className={`ui-badge ${getAdbStatusBadgeClass(adbStatus)}`}>
                           ADB {getAdbStatusText(adbStatus)}
                         </span>
