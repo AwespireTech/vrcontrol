@@ -36,10 +36,33 @@ export default function RoomControlPage() {
   >({})
 
   const [roomList, setRoomList] = useState<{ value: string; label: string }[]>([])
+  const [roomDeviceIds, setRoomDeviceIds] = useState<string[]>([])
 
-  const sortedRoomPlayers = useMemo(() => {
-    return playerData.slice().sort((a, b) => (a.sequence >= b.sequence ? 1 : -1))
+  const playerByDeviceId = useMemo(() => {
+    return new Map(playerData.map((player) => [player.device_id, player]))
   }, [playerData])
+
+  const displayDeviceIds = useMemo(() => {
+    const ids = new Set<string>()
+    roomDeviceIds.forEach((id) => ids.add(id))
+    playerData.forEach((player) => ids.add(player.device_id))
+
+    const list = Array.from(ids)
+    list.sort((a, b) => {
+      const playerA = playerByDeviceId.get(a)
+      const playerB = playerByDeviceId.get(b)
+      const seqA = playerA ? playerA.sequence : Number.MAX_SAFE_INTEGER
+      const seqB = playerB ? playerB.sequence : Number.MAX_SAFE_INTEGER
+      if (seqA !== seqB) return seqA - seqB
+
+      const deviceA = deviceMap.get(a)
+      const deviceB = deviceMap.get(b)
+      const nameA = deviceA ? getDisplayName(deviceA) : a
+      const nameB = deviceB ? getDisplayName(deviceB) : b
+      return nameA.localeCompare(nameB)
+    })
+    return list
+  }, [deviceMap, playerByDeviceId, playerData, roomDeviceIds])
 
   const currentRoomName = useMemo(() => {
     const found = roomList.find((room) => room.value === roomId)
@@ -54,6 +77,11 @@ export default function RoomControlPage() {
         .sort((a, b) => a.label.localeCompare(b.label))
       setRoomList(roomOptions)
       setDeviceMap(new Map(devices.map((device) => [device.device_id, device])))
+
+      if (roomId) {
+        const currentRoom = questRooms.find((room) => room.room_id === roomId)
+        setRoomDeviceIds(currentRoom?.device_ids || [])
+      }
     } catch (error) {
       console.error("Failed to load control data:", error)
     }
@@ -61,8 +89,12 @@ export default function RoomControlPage() {
 
   const refreshDeviceStatuses = async () => {
     try {
-      const devices = await deviceApi.getAll()
+      const [devices, room] = await Promise.all([
+        deviceApi.getAll(),
+        roomId ? roomApi.get(roomId) : Promise.resolve(null),
+      ])
       setDeviceMap(new Map(devices.map((device) => [device.device_id, device])))
+      if (room?.device_ids) setRoomDeviceIds(room.device_ids)
     } catch (error) {
       console.error("Failed to refresh device statuses:", error)
     }
@@ -70,7 +102,7 @@ export default function RoomControlPage() {
 
   useEffect(() => {
     loadControlData()
-  }, [])
+  }, [roomId])
 
   useEffect(() => {
     if (!roomId) return
@@ -388,18 +420,19 @@ export default function RoomControlPage() {
 
           <div className="surface-card p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-foreground">房間內玩家</h2>
+              <h2 className="text-xl font-bold text-foreground">房間內設備</h2>
               <span className="ui-badge ui-badge-muted text-xs">下次更新 {countdown} 秒</span>
             </div>
             <div className="grid grid-cols-1 gap-4">
-              {sortedRoomPlayers.map((player) => {
-                const device = deviceMap.get(player.device_id)
-                const alias = device ? getDisplayName(device) : player.device_id
+              {displayDeviceIds.map((deviceId) => {
+                const player = playerByDeviceId.get(deviceId)
+                const device = deviceMap.get(deviceId)
+                const alias = device ? getDisplayName(device) : deviceId
                 const adbStatus = isQuestDeviceStatus(device?.status) ? device?.status : undefined
                 const wsStatus = device?.ws_status
                 const isAdbOnline = adbStatus === QUEST_DEVICE_STATUS.ONLINE
                 const isAdbConnecting = adbStatus === QUEST_DEVICE_STATUS.CONNECTING
-                const devicePendingAction = deviceActionPending[player.device_id]
+                const devicePendingAction = deviceActionPending[deviceId]
                 const isDevicePending = !!devicePendingAction
                 const batteryText =
                   isAdbOnline && device?.battery !== undefined && device?.battery !== null
@@ -411,13 +444,11 @@ export default function RoomControlPage() {
                     : "—"
 
                 return (
-                  <div key={player.device_id + player.sequence} className="surface-panel p-4">
+                  <div key={deviceId} className="surface-panel p-4">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="space-y-1">
                         <div className="text-sm font-semibold text-foreground">{alias}</div>
-                        <div className="font-mono text-xs text-foreground/50">
-                          {player.device_id}
-                        </div>
+                        <div className="font-mono text-xs text-foreground/50">{deviceId}</div>
                       </div>
                       <div className="flex flex-wrap items-center gap-3 text-xs text-foreground/60">
                         <span className="uppercase tracking-wide">電量</span>
@@ -438,7 +469,7 @@ export default function RoomControlPage() {
                         </span>
                         {!isAdbOnline && !isAdbConnecting && (
                           <Button
-                            onClick={() => handleConnect(player.device_id)}
+                            onClick={() => handleConnect(deviceId)}
                             className="ui-btn-xs ui-btn-primary"
                             loading={devicePendingAction === "connect"}
                             disabled={isDevicePending}
@@ -449,7 +480,7 @@ export default function RoomControlPage() {
                         {isAdbOnline && (
                           <>
                             <Button
-                              onClick={() => handleDisconnect(player.device_id)}
+                              onClick={() => handleDisconnect(deviceId)}
                               className="ui-btn-xs ui-btn-danger"
                               loading={devicePendingAction === "disconnect"}
                               disabled={isDevicePending}
@@ -457,7 +488,7 @@ export default function RoomControlPage() {
                               斷開
                             </Button>
                             <Button
-                              onClick={() => handleMonitor(player.device_id)}
+                              onClick={() => handleMonitor(deviceId)}
                               className="ui-btn-xs ui-btn-accent"
                               loading={devicePendingAction === "monitor"}
                               disabled={isDevicePending}
@@ -469,16 +500,25 @@ export default function RoomControlPage() {
                       </div>
                     </div>
                     <div className="mt-3">
-                      <PlayerInfo
-                        player={player}
-                        handleChangeSequence={handleChangeSequence}
-                        handleForceMove={handleForceMoveSingle}
-                        forceMoveOptions={options}
-                        displayName={alias}
-                        adbStatus={adbStatus}
-                        sequenceLoading={sequencePendingIds.has(player.device_id)}
-                        forceMoveLoading={forceMovePendingIds.has(player.device_id)}
-                      />
+                      {player ? (
+                        <PlayerInfo
+                          player={player}
+                          handleChangeSequence={handleChangeSequence}
+                          handleForceMove={handleForceMoveSingle}
+                          forceMoveOptions={options}
+                          displayName={alias}
+                          adbStatus={adbStatus}
+                          sequenceLoading={sequencePendingIds.has(deviceId)}
+                          forceMoveLoading={forceMovePendingIds.has(deviceId)}
+                        />
+                      ) : (
+                        <div className="px-4 py-3 text-xs text-foreground/60">
+                          <div className="ui-badge ui-badge-muted">未加入房間控制（無即時玩家資料）</div>
+                          <div className="mt-2 text-foreground/50">
+                            此設備已在房間設定中，但目前未連上房間 WebSocket。
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )
