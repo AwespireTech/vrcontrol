@@ -99,7 +99,7 @@ func (c *Controller) read() {
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, Newline, Space, -1))
 		c.InChannel <- message
-		log.Printf("Controller room %s: Received message: %s", c.Room.RoomID, message)
+		// log.Printf("Controller room %s: Received message: %s", c.Room.RoomID, message)
 	}
 }
 func (c *Controller) write() {
