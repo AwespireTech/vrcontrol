@@ -77,7 +77,7 @@ func (m *Manager) CheckInstallation() *model.ScrcpySystemInfo {
 }
 
 // StartScrcpy starts a scrcpy session for a device
-func (m *Manager) StartScrcpy(deviceSerial string, deviceID string, config *model.ScrcpyConfig) error {
+func (m *Manager) StartScrcpy(deviceSerial string, deviceID string, displayName string, config *model.ScrcpyConfig) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -87,7 +87,7 @@ func (m *Manager) StartScrcpy(deviceSerial string, deviceID string, config *mode
 	}
 
 	// Build command
-	args := m.buildScrcpyArgs(deviceSerial, config)
+	args := m.buildScrcpyArgs(deviceSerial, deviceID, displayName, config)
 
 	cmd := exec.Command("scrcpy", args...)
 	setCmdAttributes(cmd)
@@ -199,8 +199,21 @@ func (m *Manager) GetSession(deviceID string) (*model.DeviceScrcpySession, bool)
 }
 
 // buildScrcpyArgs builds the command line arguments for scrcpy
-func (m *Manager) buildScrcpyArgs(deviceSerial string, config *model.ScrcpyConfig) []string {
+func (m *Manager) buildScrcpyArgs(deviceSerial string, deviceID string, displayName string, config *model.ScrcpyConfig) []string {
 	args := []string{"-s", deviceSerial}
+
+	// Window title
+	// Prefer the device alias (displayName) so operators can quickly identify which
+	// headset they are mirroring.
+	if title := strings.TrimSpace(displayName); title != "" {
+		// Guard against control characters/newlines.
+		title = strings.ReplaceAll(title, "\n", " ")
+		title = strings.ReplaceAll(title, "\r", " ")
+		if id := strings.TrimSpace(deviceID); id != "" && id != title {
+			title = fmt.Sprintf("%s (%s)", title, id)
+		}
+		args = append(args, "--window-title", title)
+	}
 
 	// Video quality settings
 	if config.Bitrate != "" {
