@@ -3,11 +3,12 @@ import { useNavigate, useParams } from "react-router-dom"
 import { DEFAULT_POLL_INTERVAL_SECONDS, SERVER } from "@/environment"
 import Button from "@/components/button"
 import PlayerInfo from "@/components/player-info"
-import { controlApi, deviceApi, roomApi, scrcpyApi, simpleApi } from "@/services/quest-api"
-import { QUEST_DEVICE_STATUS, type QuestDevice } from "@/services/quest-types"
+import { actionApi, controlApi, deviceApi, roomApi, scrcpyApi, simpleApi } from "@/services/quest-api"
+import { QUEST_DEVICE_STATUS, type QuestAction, type QuestDevice } from "@/services/quest-types"
 import { getDisplayName } from "@/lib/utils/device"
 import type { PlayerData, RoomInfoData } from "@/interfaces/room.interface"
 import QuestPageShell from "@/components/quest/quest-page-shell"
+import QuestActionExecuteModal from "@/components/quest/quest-action-execute-modal"
 
 const TotalChapters = 11
 
@@ -37,6 +38,12 @@ export default function RoomControlPage() {
 
   const [roomList, setRoomList] = useState<{ value: string; label: string }[]>([])
   const [roomDeviceIds, setRoomDeviceIds] = useState<string[]>([])
+
+  const [actions, setActions] = useState<QuestAction[]>([])
+  const [selectedActionId, setSelectedActionId] = useState<string>("")
+  const [showExecuteModal, setShowExecuteModal] = useState(false)
+  const [selectedActionDeviceIds, setSelectedActionDeviceIds] = useState<string[]>([])
+  const [executePending, setExecutePending] = useState(false)
 
   const playerByDeviceId = useMemo(() => {
     return new Map(playerData.map((player) => [player.device_id, player]))
@@ -87,6 +94,15 @@ export default function RoomControlPage() {
     }
   }
 
+  const loadActions = async () => {
+    try {
+      const actionsData = await actionApi.getAll()
+      setActions(actionsData)
+    } catch (error) {
+      console.error("Failed to load actions:", error)
+    }
+  }
+
   const refreshDeviceStatuses = async () => {
     try {
       const [devices, room] = await Promise.all([
@@ -102,6 +118,7 @@ export default function RoomControlPage() {
 
   useEffect(() => {
     loadControlData()
+    loadActions()
   }, [roomId])
 
   useEffect(() => {
@@ -335,6 +352,39 @@ export default function RoomControlPage() {
 
   const options = Array.from({ length: TotalChapters }, (_, i) => i.toString())
 
+  const selectedAction = useMemo(() => {
+    return actions.find((action) => action.action_id === selectedActionId) || null
+  }, [actions, selectedActionId])
+
+  const modalDeviceIds = useMemo(() => {
+    return roomDeviceIds.length > 0 ? roomDeviceIds : displayDeviceIds
+  }, [displayDeviceIds, roomDeviceIds])
+
+  const handleConfirmExecuteAction = async () => {
+    if (!selectedAction) return
+    if (selectedActionDeviceIds.length === 0) return
+    if (executePending) return
+
+    setExecutePending(true)
+    try {
+      const result = await actionApi.executeBatch({
+        action_id: selectedAction.action_id,
+        device_ids: selectedActionDeviceIds,
+        max_workers: 5,
+      })
+
+      alert(`批次執行完成\n成功: ${result.success_count}\n失敗: ${result.failed_count}`)
+
+      setShowExecuteModal(false)
+      setSelectedActionDeviceIds([])
+    } catch (error) {
+      console.error("Failed to execute action:", error)
+      alert("執行失敗，請稍後再試")
+    } finally {
+      setExecutePending(false)
+    }
+  }
+
   if (!roomId) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-6">
@@ -415,6 +465,39 @@ export default function RoomControlPage() {
               </Button>
               {moveState === "success" && <span className="text-success">已送出指令</span>}
               {moveState === "failed" && <span className="text-danger">送出失敗，請稍後再試</span>}
+            </div>
+          </div>
+
+          <div className="surface-card p-6">
+            <h2 className="mb-4 text-xl font-bold text-foreground">動作執行</h2>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-foreground/70">Action</span>
+              <select
+                className={`ui-select mx-2 max-w-[320px] px-2 py-1 ${
+                  selectedActionId === "" ? "text-foreground/50" : ""
+                }`}
+                value={selectedActionId}
+                onChange={(e) => setSelectedActionId(e.target.value)}
+              >
+                <option value="" className="text-foreground/50"></option>
+                {actions.map((action) => (
+                  <option key={action.action_id} value={action.action_id} className="text-foreground">
+                    {action.name}
+                  </option>
+                ))}
+              </select>
+              <Button
+                disabled={!selectedAction}
+                onClick={() => {
+                  if (!selectedAction) return
+                  setShowExecuteModal(true)
+                }}
+              >
+                執行
+              </Button>
+              {actions.length === 0 ? (
+                <span className="text-xs text-foreground/50">尚無動作（請先到動作管理建立）</span>
+              ) : null}
             </div>
           </div>
 
@@ -527,6 +610,29 @@ export default function RoomControlPage() {
           </div>
         </div>
       </div>
+
+      <QuestActionExecuteModal
+        open={showExecuteModal && !!selectedAction}
+        actionName={selectedAction?.name || ""}
+        targets={modalDeviceIds.map((deviceId) => {
+          const device = deviceMap.get(deviceId)
+          return {
+            id: deviceId,
+            label: device ? getDisplayName(device) : deviceId,
+            ip: device?.ip,
+            status: device?.status,
+            isOnline: device?.status === "online",
+          }
+        })}
+        selectedIds={selectedActionDeviceIds}
+        onSelectedIdsChange={setSelectedActionDeviceIds}
+        confirmPending={executePending}
+        onConfirm={handleConfirmExecuteAction}
+        onClose={() => {
+          setShowExecuteModal(false)
+          setSelectedActionDeviceIds([])
+        }}
+      />
     </QuestPageShell>
   )
 }
