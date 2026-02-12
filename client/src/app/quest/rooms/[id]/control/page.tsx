@@ -29,6 +29,7 @@ export default function RoomControlPage() {
   const [countdown, setCountdown] = useState(DEFAULT_POLL_INTERVAL_SECONDS)
 
   const [forceMovePending, setForceMovePending] = useState(false)
+  const [forceMovePendingIds, setForceMovePendingIds] = useState<Set<string>>(new Set())
   const [sequencePendingIds, setSequencePendingIds] = useState<Set<string>>(new Set())
   const [deviceActionPending, setDeviceActionPending] = useState<
     Record<string, "connect" | "disconnect" | "monitor">
@@ -161,6 +162,27 @@ export default function RoomControlPage() {
       setMoveState("failed")
     } finally {
       setForceMovePending(false)
+    }
+  }
+
+  const handleForceMoveSingle = async (deviceId: string, dest: string) => {
+    if (!roomId || dest === "") return
+    setForceMovePendingIds((prev) => {
+      const next = new Set(prev)
+      next.add(deviceId)
+      return next
+    })
+    try {
+      await simpleApi.forceMove(roomId, deviceId, dest)
+    } catch (error) {
+      console.error("Failed to send single move command:", error)
+      alert("送出失敗，請稍後再試")
+    } finally {
+      setForceMovePendingIds((prev) => {
+        const next = new Set(prev)
+        next.delete(deviceId)
+        return next
+      })
     }
   }
 
@@ -421,9 +443,12 @@ export default function RoomControlPage() {
                       <PlayerInfo
                         player={player}
                         handleChangeSequence={handleChangeSequence}
+                        handleForceMove={handleForceMoveSingle}
+                        forceMoveOptions={options}
                         displayName={alias}
                         adbStatus={adbStatus}
                         sequenceLoading={sequencePendingIds.has(player.device_id)}
+                        forceMoveLoading={forceMovePendingIds.has(player.device_id)}
                       />
                     </div>
                   </div>
