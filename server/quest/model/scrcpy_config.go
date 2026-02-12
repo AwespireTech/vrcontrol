@@ -20,6 +20,19 @@ type ScrcpyConfig struct {
 	RenderDriver  string `json:"render_driver"`   // Rendering driver (e.g., "opengl", "metal")
 }
 
+// ScrcpyWindowLayout describes how to place scrcpy windows during batch start.
+// All fields are optional; server will apply safe defaults.
+// Coordinates are in screen pixels.
+type ScrcpyWindowLayout struct {
+	Columns      int  `json:"columns"`       // number of columns in grid (default: 3)
+	BaseX        *int `json:"base_x"`         // top-left base x (default: 0)
+	BaseY        *int `json:"base_y"`         // top-left base y (default: 0)
+	GapX         *int `json:"gap_x"`          // horizontal gap between windows (default: 20)
+	GapY         *int `json:"gap_y"`          // vertical gap between windows (default: 40)
+	WindowWidth  *int `json:"window_width"`   // override window width for all windows
+	WindowHeight *int `json:"window_height"`  // override window height for all windows
+}
+
 // DefaultScrcpyConfig returns the default scrcpy configuration
 func DefaultScrcpyConfig() *ScrcpyConfig {
 	return &ScrcpyConfig{

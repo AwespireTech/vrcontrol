@@ -94,8 +94,9 @@ func (c *ScrcpyController) StopScrcpy(ctx *gin.Context) {
 // POST /api/quest/scrcpy/batch/start
 func (c *ScrcpyController) StartScrcpyBatch(ctx *gin.Context) {
 	var request struct {
-		DeviceIDs []string            `json:"device_ids" binding:"required"`
-		Config    *model.ScrcpyConfig `json:"config"`
+		DeviceIDs []string                 `json:"device_ids" binding:"required"`
+		Config    *model.ScrcpyConfig      `json:"config"`
+		Layout    *model.ScrcpyWindowLayout `json:"layout"`
 	}
 
 	if err := ctx.ShouldBindJSON(&request); err != nil {
@@ -118,7 +119,7 @@ func (c *ScrcpyController) StartScrcpyBatch(ctx *gin.Context) {
 		return
 	}
 
-	results := c.scrcpyService.StartScrcpyBatch(request.DeviceIDs, request.Config)
+	results := c.scrcpyService.StartScrcpyBatch(request.DeviceIDs, request.Config, request.Layout)
 
 	// Check if any failed
 	hasErrors := len(results) > 0

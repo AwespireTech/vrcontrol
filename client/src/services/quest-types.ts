@@ -202,6 +202,15 @@ export interface ScrcpySystemInfo {
 export interface ScrcpyBatchStartRequest {
   device_ids: string[]
   config?: ScrcpyConfig
+  layout?: {
+    columns?: number
+    base_x?: number
+    base_y?: number
+    gap_x?: number
+    gap_y?: number
+    window_width?: number
+    window_height?: number
+  }
 }
 
 // Scrcpy 批量啟動響應（最小型別：目前 UI 只依賴 success_count / failed_count）
