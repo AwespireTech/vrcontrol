@@ -379,32 +379,20 @@ func (s *MonitoringService) tryReconnectDevice(device *model.QuestDevice) error 
 		return err
 	}
 
-	// 獲取設備列表以確認連接成功
-	devices, err := s.adbManager.GetDevices()
+	address := fmt.Sprintf("%s:%d", device.IP, port)
+
+	connected, err := s.adbManager.ResolveConnectedDevice(address, 5, 300*time.Millisecond)
 	if err != nil {
-		log.Printf("[MonitoringService] Failed to get devices for %s: %v\n", device.GetDisplayName(), err)
+		log.Printf("[MonitoringService] Device %s not found in device list for target %s: %v\n", device.GetDisplayName(), address, err)
 		s.deviceRepo.UpdateStatus(device.DeviceID, model.DeviceStatusOffline)
 		return err
 	}
 
-	// 查找對應的設備
-	address := fmt.Sprintf("%s:%d", device.IP, port)
-	var serial string
-	for _, dev := range devices {
-		if strings.Contains(dev.Serial, address) {
-			serial = dev.Serial
-			break
-		}
-	}
-
-	if serial == "" {
-		log.Printf("[MonitoringService] Device %s not found in device list\n", device.GetDisplayName())
-		s.deviceRepo.UpdateStatus(device.DeviceID, model.DeviceStatusOffline)
-		return fmt.Errorf("device not found in adb device list")
-	}
-
 	// 更新設備信息
-	device.Serial = serial
+	device.Serial = connected.Serial
+	if connected.Model != "" {
+		device.Model = connected.Model
+	}
 	device.Status = model.DeviceStatusOnline
 
 	if err := s.deviceRepo.Update(device); err != nil {
