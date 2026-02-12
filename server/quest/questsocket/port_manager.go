@@ -2,6 +2,7 @@ package questsocket
 
 import (
 	"net"
+	"strconv"
 	"sync"
 )
 
@@ -71,7 +72,7 @@ func (pm *PortManager) GetAllocatedPorts() []int {
 
 // isPortAvailable 測試端口是否可用
 func (pm *PortManager) isPortAvailable(port int) bool {
-	addr := net.JoinHostPort("", string(rune(port)))
+	addr := net.JoinHostPort("", strconv.Itoa(port))
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		return false
