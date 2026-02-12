@@ -322,6 +322,11 @@ export const simpleApi = {
   forceAllMove: async (roomId: string, dest: string): Promise<void> => {
     await fetch(`${QUEST_SIMPLE_BASE}/forceallmove/${roomId}/${dest}`)
   },
+
+  // 強制單一玩家移動
+  forceMove: async (roomId: string, clientId: string, dest: string): Promise<void> => {
+    await fetch(`${QUEST_SIMPLE_BASE}/forcemove/${roomId}/${clientId}/${dest}`)
+  },
 }
 
 // ============ 動作 API ============
