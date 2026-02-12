@@ -188,6 +188,14 @@ func placeBatchWindow(base *model.ScrcpyConfig, layout *model.ScrcpyWindowLayout
 	if layout.FrameMarginY != nil {
 		frameMarginY = *layout.FrameMarginY
 	}
+	originX := 0
+	if layout.BaseX != nil {
+		originX = *layout.BaseX
+	}
+	originY := 0
+	if layout.BaseY != nil {
+		originY = *layout.BaseY
+	}
 
 	cols := layout.Columns
 	if cols <= 0 {
@@ -240,22 +248,22 @@ func placeBatchWindow(base *model.ScrcpyConfig, layout *model.ScrcpyWindowLayout
 
 	row := index / cols
 	col := index % cols
-	x := paddingX + col*(tileW+gapX)
-	y := paddingY + row*(tileH+gapY)
+	x := originX + paddingX + col*(tileW+gapX)
+	y := originY + paddingY + row*(tileH+gapY)
 
-	maxX := screenW - windowW
-	maxY := screenH - windowH
+	maxX := originX + screenW - windowW
+	maxY := originY + screenH - windowH
 	if x > maxX {
 		x = maxX
 	}
 	if y > maxY {
 		y = maxY
 	}
-	if x < 0 {
-		x = 0
+	if x < originX {
+		x = originX
 	}
-	if y < 0 {
-		y = 0
+	if y < originY {
+		y = originY
 	}
 
 	w := windowW

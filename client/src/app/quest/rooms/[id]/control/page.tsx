@@ -46,6 +46,7 @@ export default function RoomControlPage() {
   const [batchSelectedDeviceIds, setBatchSelectedDeviceIds] = useState<string[]>([])
   const [executePending, setExecutePending] = useState(false)
   const [batchMonitorPending, setBatchMonitorPending] = useState(false)
+  const [targetMonitorIndex, setTargetMonitorIndex] = useState(0)
 
   const playerByDeviceId = useMemo(() => {
     return new Map(playerData.map((player) => [player.device_id, player]))
@@ -407,14 +408,18 @@ export default function RoomControlPage() {
 
       const columns = Math.max(1, Math.ceil(Math.sqrt(count)))
 
-      const gapX = 8
-      const gapY = 8
+      const gapX = 4
+      const gapY = 16
       const paddingX = 8
       const paddingY = 8
+      const baseX = targetMonitorIndex * screenW
+      const baseY = 0
 
       return {
         mode: "tile" as const,
         columns,
+        base_x: baseX,
+        base_y: baseY,
         screen_width: screenW,
         screen_height: screenH,
         padding_x: paddingX,
@@ -579,6 +584,16 @@ export default function RoomControlPage() {
               <div className="text-sm font-semibold text-foreground">設備監看（批次）</div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <span className="text-foreground/70">scrcpy</span>
+                <select
+                  className="ui-select max-w-[200px] px-2 py-1"
+                  value={targetMonitorIndex}
+                  onChange={(e) => setTargetMonitorIndex(Number(e.target.value) || 0)}
+                >
+                  <option value={0}>顯示器 1（主螢幕）</option>
+                  <option value={1}>顯示器 2（右側）</option>
+                  <option value={2}>顯示器 3（更右側）</option>
+                  <option value={3}>顯示器 4（更右側）</option>
+                </select>
                 <Button
                   onClick={() => {
                     setBatchMode("monitor")
