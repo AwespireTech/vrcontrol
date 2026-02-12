@@ -390,9 +390,21 @@ export default function RoomControlPage() {
     }
 
     if (batchMonitorPending) return
+
+    // Keep windows in a stable order by preserving the modal target ordering.
+    const orderedDeviceIds = modalDeviceIds.filter((id) => batchSelectedDeviceIds.includes(id))
     setBatchMonitorPending(true)
     try {
-      const result = await scrcpyApi.startBatch({ device_ids: batchSelectedDeviceIds })
+      const result = await scrcpyApi.startBatch({
+        device_ids: orderedDeviceIds,
+        layout: {
+          columns: 2,
+          gap_x: 0,
+          gap_y: 0,
+          window_width: 960,
+          window_height: 540,
+        },
+      })
 
       alert(
         `批次監看完成\n成功: ${result.success_count}\n失敗: ${result.failed_count}`,
