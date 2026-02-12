@@ -56,8 +56,12 @@ func (s *ScrcpyService) StartScrcpy(deviceID string, customConfig *model.ScrcpyC
 		}
 	}
 
-	// Start scrcpy
-	return s.scrcpyManager.StartScrcpy(device.Serial, deviceID, config)
+	// Start scrcpy (use alias/name in window title)
+	displayName := ""
+	if device != nil {
+		displayName = device.GetDisplayName()
+	}
+	return s.scrcpyManager.StartScrcpy(device.Serial, deviceID, displayName, config)
 }
 
 // StartScrcpyBatch starts scrcpy sessions for multiple devices
