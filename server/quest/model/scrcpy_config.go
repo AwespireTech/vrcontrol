@@ -24,13 +24,20 @@ type ScrcpyConfig struct {
 // All fields are optional; server will apply safe defaults.
 // Coordinates are in screen pixels.
 type ScrcpyWindowLayout struct {
-	Columns      int  `json:"columns"`       // number of columns in grid (default: 3)
-	BaseX        *int `json:"base_x"`         // top-left base x (default: 0)
-	BaseY        *int `json:"base_y"`         // top-left base y (default: 0)
-	GapX         *int `json:"gap_x"`          // horizontal gap between windows (default: 20)
-	GapY         *int `json:"gap_y"`          // vertical gap between windows (default: 40)
-	WindowWidth  *int `json:"window_width"`   // override window width for all windows
-	WindowHeight *int `json:"window_height"`  // override window height for all windows
+	Mode         string `json:"mode"`           // "tile" (default) or "manual"
+	Columns      int    `json:"columns"`        // number of columns in grid (default: auto)
+	ScreenWidth  *int   `json:"screen_width"`   // tiling canvas width (default: 1920)
+	ScreenHeight *int   `json:"screen_height"`  // tiling canvas height (default: 1080)
+	PaddingX     *int   `json:"padding_x"`      // outer horizontal padding (default: 8)
+	PaddingY     *int   `json:"padding_y"`      // outer vertical padding (default: 8)
+	GapX         *int   `json:"gap_x"`          // horizontal gap between windows (default: 8)
+	GapY         *int   `json:"gap_y"`          // vertical gap between windows (default: 8)
+	FrameMarginX *int   `json:"frame_margin_x"` // compensate window frame width (default: 16)
+	FrameMarginY *int   `json:"frame_margin_y"` // compensate title bar/frame height (default: 40)
+	BaseX        *int   `json:"base_x"`         // manual mode top-left base x (default: 0)
+	BaseY        *int   `json:"base_y"`         // manual mode top-left base y (default: 0)
+	WindowWidth  *int   `json:"window_width"`   // manual mode or explicit width override
+	WindowHeight *int   `json:"window_height"`  // manual mode or explicit height override
 }
 
 // DefaultScrcpyConfig returns the default scrcpy configuration

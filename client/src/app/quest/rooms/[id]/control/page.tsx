@@ -406,24 +406,24 @@ export default function RoomControlPage() {
           : 1080
 
       const columns = Math.max(1, Math.ceil(Math.sqrt(count)))
-      const rows = Math.max(1, Math.ceil(count / columns))
 
-      const baseX = 0
-      const baseY = 0
-      const gapX = 0
-      const gapY = 0
-
-      const width = Math.max(960, Math.floor((screenW - gapX * (columns - 1)) / columns))
-      const height = Math.max(540, Math.floor((screenH - gapY * (rows - 1)) / rows))
+      const gapX = 8
+      const gapY = 8
+      const paddingX = 8
+      const paddingY = 8
 
       return {
+        mode: "tile" as const,
         columns,
-        base_x: baseX,
-        base_y: baseY,
+        screen_width: screenW,
+        screen_height: screenH,
+        padding_x: paddingX,
+        padding_y: paddingY,
         gap_x: gapX,
         gap_y: gapY,
-        window_width: width,
-        window_height: height,
+        // Reserve extra space so window decorations do not cause overlap.
+        frame_margin_x: 16,
+        frame_margin_y: 40,
       }
     }
 

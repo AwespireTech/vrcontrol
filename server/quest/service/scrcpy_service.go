@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"math"
 
 	"vrcontrol/server/quest/model"
 	"vrcontrol/server/quest/repository"
@@ -73,7 +74,7 @@ func (s *ScrcpyService) StartScrcpyBatch(deviceIDs []string, customConfig *model
 	for idx, deviceID := range deviceIDs {
 		cfg := customConfig
 		if layout != nil {
-			placed := placeBatchWindow(customConfig, layout, idx)
+			placed := placeBatchWindow(customConfig, layout, idx, len(deviceIDs))
 			cfg = placed
 		}
 
@@ -86,7 +87,7 @@ func (s *ScrcpyService) StartScrcpyBatch(deviceIDs []string, customConfig *model
 	return results
 }
 
-func placeBatchWindow(base *model.ScrcpyConfig, layout *model.ScrcpyWindowLayout, index int) *model.ScrcpyConfig {
+func placeBatchWindow(base *model.ScrcpyConfig, layout *model.ScrcpyWindowLayout, index int, total int) *model.ScrcpyConfig {
 	// Copy base config by value so we can safely set pointer fields per device.
 	var cfg model.ScrcpyConfig
 	if base != nil {
@@ -95,59 +96,172 @@ func placeBatchWindow(base *model.ScrcpyConfig, layout *model.ScrcpyWindowLayout
 		cfg = *model.DefaultScrcpyConfig()
 	}
 
-	// Defaults
-	cols := layout.Columns
-	if cols <= 0 {
-		cols = 3
+	if total <= 0 {
+		total = 1
 	}
-	baseX := 0
-	if layout.BaseX != nil {
-		baseX = *layout.BaseX
+
+	mode := layout.Mode
+	if mode == "" {
+		mode = "tile"
 	}
-	baseY := 0
-	if layout.BaseY != nil {
-		baseY = *layout.BaseY
+
+	if mode == "manual" {
+		// Legacy/manual placement mode.
+		cols := layout.Columns
+		if cols <= 0 {
+			cols = 3
+		}
+		baseX := 0
+		if layout.BaseX != nil {
+			baseX = *layout.BaseX
+		}
+		baseY := 0
+		if layout.BaseY != nil {
+			baseY = *layout.BaseY
+		}
+		gapX := 20
+		if layout.GapX != nil {
+			gapX = *layout.GapX
+		}
+		gapY := 40
+		if layout.GapY != nil {
+			gapY = *layout.GapY
+		}
+
+		if layout.WindowWidth != nil {
+			w := *layout.WindowWidth
+			cfg.WindowWidth = &w
+		}
+		if layout.WindowHeight != nil {
+			h := *layout.WindowHeight
+			cfg.WindowHeight = &h
+		}
+
+		cellW := 480
+		cellH := 320
+		if cfg.WindowWidth != nil && *cfg.WindowWidth > 0 {
+			cellW = *cfg.WindowWidth
+		}
+		if cfg.WindowHeight != nil && *cfg.WindowHeight > 0 {
+			cellH = *cfg.WindowHeight
+		}
+
+		row := index / cols
+		col := index % cols
+		x := baseX + col*(cellW+gapX)
+		y := baseY + row*(cellH+gapY)
+		cfg.WindowX = &x
+		cfg.WindowY = &y
+		return &cfg
 	}
-	gapX := 20
+
+ 	// Tile mode: strict-fit grid to prevent overlap.
+	screenW := 1920
+	if layout.ScreenWidth != nil && *layout.ScreenWidth > 0 {
+		screenW = *layout.ScreenWidth
+	}
+	screenH := 1080
+	if layout.ScreenHeight != nil && *layout.ScreenHeight > 0 {
+		screenH = *layout.ScreenHeight
+	}
+	paddingX := 8
+	if layout.PaddingX != nil {
+		paddingX = *layout.PaddingX
+	}
+	paddingY := 8
+	if layout.PaddingY != nil {
+		paddingY = *layout.PaddingY
+	}
+	gapX := 8
 	if layout.GapX != nil {
 		gapX = *layout.GapX
 	}
-	gapY := 40
+	gapY := 8
 	if layout.GapY != nil {
 		gapY = *layout.GapY
 	}
-
-	// Determine window size used for grid computation.
-	// If the request explicitly overrides width/height, apply them.
-	if layout.WindowWidth != nil {
-		w := *layout.WindowWidth
-		cfg.WindowWidth = &w
+	frameMarginX := 16
+	if layout.FrameMarginX != nil {
+		frameMarginX = *layout.FrameMarginX
 	}
-	if layout.WindowHeight != nil {
-		h := *layout.WindowHeight
-		cfg.WindowHeight = &h
+	frameMarginY := 40
+	if layout.FrameMarginY != nil {
+		frameMarginY = *layout.FrameMarginY
 	}
 
-	cellW := 480
-	cellH := 320
-	if cfg.WindowWidth != nil && *cfg.WindowWidth > 0 {
-		cellW = *cfg.WindowWidth
+	cols := layout.Columns
+	if cols <= 0 {
+		cols = int(math.Ceil(math.Sqrt(float64(total))))
 	}
-	if cfg.WindowHeight != nil && *cfg.WindowHeight > 0 {
-		cellH = *cfg.WindowHeight
+	if cols < 1 {
+		cols = 1
+	}
+	if cols > total {
+		cols = total
+	}
+	rows := int(math.Ceil(float64(total) / float64(cols)))
+	if rows < 1 {
+		rows = 1
 	}
 
-	row := 0
-	col := 0
-	if index > 0 {
-		row = index / cols
-		col = index % cols
+	usableW := screenW - 2*paddingX
+	usableH := screenH - 2*paddingY
+	if usableW < 200 {
+		usableW = 200
+	}
+	if usableH < 160 {
+		usableH = 160
 	}
 
-	x := baseX + col*(cellW+gapX)
-	y := baseY + row*(cellH+gapY)
+	tileW := (usableW - (cols-1)*gapX) / cols
+	tileH := (usableH - (rows-1)*gapY) / rows
+	if tileW < 160 {
+		tileW = 160
+	}
+	if tileH < 120 {
+		tileH = 120
+	}
 
-	// Assign per-device coordinates.
+	windowW := tileW - frameMarginX
+	windowH := tileH - frameMarginY
+	if windowW < 120 {
+		windowW = 120
+	}
+	if windowH < 100 {
+		windowH = 100
+	}
+
+	if layout.WindowWidth != nil && *layout.WindowWidth > 0 {
+		windowW = *layout.WindowWidth
+	}
+	if layout.WindowHeight != nil && *layout.WindowHeight > 0 {
+		windowH = *layout.WindowHeight
+	}
+
+	row := index / cols
+	col := index % cols
+	x := paddingX + col*(tileW+gapX)
+	y := paddingY + row*(tileH+gapY)
+
+	maxX := screenW - windowW
+	maxY := screenH - windowH
+	if x > maxX {
+		x = maxX
+	}
+	if y > maxY {
+		y = maxY
+	}
+	if x < 0 {
+		x = 0
+	}
+	if y < 0 {
+		y = 0
+	}
+
+	w := windowW
+	h := windowH
+	cfg.WindowWidth = &w
+	cfg.WindowHeight = &h
 	cfg.WindowX = &x
 	cfg.WindowY = &y
 
