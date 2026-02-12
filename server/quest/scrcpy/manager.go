@@ -3,19 +3,24 @@ package scrcpy
 import (
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"vrcontrol/server/quest/model"
 )
 
+type sessionMeta struct {
+	pid  int
+	pgid int
+	job  uintptr
+}
+
 // Manager manages scrcpy processes and sessions
 type Manager struct {
 	sessions map[string]*model.DeviceScrcpySession
+	meta     map[string]*sessionMeta
 	mu       sync.RWMutex
 }
 
@@ -23,6 +28,7 @@ type Manager struct {
 func NewManager() *Manager {
 	return &Manager{
 		sessions: make(map[string]*model.DeviceScrcpySession),
+		meta:     make(map[string]*sessionMeta),
 	}
 }
 
@@ -82,11 +88,7 @@ func (m *Manager) StartScrcpy(deviceSerial string, deviceID string, config *mode
 	args := m.buildScrcpyArgs(deviceSerial, config)
 
 	cmd := exec.Command("scrcpy", args...)
-
-	// Set process attributes to run detached
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,
-	}
+	setCmdAttributes(cmd)
 
 	// Start process
 	if err := cmd.Start(); err != nil {
@@ -97,6 +99,14 @@ func (m *Manager) StartScrcpy(deviceSerial string, deviceID string, config *mode
 	pid := cmd.Process.Pid
 	log.Printf("Started scrcpy for device %s (PID: %d)", deviceID, pid)
 
+	meta := &sessionMeta{pid: pid}
+	if err := afterStart(meta, cmd); err != nil {
+		// Best-effort cleanup.
+		_ = cmd.Process.Kill()
+		log.Printf("Failed to finalize scrcpy start for device %s (PID: %d): %v", deviceID, pid, err)
+		return fmt.Errorf("failed to start scrcpy: %w", err)
+	}
+
 	// Create session record
 	session := &model.DeviceScrcpySession{
 		DeviceID:  deviceID,
@@ -105,6 +115,7 @@ func (m *Manager) StartScrcpy(deviceSerial string, deviceID string, config *mode
 		IsRunning: true,
 	}
 	m.sessions[deviceID] = session
+	m.meta[deviceID] = meta
 
 	// Monitor process in background
 	go m.monitorProcess(deviceID, cmd)
@@ -114,33 +125,38 @@ func (m *Manager) StartScrcpy(deviceSerial string, deviceID string, config *mode
 
 // StopScrcpy stops a scrcpy session for a device
 func (m *Manager) StopScrcpy(deviceID string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
+	// Avoid holding the manager lock while we potentially wait/kill.
+	m.mu.RLock()
 	session, exists := m.sessions[deviceID]
 	if !exists {
+		m.mu.RUnlock()
 		return fmt.Errorf("no scrcpy session found for device %s", deviceID)
 	}
 
 	if !session.IsRunning {
+		m.mu.RUnlock()
 		return fmt.Errorf("scrcpy session for device %s is not running", deviceID)
 	}
+	meta := m.meta[deviceID]
+	m.mu.RUnlock()
 
-	// Kill process
-	process, err := findProcess(session.ProcessID)
-	if err != nil {
-		log.Printf("Failed to find process %d: %v", session.ProcessID, err)
+	if meta == nil {
+		meta = &sessionMeta{pid: session.ProcessID}
+	}
+
+	if err := stop(meta); err != nil {
+		log.Printf("Failed to stop scrcpy for device %s (PID: %d): %v", deviceID, meta.pid, err)
+		return fmt.Errorf("failed to stop scrcpy: %w", err)
+	}
+
+	m.mu.Lock()
+	if session, exists := m.sessions[deviceID]; exists {
 		session.IsRunning = false
-		return fmt.Errorf("failed to find process: %w", err)
 	}
+	delete(m.meta, deviceID)
+	m.mu.Unlock()
 
-	if err := process.Kill(); err != nil {
-		log.Printf("Failed to kill process %d: %v", session.ProcessID, err)
-		return fmt.Errorf("failed to kill process: %w", err)
-	}
-
-	session.IsRunning = false
-	log.Printf("Stopped scrcpy for device %s (PID: %d)", deviceID, session.ProcessID)
+	log.Printf("Stopped scrcpy for device %s (PID: %d)", deviceID, meta.pid)
 	return nil
 }
 
@@ -163,8 +179,7 @@ func (m *Manager) RefreshSessions() {
 
 	for _, session := range m.sessions {
 		if session.IsRunning {
-			_, err := findProcess(session.ProcessID)
-			if err != nil {
+			if !processExists(session.ProcessID) {
 				session.IsRunning = false
 				log.Printf("Session for device %s is no longer running", session.DeviceID)
 			}
@@ -251,17 +266,8 @@ func (m *Manager) monitorProcess(deviceID string, cmd *exec.Cmd) {
 		session.IsRunning = false
 		log.Printf("Scrcpy process ended for device %s (PID: %d)", deviceID, session.ProcessID)
 	}
-}
-
-// findProcess finds a process by PID
-func findProcess(pid int) (*os.Process, error) {
-	// On Windows, we try to open a handle to check if process exists
-	handle, err := syscall.OpenProcess(syscall.PROCESS_QUERY_INFORMATION, false, uint32(pid))
-	if err != nil {
-		return nil, err
+	if meta, exists := m.meta[deviceID]; exists {
+		cleanupAfterExit(meta)
+		delete(m.meta, deviceID)
 	}
-	syscall.CloseHandle(handle)
-
-	// Process exists, return the process object
-	return os.FindProcess(pid)
 }
