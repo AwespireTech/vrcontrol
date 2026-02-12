@@ -1,11 +1,13 @@
 package scrcpy
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os/exec"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"vrcontrol/server/quest/model"
@@ -93,7 +95,7 @@ func (m *Manager) StartScrcpy(deviceSerial string, deviceID string, config *mode
 	// Start process
 	if err := cmd.Start(); err != nil {
 		log.Printf("Failed to start scrcpy for device %s: %v", deviceID, err)
-		return fmt.Errorf("failed to start scrcpy: %w", err)
+		return fmt.Errorf("failed to start scrcpy: %w", enrichStartError(err))
 	}
 
 	pid := cmd.Process.Pid
@@ -270,4 +272,26 @@ func (m *Manager) monitorProcess(deviceID string, cmd *exec.Cmd) {
 		cleanupAfterExit(meta)
 		delete(m.meta, deviceID)
 	}
+}
+
+func enrichStartError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	// On macOS, a quarantined binary (downloaded from the internet) or a noexec mount
+	// can surface as: `fork/exec ...: operation not permitted`.
+	if errors.Is(err, syscall.EPERM) {
+		path, _ := exec.LookPath("scrcpy")
+		if path == "" {
+			path = "scrcpy"
+		}
+		return fmt.Errorf(
+			"%w (operation not permitted). On macOS, try installing via Homebrew, or remove Gatekeeper quarantine: `xattr -dr com.apple.quarantine %s` (also ensure the file is executable and not on a noexec volume)",
+			err,
+			path,
+		)
+	}
+
+	return err
 }

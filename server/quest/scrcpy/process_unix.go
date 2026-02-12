@@ -10,10 +10,13 @@ import (
 )
 
 func setCmdAttributes(cmd *exec.Cmd) {
-	// Start scrcpy in its own process group/session so we can terminate the whole tree.
+	// Start scrcpy in its own process group so we can terminate the whole tree.
+	//
+	// NOTE: On macOS, using both Setsid and Setpgid together may surface as
+	// `fork/exec ...: operation not permitted` depending on how the runtime applies
+	// the attributes. Setpgid alone is enough for group termination.
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid: true,
-		Setsid:  true,
 	}
 }
 
