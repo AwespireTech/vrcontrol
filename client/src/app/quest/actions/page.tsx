@@ -5,7 +5,7 @@ import { QUEST_ACTION_TYPES, type QuestAction, QuestDevice } from "@/services/qu
 import { getDisplayName } from "@/lib/utils/device"
 import QuestPageShell from "@/components/quest/quest-page-shell"
 import Button from "@/components/button"
-import QuestActionExecuteModal from "@/components/quest/quest-action-execute-modal"
+import QuestDeviceSelectionModal from "@/components/quest/quest-device-selection-modal"
 
 const getActionTypeText = (type: string) => {
   switch (type) {
@@ -251,9 +251,10 @@ export default function ActionsPage() {
         </div>
       )}
 
-      <QuestActionExecuteModal
+      <QuestDeviceSelectionModal
         open={showExecuteModal && !!selectedAction}
-        actionName={selectedAction?.name || ""}
+        title={`執行動作: ${selectedAction?.name || ""}`}
+        confirmText="執行"
         targets={executeTargets}
         selectedIds={selectedDevices}
         onSelectedIdsChange={setSelectedDevices}

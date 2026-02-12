@@ -8,7 +8,7 @@ import { QUEST_DEVICE_STATUS, type QuestAction, type QuestDevice } from "@/servi
 import { getDisplayName } from "@/lib/utils/device"
 import type { PlayerData, RoomInfoData } from "@/interfaces/room.interface"
 import QuestPageShell from "@/components/quest/quest-page-shell"
-import QuestActionExecuteModal from "@/components/quest/quest-action-execute-modal"
+import QuestDeviceSelectionModal from "@/components/quest/quest-device-selection-modal"
 
 const TotalChapters = 11
 
@@ -41,9 +41,11 @@ export default function RoomControlPage() {
 
   const [actions, setActions] = useState<QuestAction[]>([])
   const [selectedActionId, setSelectedActionId] = useState<string>("")
-  const [showExecuteModal, setShowExecuteModal] = useState(false)
-  const [selectedActionDeviceIds, setSelectedActionDeviceIds] = useState<string[]>([])
+  const [batchModalOpen, setBatchModalOpen] = useState(false)
+  const [batchMode, setBatchMode] = useState<"action" | "monitor">("action")
+  const [batchSelectedDeviceIds, setBatchSelectedDeviceIds] = useState<string[]>([])
   const [executePending, setExecutePending] = useState(false)
+  const [batchMonitorPending, setBatchMonitorPending] = useState(false)
 
   const playerByDeviceId = useMemo(() => {
     return new Map(playerData.map((player) => [player.device_id, player]))
@@ -360,28 +362,49 @@ export default function RoomControlPage() {
     return roomDeviceIds.length > 0 ? roomDeviceIds : displayDeviceIds
   }, [displayDeviceIds, roomDeviceIds])
 
-  const handleConfirmExecuteAction = async () => {
-    if (!selectedAction) return
-    if (selectedActionDeviceIds.length === 0) return
-    if (executePending) return
+  const handleConfirmBatch = async () => {
+    if (batchSelectedDeviceIds.length === 0) return
 
-    setExecutePending(true)
+    if (batchMode === "action") {
+      if (!selectedAction) return
+      if (executePending) return
+      setExecutePending(true)
+      try {
+        const result = await actionApi.executeBatch({
+          action_id: selectedAction.action_id,
+          device_ids: batchSelectedDeviceIds,
+          max_workers: 5,
+        })
+
+        alert(`批次執行完成\n成功: ${result.success_count}\n失敗: ${result.failed_count}`)
+
+        setBatchModalOpen(false)
+        setBatchSelectedDeviceIds([])
+      } catch (error) {
+        console.error("Failed to execute action:", error)
+        alert("執行失敗，請稍後再試")
+      } finally {
+        setExecutePending(false)
+      }
+      return
+    }
+
+    if (batchMonitorPending) return
+    setBatchMonitorPending(true)
     try {
-      const result = await actionApi.executeBatch({
-        action_id: selectedAction.action_id,
-        device_ids: selectedActionDeviceIds,
-        max_workers: 5,
-      })
+      const result = await scrcpyApi.startBatch({ device_ids: batchSelectedDeviceIds })
 
-      alert(`批次執行完成\n成功: ${result.success_count}\n失敗: ${result.failed_count}`)
+      alert(
+        `批次監看完成\n成功: ${result.success_count}\n失敗: ${result.failed_count}`,
+      )
 
-      setShowExecuteModal(false)
-      setSelectedActionDeviceIds([])
+      setBatchModalOpen(false)
+      setBatchSelectedDeviceIds([])
     } catch (error) {
-      console.error("Failed to execute action:", error)
-      alert("執行失敗，請稍後再試")
+      console.error("Failed to start scrcpy batch:", error)
+      alert("批次監看失敗，請稍後再試")
     } finally {
-      setExecutePending(false)
+      setBatchMonitorPending(false)
     }
   }
 
@@ -437,67 +460,98 @@ export default function RoomControlPage() {
     >
       <div className="grid grid-cols-1 gap-6">
         <div className="space-y-6">
-          <div className="surface-card p-6">
-            <h2 className="mb-4 text-xl font-bold text-foreground">強制移動</h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-foreground/70">Force all move to chapter</span>
-              <select
-                id="moveSelect"
-                className={`ui-select mx-2 max-h-40 place-self-center overflow-y-auto px-2 py-1 text-center ${
-                  selectedOption === "" ? "text-foreground/50" : ""
-                }`}
-                value={selectedOption}
-                onChange={(e) => setSelectedOption(e.target.value)}
-              >
-                <option value="" className="text-foreground/50"></option>
-                {options.map((option, index) => (
-                  <option key={index} value={option} className="text-foreground">
-                    {option}
-                  </option>
-                ))}
-              </select>
-              <Button
-                disabled={selectedOption === ""}
-                loading={forceMovePending}
-                onClick={handleForceAllMove}
-              >
-                Go
-              </Button>
-              {moveState === "success" && <span className="text-success">已送出指令</span>}
-              {moveState === "failed" && <span className="text-danger">送出失敗，請稍後再試</span>}
-            </div>
-          </div>
+          <div className="surface-card space-y-5 p-6">
+            <h2 className="text-xl font-bold text-foreground">房間控制</h2>
 
-          <div className="surface-card p-6">
-            <h2 className="mb-4 text-xl font-bold text-foreground">動作執行</h2>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-foreground/70">Action</span>
-              <select
-                className={`ui-select mx-2 max-w-[320px] px-2 py-1 ${
-                  selectedActionId === "" ? "text-foreground/50" : ""
-                }`}
-                value={selectedActionId}
-                onChange={(e) => setSelectedActionId(e.target.value)}
-              >
-                <option value="" className="text-foreground/50"></option>
-                {actions.map((action) => (
-                  <option key={action.action_id} value={action.action_id} className="text-foreground">
-                    {action.name}
-                  </option>
-                ))}
-              </select>
-              <Button
-                disabled={!selectedAction}
-                onClick={() => {
-                  if (!selectedAction) return
-                  setShowExecuteModal(true)
-                }}
-              >
-                執行
-              </Button>
-              {actions.length === 0 ? (
-                <span className="text-xs text-foreground/50">尚無動作（請先到動作管理建立）</span>
-              ) : null}
+            <div className="space-y-2">
+              <div className="text-sm font-semibold text-foreground">強制移動（全部）</div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-foreground/70">Force all move to chapter</span>
+                <select
+                  id="moveSelect"
+                  className={`ui-select mx-2 max-h-40 place-self-center overflow-y-auto px-2 py-1 text-center ${
+                    selectedOption === "" ? "text-foreground/50" : ""
+                  }`}
+                  value={selectedOption}
+                  onChange={(e) => setSelectedOption(e.target.value)}
+                >
+                  <option value="" className="text-foreground/50"></option>
+                  {options.map((option, index) => (
+                    <option key={index} value={option} className="text-foreground">
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  disabled={selectedOption === ""}
+                  loading={forceMovePending}
+                  onClick={handleForceAllMove}
+                >
+                  Go
+                </Button>
+                {moveState === "success" && <span className="text-success">已送出指令</span>}
+                {moveState === "failed" && (
+                  <span className="text-danger">送出失敗，請稍後再試</span>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-border pt-4">
+              <div className="text-sm font-semibold text-foreground">動作執行（批次）</div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="text-foreground/70">Action</span>
+                <select
+                  className={`ui-select mx-2 max-w-[320px] px-2 py-1 ${
+                    selectedActionId === "" ? "text-foreground/50" : ""
+                  }`}
+                  value={selectedActionId}
+                  onChange={(e) => setSelectedActionId(e.target.value)}
+                >
+                  <option value="" className="text-foreground/50"></option>
+                  {actions.map((action) => (
+                    <option
+                      key={action.action_id}
+                      value={action.action_id}
+                      className="text-foreground"
+                    >
+                      {action.name}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  disabled={!selectedAction}
+                  onClick={() => {
+                    if (!selectedAction) return
+                    setBatchMode("action")
+                    setBatchSelectedDeviceIds([])
+                    setBatchModalOpen(true)
+                  }}
+                >
+                  選擇設備並執行
+                </Button>
+                {actions.length === 0 ? (
+                  <span className="text-xs text-foreground/50">尚無動作（請先到動作管理建立）</span>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="border-t border-border pt-4">
+              <div className="text-sm font-semibold text-foreground">設備監看（批次）</div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="text-foreground/70">scrcpy</span>
+                <Button
+                  onClick={() => {
+                    setBatchMode("monitor")
+                    setBatchSelectedDeviceIds([])
+                    setBatchModalOpen(true)
+                  }}
+                >
+                  選擇設備並批次監看
+                </Button>
+                <span className="text-xs text-foreground/50">
+                  只可選擇在線設備
+                </span>
+              </div>
             </div>
           </div>
 
@@ -611,9 +665,14 @@ export default function RoomControlPage() {
         </div>
       </div>
 
-      <QuestActionExecuteModal
-        open={showExecuteModal && !!selectedAction}
-        actionName={selectedAction?.name || ""}
+      <QuestDeviceSelectionModal
+        open={batchModalOpen}
+        title={
+          batchMode === "action"
+            ? `執行動作: ${selectedAction?.name || ""}`
+            : "批次監看設備"
+        }
+        confirmText={batchMode === "action" ? "執行" : "監看"}
         targets={modalDeviceIds.map((deviceId) => {
           const device = deviceMap.get(deviceId)
           return {
@@ -624,13 +683,13 @@ export default function RoomControlPage() {
             isOnline: device?.status === "online",
           }
         })}
-        selectedIds={selectedActionDeviceIds}
-        onSelectedIdsChange={setSelectedActionDeviceIds}
-        confirmPending={executePending}
-        onConfirm={handleConfirmExecuteAction}
+        selectedIds={batchSelectedDeviceIds}
+        onSelectedIdsChange={setBatchSelectedDeviceIds}
+        confirmPending={batchMode === "action" ? executePending : batchMonitorPending}
+        onConfirm={handleConfirmBatch}
         onClose={() => {
-          setShowExecuteModal(false)
-          setSelectedActionDeviceIds([])
+          setBatchModalOpen(false)
+          setBatchSelectedDeviceIds([])
         }}
       />
     </QuestPageShell>
