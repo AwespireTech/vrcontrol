@@ -393,17 +393,45 @@ export default function RoomControlPage() {
 
     // Keep windows in a stable order by preserving the modal target ordering.
     const orderedDeviceIds = modalDeviceIds.filter((id) => batchSelectedDeviceIds.includes(id))
+    if (orderedDeviceIds.length === 0) return
+
+    const buildAutoLayout = (count: number) => {
+      const screenW =
+        typeof window !== "undefined"
+          ? window.screen?.availWidth || window.innerWidth || 1920
+          : 1920
+      const screenH =
+        typeof window !== "undefined"
+          ? window.screen?.availHeight || window.innerHeight || 1080
+          : 1080
+
+      const columns = Math.max(1, Math.ceil(Math.sqrt(count)))
+      const rows = Math.max(1, Math.ceil(count / columns))
+
+      const baseX = 0
+      const baseY = 0
+      const gapX = 0
+      const gapY = 0
+
+      const width = Math.max(960, Math.floor((screenW - gapX * (columns - 1)) / columns))
+      const height = Math.max(540, Math.floor((screenH - gapY * (rows - 1)) / rows))
+
+      return {
+        columns,
+        base_x: baseX,
+        base_y: baseY,
+        gap_x: gapX,
+        gap_y: gapY,
+        window_width: width,
+        window_height: height,
+      }
+    }
+
     setBatchMonitorPending(true)
     try {
       const result = await scrcpyApi.startBatch({
         device_ids: orderedDeviceIds,
-        layout: {
-          columns: 2,
-          gap_x: 0,
-          gap_y: 0,
-          window_width: 960,
-          window_height: 540,
-        },
+        layout: buildAutoLayout(orderedDeviceIds.length),
       })
 
       alert(
