@@ -8,19 +8,26 @@ import Button from "./button"
 const PlayerInfo = ({
   player,
   handleChangeSequence,
+  handleForceMove,
+  forceMoveOptions,
   displayName,
   adbStatus,
   sequenceLoading,
+  forceMoveLoading,
 }: {
   player: PlayerData
   handleChangeSequence: (player: string, seq: number) => void
+  handleForceMove?: (player: string, dest: string) => void
+  forceMoveOptions?: string[]
   displayName?: string
   adbStatus?: "online" | "offline" | "connecting" | "error" | "disconnected"
   sequenceLoading?: boolean
+  forceMoveLoading?: boolean
 }) => {
   dayjs.extend(isSameOrBefore)
 
   const [numberInput, setNumberInput] = useState(player.sequence)
+  const [forceMoveDest, setForceMoveDest] = useState("")
 
   const lastUpdateTime = dayjs(player.last_update)
 
@@ -32,6 +39,8 @@ const PlayerInfo = ({
   }
 
   const isStale = lastUpdateTime.isSameOrBefore(currTime.subtract(5, "second"))
+  const gridColsClass = handleForceMove ? "lg:grid-cols-6" : "lg:grid-cols-5"
+  const messageColSpanClass = handleForceMove ? "lg:col-span-6" : "lg:col-span-5"
 
   return (
     <div
@@ -39,7 +48,9 @@ const PlayerInfo = ({
       aria-label={`${displayName || player.device_id} 玩家資訊`}
       data-adb-status={adbStatus || "unknown"}
     >
-      <div className="grid grid-cols-1 gap-4 text-xs text-foreground/70 sm:grid-cols-2 lg:grid-cols-5">
+      <div
+        className={`grid grid-cols-1 gap-4 text-xs text-foreground/70 sm:grid-cols-2 ${gridColsClass}`}
+      >
         <div>
           <div className="text-[11px] uppercase tracking-wide text-foreground/50">玩家狀態</div>
           <div className="mt-1 flex items-center leading-5">
@@ -77,6 +88,38 @@ const PlayerInfo = ({
             </Button>
           </div>
         </div>
+        {handleForceMove && (
+          <div>
+            <div className="text-[11px] uppercase tracking-wide text-foreground/50">
+              Force Move
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-2">
+              <select
+                className={`ui-select w-20 px-2 py-1 text-center ${
+                  forceMoveDest === "" ? "text-foreground/50" : ""
+                }`}
+                value={forceMoveDest}
+                onChange={(e) => setForceMoveDest(e.target.value)}
+                disabled={forceMoveLoading}
+              >
+                <option value="" className="text-foreground/50"></option>
+                {(forceMoveOptions || []).map((option) => (
+                  <option key={option} value={option} className="text-foreground">
+                    {option}
+                  </option>
+                ))}
+              </select>
+              <Button
+                className="ui-btn-xs"
+                loading={forceMoveLoading}
+                disabled={forceMoveDest === ""}
+                onClick={() => handleForceMove(player.device_id, forceMoveDest)}
+              >
+                Go
+              </Button>
+            </div>
+          </div>
+        )}
         <div>
           <div className="text-[11px] uppercase tracking-wide text-foreground/50">
             Head Position
@@ -93,7 +136,7 @@ const PlayerInfo = ({
             {lastUpdateTime.format("YYYY/MM/DD HH:mm:ss")}
           </div>
         </div>
-        <div className="sm:col-span-2 lg:col-span-5">
+        <div className={`sm:col-span-2 ${messageColSpanClass}`}>
           <div className="text-[11px] uppercase tracking-wide text-foreground/50">Message</div>
           <div className="mt-1 text-foreground/80">{player.message || "—"}</div>
         </div>

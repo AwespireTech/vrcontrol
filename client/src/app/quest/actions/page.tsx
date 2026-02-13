@@ -5,6 +5,7 @@ import { QUEST_ACTION_TYPES, type QuestAction, QuestDevice } from "@/services/qu
 import { getDisplayName } from "@/lib/utils/device"
 import QuestPageShell from "@/components/quest/quest-page-shell"
 import Button from "@/components/button"
+import QuestDeviceSelectionModal from "@/components/quest/quest-device-selection-modal"
 
 const getActionTypeText = (type: string) => {
   switch (type) {
@@ -144,16 +145,13 @@ export default function ActionsPage() {
     }
   }
 
-  const toggleDeviceSelection = (deviceId: string) => {
-    setSelectedDevices((prev) =>
-      prev.includes(deviceId) ? prev.filter((id) => id !== deviceId) : [...prev, deviceId],
-    )
-  }
-
-  const selectAllDevices = () => {
-    const onlineDevices = devices.filter((d) => d.status === "online")
-    setSelectedDevices(onlineDevices.map((d) => d.device_id))
-  }
+  const executeTargets = devices.map((device) => ({
+    id: device.device_id,
+    label: `${getDisplayName(device)}`,
+    ip: device.ip,
+    status: device.status,
+    isOnline: device.status === "online",
+  }))
 
   if (loading) {
     return (
@@ -253,80 +251,21 @@ export default function ActionsPage() {
         </div>
       )}
 
-      {/* 執行動作模態框 */}
-      {showExecuteModal && selectedAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90">
-          <div className="surface-card mx-4 max-h-[80vh] w-full max-w-2xl overflow-y-auto p-6">
-            <h2 className="mb-4 text-2xl font-bold text-foreground">
-              執行動作: {selectedAction.name}
-            </h2>
-
-            <div className="mb-4">
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-sm font-semibold text-foreground">
-                  選擇要執行的設備 ({selectedDevices.length} 個已選)
-                </p>
-                <button
-                  onClick={selectAllDevices}
-                  className="text-sm text-primary hover:text-primary/80"
-                >
-                  全選在線設備
-                </button>
-              </div>
-
-              <div className="surface-panel max-h-60 space-y-2 overflow-y-auto p-2">
-                {devices.map((device) => (
-                  <label
-                    key={device.device_id}
-                    className={`flex cursor-pointer items-center gap-3 rounded p-2 hover:bg-surface ${
-                      device.status !== "online" ? "opacity-50" : ""
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedDevices.includes(device.device_id)}
-                      onChange={() => toggleDeviceSelection(device.device_id)}
-                      disabled={device.status !== "online"}
-                      className="h-4 w-4"
-                    />
-                    <span className="flex-1 text-sm text-foreground">
-                      {getDisplayName(device)} ({device.ip})
-                    </span>
-                    <span
-                      className={`ui-badge ${
-                        device.status === "online" ? "ui-badge-success" : "ui-badge-muted"
-                      }`}
-                    >
-                      {device.status}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowExecuteModal(false)
-                  setSelectedAction(null)
-                  setSelectedDevices([])
-                }}
-                className="ui-btn ui-btn-md ui-btn-muted"
-              >
-                取消
-              </button>
-              <Button
-                onClick={handleConfirmExecute}
-                disabled={selectedDevices.length === 0 || executePending}
-                loading={executePending}
-                className="ui-btn-md ui-btn-primary"
-              >
-                執行 ({selectedDevices.length} 個設備)
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      <QuestDeviceSelectionModal
+        open={showExecuteModal && !!selectedAction}
+        title={`執行動作: ${selectedAction?.name || ""}`}
+        confirmText="執行"
+        targets={executeTargets}
+        selectedIds={selectedDevices}
+        onSelectedIdsChange={setSelectedDevices}
+        confirmPending={executePending}
+        onConfirm={handleConfirmExecute}
+        onClose={() => {
+          setShowExecuteModal(false)
+          setSelectedAction(null)
+          setSelectedDevices([])
+        }}
+      />
     </QuestPageShell>
   )
 }
