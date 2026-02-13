@@ -75,7 +75,7 @@ func (p *Player) read() {
 
 		message = bytes.TrimSpace(bytes.Replace(message, Newline, Space, -1))
 		if p.Room == nil {
-			log.Printf("Player %s is in standby, message receeived: %s", p.DeiviceID, string(message))
+			// log.Printf("Player %s is in standby, message receeived: %s", p.DeiviceID, string(message))
 			// If the player is not in a room, we just log the message and continue
 			continue
 		}
