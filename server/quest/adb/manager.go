@@ -357,6 +357,46 @@ type ConnectResult struct {
 	Error   error
 }
 
+// ResolveConnectedDevice finds a connected ADB device by exact serial/target.
+// This is used to keep per-device connection mapping deterministic (e.g. ip:port).
+func (m *ADBManager) ResolveConnectedDevice(target string, retries int, retryDelay time.Duration) (*Device, error) {
+	if strings.TrimSpace(target) == "" {
+		return nil, fmt.Errorf("target is required")
+	}
+
+	if retries < 1 {
+		retries = 1
+	}
+
+	if retryDelay <= 0 {
+		retryDelay = 200 * time.Millisecond
+	}
+
+	for attempt := 1; attempt <= retries; attempt++ {
+		devices, err := m.GetDevices()
+		if err != nil {
+			if attempt == retries {
+				return nil, err
+			}
+			time.Sleep(retryDelay)
+			continue
+		}
+
+		for _, d := range devices {
+			if d.Serial == target && d.State == "device" {
+				device := d
+				return &device, nil
+			}
+		}
+
+		if attempt < retries {
+			time.Sleep(retryDelay)
+		}
+	}
+
+	return nil, fmt.Errorf("device %s not found in adb device list", target)
+}
+
 // parseDeviceList 解析設備列表
 func parseDeviceList(output string) []Device {
 	var devices []Device

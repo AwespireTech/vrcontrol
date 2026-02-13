@@ -275,6 +275,12 @@ func (s *DeviceService) ConnectDevice(deviceID string) error {
 		return err
 	}
 
+	port := device.Port
+	if port == 0 {
+		port = 5555
+	}
+	target := fmt.Sprintf("%s:%d", device.IP, port)
+
 	// 使用者手動連接：清除自動重連停用/重試狀態
 	device.AutoReconnectDisabledReason = ""
 	device.AutoReconnectRetryCount = 0
@@ -286,26 +292,23 @@ func (s *DeviceService) ConnectDevice(deviceID string) error {
 	s.deviceRepo.Update(device)
 
 	// 執行連接
-	if err := s.adbManager.Connect(device.IP, device.Port); err != nil {
+	if err := s.adbManager.Connect(device.IP, port); err != nil {
 		device.Status = model.DeviceStatusError
 		s.deviceRepo.Update(device)
 		return fmt.Errorf("failed to connect: %w", err)
 	}
 
-	// 獲取設備資訊
-	devices, err := s.adbManager.GetDevices()
+	// 關鍵：先綁定到本設備 target，避免誤用其他設備 serial。
+	device.Serial = target
+
+	// 只匹配該設備自己的 serial（ip:port），避免抓到其他在線設備。
+	connected, err := s.adbManager.ResolveConnectedDevice(target, 5, 300*time.Millisecond)
 	if err != nil {
-		log.Printf("Warning: failed to get devices after connect: %v", err)
+		log.Printf("Warning: connected target %s not yet resolvable in adb list: %v", target, err)
 	} else {
-		// 找到對應的設備並更新 serial
-		for _, d := range devices {
-			if d.State == "device" {
-				device.Serial = d.Serial
-				if d.Model != "" {
-					device.Model = d.Model
-				}
-				break
-			}
+		device.Serial = connected.Serial
+		if connected.Model != "" {
+			device.Model = connected.Model
 		}
 	}
 

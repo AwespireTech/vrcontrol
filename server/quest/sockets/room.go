@@ -147,6 +147,7 @@ func (r *Room) Run() {
 				log.Panicln("ReadyToMove should be handled in Player")
 			case model.MessageTypeShotEvent:
 				// Broadcast the shot event to all players
+				senderIDKey := utils.NormalizeDeviceIDKey(playerMessage.ShotEvent.DeviceID)
 				eventMessage := model.EventMessage{
 					EventType: model.EventTypeShotEvent,
 					ShotEvent: &model.ShotEventMessage{
@@ -161,7 +162,7 @@ func (r *Room) Run() {
 					continue
 				}
 				for player := range r.Players {
-					if player == nil || player.DeiviceID == playerMessage.ShotEvent.DeviceID {
+					if player == nil || player.DeiviceID == senderIDKey {
 						continue
 					} else {
 						select {
@@ -174,6 +175,7 @@ func (r *Room) Run() {
 				}
 			case model.MessageTypeLantern:
 				// Broadcast the lantern event to all players
+				senderIDKey := utils.NormalizeDeviceIDKey(playerMessage.Latern.DeviceID)
 				eventMessage := model.EventMessage{
 					EventType: model.EventTypeLatern,
 					Latern: &model.LanternEventMessage{
@@ -188,7 +190,7 @@ func (r *Room) Run() {
 					continue
 				}
 				for player := range r.Players {
-					if player == nil || player.DeiviceID == playerMessage.Latern.DeviceID {
+					if player == nil || player.DeiviceID == senderIDKey {
 						continue
 					} else {
 						select {
@@ -358,8 +360,12 @@ func (r *Room) UpdateInfo(stop chan struct{}) {
 			//Send Player Position Info to all players
 			playerPostionInfos := make([]PlayerPositionInfo, 0, len(r.Players))
 			for player := range r.Players {
+				deviceIDForWire := player.RawDeviceID
+				if deviceIDForWire == "" {
+					deviceIDForWire = player.DeiviceID
+				}
 				playerPostionInfos = append(playerPostionInfos, PlayerPositionInfo{
-					DeviceID:          player.DeiviceID,
+					DeviceID:          deviceIDForWire,
 					HeadPosition:      player.HeadPosition,
 					HeadForward:       player.HeadForward,
 					LeftHandPosition:  player.LeftHandPosition,
