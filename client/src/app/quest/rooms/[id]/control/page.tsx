@@ -46,6 +46,7 @@ export default function RoomControlPage() {
   const [batchSelectedDeviceIds, setBatchSelectedDeviceIds] = useState<string[]>([])
   const [executePending, setExecutePending] = useState(false)
   const [batchMonitorPending, setBatchMonitorPending] = useState(false)
+  const [targetMonitorIndex, setTargetMonitorIndex] = useState(0)
 
   const playerByDeviceId = useMemo(() => {
     return new Map(playerData.map((player) => [player.device_id, player]))
@@ -390,9 +391,53 @@ export default function RoomControlPage() {
     }
 
     if (batchMonitorPending) return
+
+    // Keep windows in a stable order by preserving the modal target ordering.
+    const orderedDeviceIds = modalDeviceIds.filter((id) => batchSelectedDeviceIds.includes(id))
+    if (orderedDeviceIds.length === 0) return
+
+    const buildAutoLayout = (count: number) => {
+      const screenW =
+        typeof window !== "undefined"
+          ? window.screen?.availWidth || window.innerWidth || 1920
+          : 1920
+      const screenH =
+        typeof window !== "undefined"
+          ? window.screen?.availHeight || window.innerHeight || 1080
+          : 1080
+
+      const columns = Math.max(1, Math.ceil(Math.sqrt(count)))
+
+      const gapX = 4
+      const gapY = 16
+      const paddingX = 8
+      const paddingY = 8
+      const baseX = targetMonitorIndex * screenW
+      const baseY = 0
+
+      return {
+        mode: "tile" as const,
+        columns,
+        base_x: baseX,
+        base_y: baseY,
+        screen_width: screenW,
+        screen_height: screenH,
+        padding_x: paddingX,
+        padding_y: paddingY,
+        gap_x: gapX,
+        gap_y: gapY,
+        // Reserve extra space so window decorations do not cause overlap.
+        frame_margin_x: 16,
+        frame_margin_y: 40,
+      }
+    }
+
     setBatchMonitorPending(true)
     try {
-      const result = await scrcpyApi.startBatch({ device_ids: batchSelectedDeviceIds })
+      const result = await scrcpyApi.startBatch({
+        device_ids: orderedDeviceIds,
+        layout: buildAutoLayout(orderedDeviceIds.length),
+      })
 
       alert(
         `批次監看完成\n成功: ${result.success_count}\n失敗: ${result.failed_count}`,
@@ -539,6 +584,16 @@ export default function RoomControlPage() {
               <div className="text-sm font-semibold text-foreground">設備監看（批次）</div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <span className="text-foreground/70">scrcpy</span>
+                <select
+                  className="ui-select max-w-[200px] px-2 py-1"
+                  value={targetMonitorIndex}
+                  onChange={(e) => setTargetMonitorIndex(Number(e.target.value) || 0)}
+                >
+                  <option value={0}>顯示器 1（主螢幕）</option>
+                  <option value={1}>顯示器 2（右側）</option>
+                  <option value={2}>顯示器 3（更右側）</option>
+                  <option value={3}>顯示器 4（更右側）</option>
+                </select>
                 <Button
                   onClick={() => {
                     setBatchMode("monitor")

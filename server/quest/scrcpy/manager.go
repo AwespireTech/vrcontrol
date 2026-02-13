@@ -1,9 +1,9 @@
 package scrcpy
 
 import (
+	"errors"
 	"fmt"
 	"log"
-	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -13,9 +13,16 @@ import (
 	"vrcontrol/server/quest/model"
 )
 
+type sessionMeta struct {
+	pid  int
+	pgid int
+	job  uintptr
+}
+
 // Manager manages scrcpy processes and sessions
 type Manager struct {
 	sessions map[string]*model.DeviceScrcpySession
+	meta     map[string]*sessionMeta
 	mu       sync.RWMutex
 }
 
@@ -23,6 +30,7 @@ type Manager struct {
 func NewManager() *Manager {
 	return &Manager{
 		sessions: make(map[string]*model.DeviceScrcpySession),
+		meta:     make(map[string]*sessionMeta),
 	}
 }
 
@@ -69,7 +77,7 @@ func (m *Manager) CheckInstallation() *model.ScrcpySystemInfo {
 }
 
 // StartScrcpy starts a scrcpy session for a device
-func (m *Manager) StartScrcpy(deviceSerial string, deviceID string, config *model.ScrcpyConfig) error {
+func (m *Manager) StartScrcpy(deviceSerial string, deviceID string, displayName string, config *model.ScrcpyConfig) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -79,23 +87,27 @@ func (m *Manager) StartScrcpy(deviceSerial string, deviceID string, config *mode
 	}
 
 	// Build command
-	args := m.buildScrcpyArgs(deviceSerial, config)
+	args := m.buildScrcpyArgs(deviceSerial, deviceID, displayName, config)
 
 	cmd := exec.Command("scrcpy", args...)
-
-	// Set process attributes to run detached
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		CreationFlags: syscall.CREATE_NEW_PROCESS_GROUP,
-	}
+	setCmdAttributes(cmd)
 
 	// Start process
 	if err := cmd.Start(); err != nil {
 		log.Printf("Failed to start scrcpy for device %s: %v", deviceID, err)
-		return fmt.Errorf("failed to start scrcpy: %w", err)
+		return fmt.Errorf("failed to start scrcpy: %w", enrichStartError(err))
 	}
 
 	pid := cmd.Process.Pid
 	log.Printf("Started scrcpy for device %s (PID: %d)", deviceID, pid)
+
+	meta := &sessionMeta{pid: pid}
+	if err := afterStart(meta, cmd); err != nil {
+		// Best-effort cleanup.
+		_ = cmd.Process.Kill()
+		log.Printf("Failed to finalize scrcpy start for device %s (PID: %d): %v", deviceID, pid, err)
+		return fmt.Errorf("failed to start scrcpy: %w", err)
+	}
 
 	// Create session record
 	session := &model.DeviceScrcpySession{
@@ -105,6 +117,7 @@ func (m *Manager) StartScrcpy(deviceSerial string, deviceID string, config *mode
 		IsRunning: true,
 	}
 	m.sessions[deviceID] = session
+	m.meta[deviceID] = meta
 
 	// Monitor process in background
 	go m.monitorProcess(deviceID, cmd)
@@ -114,33 +127,38 @@ func (m *Manager) StartScrcpy(deviceSerial string, deviceID string, config *mode
 
 // StopScrcpy stops a scrcpy session for a device
 func (m *Manager) StopScrcpy(deviceID string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
+	// Avoid holding the manager lock while we potentially wait/kill.
+	m.mu.RLock()
 	session, exists := m.sessions[deviceID]
 	if !exists {
+		m.mu.RUnlock()
 		return fmt.Errorf("no scrcpy session found for device %s", deviceID)
 	}
 
 	if !session.IsRunning {
+		m.mu.RUnlock()
 		return fmt.Errorf("scrcpy session for device %s is not running", deviceID)
 	}
+	meta := m.meta[deviceID]
+	m.mu.RUnlock()
 
-	// Kill process
-	process, err := findProcess(session.ProcessID)
-	if err != nil {
-		log.Printf("Failed to find process %d: %v", session.ProcessID, err)
+	if meta == nil {
+		meta = &sessionMeta{pid: session.ProcessID}
+	}
+
+	if err := stop(meta); err != nil {
+		log.Printf("Failed to stop scrcpy for device %s (PID: %d): %v", deviceID, meta.pid, err)
+		return fmt.Errorf("failed to stop scrcpy: %w", err)
+	}
+
+	m.mu.Lock()
+	if session, exists := m.sessions[deviceID]; exists {
 		session.IsRunning = false
-		return fmt.Errorf("failed to find process: %w", err)
 	}
+	delete(m.meta, deviceID)
+	m.mu.Unlock()
 
-	if err := process.Kill(); err != nil {
-		log.Printf("Failed to kill process %d: %v", session.ProcessID, err)
-		return fmt.Errorf("failed to kill process: %w", err)
-	}
-
-	session.IsRunning = false
-	log.Printf("Stopped scrcpy for device %s (PID: %d)", deviceID, session.ProcessID)
+	log.Printf("Stopped scrcpy for device %s (PID: %d)", deviceID, meta.pid)
 	return nil
 }
 
@@ -163,8 +181,7 @@ func (m *Manager) RefreshSessions() {
 
 	for _, session := range m.sessions {
 		if session.IsRunning {
-			_, err := findProcess(session.ProcessID)
-			if err != nil {
+			if !processExists(session.ProcessID) {
 				session.IsRunning = false
 				log.Printf("Session for device %s is no longer running", session.DeviceID)
 			}
@@ -182,8 +199,21 @@ func (m *Manager) GetSession(deviceID string) (*model.DeviceScrcpySession, bool)
 }
 
 // buildScrcpyArgs builds the command line arguments for scrcpy
-func (m *Manager) buildScrcpyArgs(deviceSerial string, config *model.ScrcpyConfig) []string {
+func (m *Manager) buildScrcpyArgs(deviceSerial string, deviceID string, displayName string, config *model.ScrcpyConfig) []string {
 	args := []string{"-s", deviceSerial}
+
+	// Window title
+	// Prefer the device alias (displayName) so operators can quickly identify which
+	// headset they are mirroring.
+	if title := strings.TrimSpace(displayName); title != "" {
+		// Guard against control characters/newlines.
+		title = strings.ReplaceAll(title, "\n", " ")
+		title = strings.ReplaceAll(title, "\r", " ")
+		if id := strings.TrimSpace(deviceID); id != "" && id != title {
+			title = fmt.Sprintf("%s (%s)", title, id)
+		}
+		args = append(args, "--window-title", title)
+	}
 
 	// Video quality settings
 	if config.Bitrate != "" {
@@ -251,17 +281,30 @@ func (m *Manager) monitorProcess(deviceID string, cmd *exec.Cmd) {
 		session.IsRunning = false
 		log.Printf("Scrcpy process ended for device %s (PID: %d)", deviceID, session.ProcessID)
 	}
+	if meta, exists := m.meta[deviceID]; exists {
+		cleanupAfterExit(meta)
+		delete(m.meta, deviceID)
+	}
 }
 
-// findProcess finds a process by PID
-func findProcess(pid int) (*os.Process, error) {
-	// On Windows, we try to open a handle to check if process exists
-	handle, err := syscall.OpenProcess(syscall.PROCESS_QUERY_INFORMATION, false, uint32(pid))
-	if err != nil {
-		return nil, err
+func enrichStartError(err error) error {
+	if err == nil {
+		return nil
 	}
-	syscall.CloseHandle(handle)
 
-	// Process exists, return the process object
-	return os.FindProcess(pid)
+	// On macOS, a quarantined binary (downloaded from the internet) or a noexec mount
+	// can surface as: `fork/exec ...: operation not permitted`.
+	if errors.Is(err, syscall.EPERM) {
+		path, _ := exec.LookPath("scrcpy")
+		if path == "" {
+			path = "scrcpy"
+		}
+		return fmt.Errorf(
+			"%w (operation not permitted). On macOS, try installing via Homebrew, or remove Gatekeeper quarantine: `xattr -dr com.apple.quarantine %s` (also ensure the file is executable and not on a noexec volume)",
+			err,
+			path,
+		)
+	}
+
+	return err
 }
