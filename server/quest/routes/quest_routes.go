@@ -19,6 +19,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 	adbManager := adb.NewADBManager("", 30*time.Second)
 	pingManager := adb.NewPingManager(2 * time.Second)
 	scrcpyManager := scrcpy.NewManager()
+	scrcpyStreamManager := scrcpy.NewStreamManager()
 
 	// 初始化 Repositories
 	deviceRepo := repository.NewDeviceRepository(dataDir + "/quest_devices.json")
@@ -68,6 +69,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 	actionService := service.NewActionService(actionRepo, deviceRepo, adbManager)
 	monitoringService := service.NewMonitoringService(deviceRepo, pingManager, adbManager, preferenceRepo)
 	scrcpyService := service.NewScrcpyService(scrcpyManager, deviceRepo, scrcpyConfigRepo)
+	scrcpyStreamService := service.NewScrcpyStreamService(scrcpyStreamManager, deviceRepo, scrcpyConfigRepo)
 	preferenceService := service.NewPreferenceService(preferenceRepo)
 
 	// 啟動時以 ADB 清單校正在線狀態（僅更新 Status）
@@ -89,6 +91,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 	actionController := controller.NewActionController(actionService)
 	monitoringController := controller.NewMonitoringController(monitoringService)
 	scrcpyController := controller.NewScrcpyController(scrcpyService)
+	scrcpyStreamController := controller.NewScrcpyStreamController(scrcpyStreamService)
 	preferenceController := controller.NewPreferenceController(preferenceService)
 	controller.SetQuestRoomService(roomService)
 	controller.SetQuestDeviceService(deviceService)
@@ -183,6 +186,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 			scrcpyGroup.POST("/sessions/refresh", scrcpyController.RefreshSessions)
 			scrcpyGroup.GET("/config", scrcpyController.GetConfig)
 			scrcpyGroup.PUT("/config", scrcpyController.UpdateConfig)
+			scrcpyGroup.GET("/stream/:id", scrcpyStreamController.Stream)
 		}
 
 		// 使用者偏好路由

@@ -14,6 +14,7 @@ import {
 } from "@/services/quest-types"
 import QuestPageShell from "@/components/quest/quest-page-shell"
 import Button from "@/components/button"
+import { ScrcpyStreamPlayer } from "@/components/quest/scrcpy-stream-player"
 import {
   DEFAULT_BATCH_SIZE,
   DEFAULT_MAX_CONCURRENCY,
@@ -36,7 +37,7 @@ export default function DevicesPage() {
   const [countdown, setCountdown] = useState(DEFAULT_POLL_INTERVAL_SECONDS)
   const [roomUpdatingIds, setRoomUpdatingIds] = useState<Record<string, boolean>>({})
   const [deviceActionPending, setDeviceActionPending] = useState<
-    Record<string, "connect" | "disconnect" | "monitor" | "delete" | "execute">
+    Record<string, "connect" | "disconnect" | "monitor" | "stream" | "delete" | "execute">
   >({})
   const [isolationPending, setIsolationPending] = useState<Record<string, "create" | "update">>({})
   const [scrcpyStopPending, setScrcpyStopPending] = useState<Record<string, boolean>>({})
@@ -45,6 +46,8 @@ export default function DevicesPage() {
   // Scrcpy 相關狀態
   const [scrcpySystemInfo, setScrcpySystemInfo] = useState<ScrcpySystemInfo | null>(null)
   const [scrcpySessions, setScrcpySessions] = useState<ScrcpySession[]>([])
+  const [activeStreamDeviceId, setActiveStreamDeviceId] = useState<string | null>(null)
+  const [activeStreamDeviceName, setActiveStreamDeviceName] = useState<string>("")
 
   // 使用者偏好與狀態錯誤追蹤
   const [preference, setPreference] = useState<UserPreference | null>(null)
@@ -571,6 +574,32 @@ export default function DevicesPage() {
     }
   }
 
+  const handleStream = async (deviceId: string) => {
+    if (!scrcpySystemInfo?.installed) {
+      alert("Scrcpy 尚未安裝，請先安裝 Scrcpy")
+      return
+    }
+
+    if (deviceActionPending[deviceId]) return
+    setDeviceActionPending((prev) => ({ ...prev, [deviceId]: "stream" }))
+
+    try {
+      const device = devices.find((d) => d.device_id === deviceId)
+      setActiveStreamDeviceId(deviceId)
+      setActiveStreamDeviceName(device ? getDisplayName(device) : deviceId)
+    } catch (error: unknown) {
+      console.error("Failed to start stream:", error)
+      const message = error instanceof Error ? error.message : ""
+      alert(message || "啟動串流失敗，請稍後再試")
+    } finally {
+      setDeviceActionPending((prev) => {
+        const next = { ...prev }
+        delete next[deviceId]
+        return next
+      })
+    }
+  }
+
   const handleStopScrcpy = async (deviceId: string) => {
     if (scrcpyStopPending[deviceId]) return
     setScrcpyStopPending((prev) => ({ ...prev, [deviceId]: true }))
@@ -800,6 +829,21 @@ export default function DevicesPage() {
                       監看
                     </Button>
                   )}
+                  {isOnline && (
+                    <Button
+                      onClick={() => handleStream(device.device_id)}
+                      disabled={!scrcpySystemInfo?.installed || isDevicePending}
+                      loading={pendingAction === "stream"}
+                      className={`ui-btn-xs ${
+                        scrcpySystemInfo?.installed
+                          ? "ui-btn-primary"
+                          : "cursor-not-allowed bg-muted/50 text-foreground/50"
+                      }`}
+                      title={scrcpySystemInfo?.installed ? "啟動串流" : "Scrcpy 未安裝"}
+                    >
+                      串流
+                    </Button>
+                  )}
                   <button
                     onClick={() => navigate(`/quest/devices/${device.device_id}`)}
                     className="ui-btn ui-btn-xs ui-btn-muted"
@@ -912,6 +956,37 @@ export default function DevicesPage() {
                 </div>
               )
             })}
+          </div>
+        )}
+      </div>
+
+      <div className="surface-card p-6">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-xl font-bold text-foreground">設備串流</h2>
+            <p className="text-sm text-foreground/60">按下串流後會在此顯示畫面</p>
+          </div>
+          {activeStreamDeviceId && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="ui-badge ui-badge-accent">串流中</span>
+              <span className="text-foreground">{activeStreamDeviceName}</span>
+              <button
+                onClick={() => {
+                  setActiveStreamDeviceId(null)
+                  setActiveStreamDeviceName("")
+                }}
+                className="ui-btn ui-btn-xs ui-btn-muted"
+              >
+                停止串流
+              </button>
+            </div>
+          )}
+        </div>
+        {activeStreamDeviceId ? (
+          <ScrcpyStreamPlayer deviceId={activeStreamDeviceId} />
+        ) : (
+          <div className="rounded-lg border border-dashed border-border/60 bg-muted/10 p-6 text-center text-sm text-foreground/60">
+            尚未選擇要串流的設備
           </div>
         )}
       </div>
