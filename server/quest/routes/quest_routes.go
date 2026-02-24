@@ -72,6 +72,9 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 
 	// 啟動時以 ADB 清單校正在線狀態（僅更新 Status）
 	deviceService.SyncOnlineStatusFromADBAtStartup()
+	// 啟動時校正 WS 狀態（僅更新狀態欄位，不自動啟動監控）
+	deviceService.SyncWSStatusAtStartup()
+	roomService.SyncSocketStatusAtStartup()
 
 	// 啟動時以 DeviceIDs 去重並整理房間關聯（不再寫入 assigned_room.json）
 	if assigned, err := roomService.ReconcileDeviceAssignmentsByRoomUpdate(); err != nil {

@@ -90,9 +90,7 @@ const PlayerInfo = ({
         </div>
         {handleForceMove && (
           <div>
-            <div className="text-[11px] uppercase tracking-wide text-foreground/50">
-              Force Move
-            </div>
+            <div className="text-[11px] uppercase tracking-wide text-foreground/50">Force Move</div>
             <div className="mt-1 flex flex-wrap items-center gap-2">
               <select
                 className={`ui-select w-20 px-2 py-1 text-center ${
@@ -125,7 +123,7 @@ const PlayerInfo = ({
             Head Position
           </div>
           <div className="mt-1 font-mono leading-5 text-foreground/70">
-            ({player.head_position.x}, {player.head_position.y}, {player.head_position.z})
+            ({player.head_position.x.toFixed(2)}, {player.head_position.y.toFixed(2)}, {player.head_position.z.toFixed(2)})
           </div>
         </div>
         <div>

@@ -435,4 +435,30 @@ func effectiveRoomUpdatedAt(room *model.QuestRoom) time.Time {
 	return room.CreatedAt
 }
 
+// SyncSocketStatusAtStartup 啟動時校正房間 Socket 狀態（僅更新 socket_running）
+func (s *RoomService) SyncSocketStatusAtStartup() {
+	rooms := s.roomRepo.GetAll()
+	checked := 0
+	updated := 0
+
+	for _, room := range rooms {
+		if room == nil {
+			continue
+		}
+
+		checked++
+		if !room.SocketRunning {
+			continue
+		}
+
+		if err := s.roomRepo.UpdateSocketInfo(room.RoomID, room.SocketPort, false); err != nil {
+			log.Printf("[RoomService] 啟動校正失敗: 更新房間 %s Socket 狀態錯誤 - %v", room.RoomID, err)
+			continue
+		}
+		updated++
+	}
+
+	log.Printf("[RoomService] Socket 啟動校正完成: 檢查=%d, 已重設=%d", checked, updated)
+}
+
 // StartSocketServer 啟動房間的 Socket Server
