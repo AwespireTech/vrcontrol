@@ -575,11 +575,6 @@ export default function DevicesPage() {
   }
 
   const handleStream = async (deviceId: string) => {
-    if (!scrcpySystemInfo?.installed) {
-      alert("Scrcpy 尚未安裝，請先安裝 Scrcpy")
-      return
-    }
-
     if (deviceActionPending[deviceId]) return
     setDeviceActionPending((prev) => ({ ...prev, [deviceId]: "stream" }))
 
@@ -832,14 +827,14 @@ export default function DevicesPage() {
                   {isOnline && (
                     <Button
                       onClick={() => handleStream(device.device_id)}
-                      disabled={!scrcpySystemInfo?.installed || isDevicePending}
+                      disabled={isDevicePending}
                       loading={pendingAction === "stream"}
                       className={`ui-btn-xs ${
-                        scrcpySystemInfo?.installed
-                          ? "ui-btn-primary"
-                          : "cursor-not-allowed bg-muted/50 text-foreground/50"
+                        isDevicePending
+                          ? "cursor-not-allowed bg-muted/50 text-foreground/50"
+                          : "ui-btn-primary"
                       }`}
-                      title={scrcpySystemInfo?.installed ? "啟動串流" : "Scrcpy 未安裝"}
+                      title="啟動串流"
                     >
                       串流
                     </Button>

@@ -92,6 +92,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 	monitoringController := controller.NewMonitoringController(monitoringService)
 	scrcpyController := controller.NewScrcpyController(scrcpyService)
 	scrcpyStreamController := controller.NewScrcpyStreamController(scrcpyStreamService)
+	webrtcStreamController := controller.NewWebRTCStreamController(scrcpyStreamService)
 	preferenceController := controller.NewPreferenceController(preferenceService)
 	controller.SetQuestRoomService(roomService)
 	controller.SetQuestDeviceService(deviceService)
@@ -115,6 +116,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 		socket := questAPI.Group("/ws")
 		{
 			SetQuestSocketRoutes(socket)
+			socket.GET("/webrtc/:deviceId", webrtcStreamController.Stream)
 		}
 
 		// 設備管理路由
