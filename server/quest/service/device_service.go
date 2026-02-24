@@ -70,6 +70,29 @@ func (s *DeviceService) SyncOnlineStatusFromADBAtStartup() {
 	log.Printf("[DeviceService] 啟動校正完成: 檢查在線=%d, 轉離線=%d\n", checked, offlined)
 }
 
+// SyncWSStatusAtStartup 啟動時校正設備 WS 狀態（僅更新 ws_status）
+func (s *DeviceService) SyncWSStatusAtStartup() {
+	devices := s.deviceRepo.GetAll()
+	checked := 0
+	updated := 0
+
+	for _, device := range devices {
+		checked++
+		if device.WSStatus == "disconnected" {
+			continue
+		}
+
+		device.WSStatus = "disconnected"
+		if err := s.deviceRepo.Update(device); err != nil {
+			log.Printf("[DeviceService] 啟動校正失敗: 更新裝置 %s WS 狀態錯誤 - %v\n", device.DeviceID, err)
+			continue
+		}
+		updated++
+	}
+
+	log.Printf("[DeviceService] WS 啟動校正完成: 檢查=%d, 已重設=%d\n", checked, updated)
+}
+
 func (s *DeviceService) isDeviceOnlineInADB(device *model.QuestDevice, onlineSerials map[string]struct{}) bool {
 	if device.Serial != "" {
 		if _, ok := onlineSerials[device.Serial]; ok {
