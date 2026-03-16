@@ -124,11 +124,13 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 		{
 			devices.GET("", deviceController.GetAllDevices)
 			devices.GET("/isolation", controller.GetIsolationDevices)
+			devices.GET("/usb", deviceController.GetUSBDevices)
 			devices.GET("/:id", deviceController.GetDevice)
 			devices.POST("", deviceController.CreateDevice)
 			devices.PUT("/:id", deviceController.UpdateDevice)
 			devices.PATCH("/:id", deviceController.PatchDevice)
 			devices.DELETE("/:id", deviceController.DeleteDevice)
+			devices.POST("/usb/tcpip/enable", deviceController.EnableUSBDeviceTCPIP)
 			devices.POST("/:id/connect", deviceController.ConnectDevice)
 			devices.POST("/:id/disconnect", deviceController.DisconnectDevice)
 			devices.GET("/:id/status", deviceController.GetDeviceStatus)

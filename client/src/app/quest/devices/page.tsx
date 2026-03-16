@@ -8,6 +8,7 @@ import {
   type QuestAction,
   type QuestDevice,
   type IsolationDevice,
+  type USBDevice,
   ScrcpySession,
   ScrcpySystemInfo,
   UserPreference,
@@ -31,6 +32,7 @@ export default function DevicesPage() {
   const [selectedActionIds, setSelectedActionIds] = useState<Record<string, string>>({})
   const [actionRunningIds, setActionRunningIds] = useState<Record<string, boolean>>({})
   const [isolationDevices, setIsolationDevices] = useState<IsolationDevice[]>([])
+  const [usbDevices, setUSBDevices] = useState<USBDevice[]>([])
   const [isolationDrafts, setIsolationDrafts] = useState<Record<string, { alias: string }>>({})
   const [loading, setLoading] = useState(true)
   const [countdown, setCountdown] = useState(DEFAULT_POLL_INTERVAL_SECONDS)
@@ -39,6 +41,7 @@ export default function DevicesPage() {
     Record<string, "connect" | "disconnect" | "monitor" | "delete" | "execute">
   >({})
   const [isolationPending, setIsolationPending] = useState<Record<string, "create" | "update">>({})
+  const [usbActionPending, setUSBActionPending] = useState<Record<string, boolean>>({})
   const [scrcpyStopPending, setScrcpyStopPending] = useState<Record<string, boolean>>({})
   const [refreshScrcpyPending, setRefreshScrcpyPending] = useState(false)
 
@@ -59,13 +62,22 @@ export default function DevicesPage() {
     devicesRef.current = devices
   }, [devices])
 
-  const loadDevices = async () => {
+  const loadDevices = useCallback(async () => {
     try {
       const [devicesData, roomsData, isolationData] = await Promise.all([
         deviceApi.getAll(),
         roomApi.getAll(),
         deviceApi.getIsolation(),
       ])
+
+      try {
+        const usbData = await deviceApi.getUSBDevices()
+        setUSBDevices(usbData)
+      } catch (error) {
+        console.error("Failed to load USB devices:", error)
+        setUSBDevices([])
+      }
+
       setDevices(devicesData)
       setRooms(roomsData.map((room) => ({ room_id: room.room_id, name: room.name })))
       setRoomNameMap(new Map(roomsData.map((room) => [room.room_id, room.name])))
@@ -86,7 +98,7 @@ export default function DevicesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   const refreshOnlineStatuses = useCallback(async () => {
     if (!preference) return
@@ -148,7 +160,7 @@ export default function DevicesPage() {
     }
   }, [preference])
 
-  const loadScrcpyInfo = async () => {
+  const loadScrcpyInfo = useCallback(async () => {
     try {
       const info = await scrcpyApi.getSystemInfo()
       setScrcpySystemInfo(info)
@@ -160,7 +172,11 @@ export default function DevicesPage() {
     } catch (error) {
       console.error("Failed to load scrcpy info:", error)
     }
-  }
+  }, [])
+
+  const refreshPageData = useCallback(async () => {
+    await Promise.all([loadDevices(), loadScrcpyInfo()])
+  }, [loadDevices, loadScrcpyInfo])
 
   useEffect(() => {
     const init = async () => {
@@ -188,7 +204,7 @@ export default function DevicesPage() {
     }
 
     init()
-  }, [])
+  }, [loadDevices, loadScrcpyInfo])
 
   const loadActions = async () => {
     try {
@@ -225,10 +241,18 @@ export default function DevicesPage() {
     statusIntervalRef.current = setInterval(() => {
       if (!document.hidden) {
         refreshOnlineStatuses()
-        loadDevices()
+        refreshPageData()
         setCountdown(pollIntervalSeconds)
       }
     }, pollIntervalSeconds * 1000)
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) return
+      refreshPageData()
+      setCountdown(pollIntervalSeconds)
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange)
 
     // 倒數計時器（UI 顯示用）
     const countdownInterval = setInterval(() => {
@@ -239,8 +263,9 @@ export default function DevicesPage() {
     return () => {
       if (statusIntervalRef.current) clearInterval(statusIntervalRef.current)
       clearInterval(countdownInterval)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
-  }, [preference, refreshOnlineStatuses])
+  }, [preference, refreshOnlineStatuses, refreshPageData])
 
   const getStatusText = (status: QuestDevice["status"]) => {
     switch (status) {
@@ -284,6 +309,11 @@ export default function DevicesPage() {
     if (status === "connected") return "ui-badge-success"
     if (status === "disconnected") return "ui-badge-muted"
     return "ui-badge-muted"
+  }
+
+  const getUSBTcpipStatusText = (device: USBDevice) => {
+    if (!device.tcpip_enabled) return "未啟用"
+    return device.tcpip_port ? `已啟用 (${device.tcpip_port})` : "已啟用"
   }
 
   const getActionTypeText = (type: string) => {
@@ -365,6 +395,26 @@ export default function DevicesPage() {
       setIsolationPending((prev) => {
         const next = { ...prev }
         delete next[entry.client_id]
+        return next
+      })
+    }
+  }
+
+  const handleEnableUSBTCPIP = async (serial: string) => {
+    if (usbActionPending[serial]) return
+
+    setUSBActionPending((prev) => ({ ...prev, [serial]: true }))
+    try {
+      await deviceApi.enableUSBTCPIP(serial)
+      await loadDevices()
+      alert(`已啟用 ${serial} 的 TCPIP 模式`)
+    } catch (error) {
+      console.error("Failed to enable tcpip mode:", error)
+      alert("啟用 TCPIP 模式失敗，請稍後再試")
+    } finally {
+      setUSBActionPending((prev) => {
+        const next = { ...prev }
+        delete next[serial]
         return next
       })
     }
@@ -818,6 +868,55 @@ export default function DevicesPage() {
               </div>
             )
           })}
+        </div>
+      )}
+
+      {usbDevices.length > 0 && (
+        <div className="surface-card p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-foreground">USB 連線裝置</h2>
+            <span className="text-xs text-foreground/60">{usbDevices.length} 台</span>
+          </div>
+          <div className="surface-card overflow-hidden">
+            <div className="grid grid-cols-12 gap-3 border-b border-border bg-surface/50 px-4 py-3 text-xs text-foreground/60">
+              <div className="col-span-5">裝置序列號</div>
+              <div className="col-span-3">型號 / IP</div>
+              <div className="col-span-2">TCPIP 模式</div>
+              <div className="col-span-2 text-right">操作</div>
+            </div>
+            {usbDevices.map((device) => (
+              <div
+                key={device.serial}
+                className="grid grid-cols-12 items-center gap-3 border-b border-border px-4 py-3 transition-colors last:border-b-0 hover:bg-surface/40"
+              >
+                <div className="col-span-5">
+                  <div className="font-mono text-sm text-foreground">{device.serial}</div>
+                  <div className="text-xs text-foreground/50">{device.connection_type.toUpperCase()}</div>
+                </div>
+                <div className="col-span-3 text-sm text-foreground/70">
+                  <div>{device.model || "—"}</div>
+                  <div className="font-mono text-xs text-foreground/50">IP: {device.ip || "—"}</div>
+                </div>
+                <div className="col-span-2">
+                  <span
+                    className={`ui-badge ${device.tcpip_enabled ? "ui-badge-success" : "ui-badge-muted"}`}
+                  >
+                    {getUSBTcpipStatusText(device)}
+                  </span>
+                </div>
+                <div className="col-span-2 flex justify-end">
+                  <Button
+                    onClick={() => handleEnableUSBTCPIP(device.serial)}
+                    className="ui-btn-xs ui-btn-primary"
+                    loading={!!usbActionPending[device.serial]}
+                    disabled={device.tcpip_enabled || !!usbActionPending[device.serial]}
+                  >
+                    啟用 TCPIP
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
