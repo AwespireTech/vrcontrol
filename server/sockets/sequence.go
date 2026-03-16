@@ -1,6 +1,10 @@
 package sockets
 
-import "sort"
+import (
+	"sort"
+
+	"vrcontrol/server/utils"
+)
 
 type SequenceUpdate struct {
 	Player   *Player
@@ -17,7 +21,8 @@ func (r *Room) PlayerSequenceUpdate() []SequenceUpdate {
 		if player == nil {
 			continue
 		}
-		if seq, ok := r.AssignedSequence[player.DeiviceID]; ok {
+		normalizedID := utils.NormalizeDeviceIDKey(player.DeiviceID)
+		if seq, ok := r.AssignedSequence[normalizedID]; ok {
 			used_sequences[seq] = true
 			sequenceUpdates = append(sequenceUpdates, SequenceUpdate{
 				Player:   player,
@@ -27,8 +32,11 @@ func (r *Room) PlayerSequenceUpdate() []SequenceUpdate {
 			// Player already has a sequence assigned, skip
 			continue
 		}
-		names = append(names, player.DeiviceID)
-		maps[player.DeiviceID] = player
+		if normalizedID == "" {
+			continue
+		}
+		names = append(names, normalizedID)
+		maps[normalizedID] = player
 	}
 
 	// Sort by lexicographic order

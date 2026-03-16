@@ -4,7 +4,7 @@
 - VR 裝置控制系統：Go 後端 + React 前端，核心功能是 Quest 設備、房間、動作管理與監控
 - 後端入口：[server/main.go](server/main.go)
 - 前端入口：[client/src/main.tsx](client/src/main.tsx) → [client/src/App.tsx](client/src/App.tsx)
-- Quest API 基底路徑：`/api/quest`
+- Quest API 基底路徑：`/api`
 
 ## Repo Map
 - 後端服務與 Quest 模組：[server](server)
@@ -14,7 +14,7 @@
 ## Entry Points
 - 伺服器啟動：`go run main.go`
 - 前端啟動：`npm run dev`
-- Quest 路由註冊：[server/quest/routes/quest_routes.go](server/quest/routes/quest_routes.go)
+- Quest 路由註冊：[server/routes/quest_routes.go](server/routes/quest_routes.go)
 
 ## Frontend Routes
 - Quest 首頁頁面：[client/src/app/page.tsx](client/src/app/page.tsx)
@@ -44,7 +44,7 @@
 
 ## Common Pitfalls
 - `keep_awake` 尚未在後端實作（動作會失敗）
-- `scrcpy` 未安裝會導致 `/api/quest/scrcpy/*` 相關 API 失敗
+- `scrcpy` 未安裝會導致 `/api/scrcpy/*` 相關 API 失敗
 - JSON 數值在 Go 會解析為 `float64`（動作參數需注意）
 - 裝置必須為在線狀態才能啟動 scrcpy
 

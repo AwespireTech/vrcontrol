@@ -372,7 +372,7 @@ export default function QuestSettingsPage() {
           <div className="space-y-3 text-sm">
             <div className="flex justify-between border-b border-border py-2">
               <span className="text-foreground/70">API 端點:</span>
-              <span className="font-mono text-foreground">/api/quest</span>
+              <span className="font-mono text-foreground">/api</span>
             </div>
             <div className="flex justify-between border-b border-border py-2">
               <span className="text-foreground/70">Socket 連線埠範圍:</span>

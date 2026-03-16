@@ -9,13 +9,13 @@
 ## 模組分層
 
 ### 後端（Quest 模組）
-- 路由註冊：[server/quest/routes/quest_routes.go](../server/quest/routes/quest_routes.go)
-- 控制器：server/quest/controller
-- 服務層：server/quest/service
-- 資料存取：server/quest/repository
-- 資料模型：server/quest/model
-- ADB 管理：server/quest/adb
-- Scrcpy 管理：server/quest/scrcpy
+- 路由註冊：[server/routes/quest_routes.go](../server/routes/quest_routes.go)
+- 控制器：server/controller
+- 服務層：server/service
+- 資料存取：server/repository
+- 資料模型：server/model
+- ADB 管理：server/adb
+- Scrcpy 管理：server/scrcpy
 
 ### 前端
 - App 入口：[client/src/App.tsx](../client/src/App.tsx)
@@ -37,7 +37,7 @@
 3. 前端定期拉取狀態並更新 UI
 
 ### Scrcpy 鏡像
-1. 前端呼叫 `/api/quest/scrcpy/*`
+1. 前端呼叫 `/api/scrcpy/*`
 2. 後端檢查 scrcpy 是否安裝
 3. 啟動 scrcpy 子行程並維護 session 狀態
 

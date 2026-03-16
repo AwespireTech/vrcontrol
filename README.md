@@ -75,7 +75,8 @@ npm run dev
 Vite 會將以下路徑代理到後端：
 
 - `/api/*` → `http://localhost:8080`
-- `/ws/*` → `ws://localhost:8080`
+
+目前前端 API 與 WebSocket 都統一經由 `/api/*` 命名空間對接後端。
 
 ## Docker（選用）
 

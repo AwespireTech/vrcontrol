@@ -29,7 +29,7 @@ func (r *Room) GetRoomUpdate() model.RoomUpdate {
 			Players:     []model.PlayerStatus{},
 		}
 	}
-	if len(r.Players) == 0 {
+	if r.Players == nil || len(r.Players) == 0 {
 		return model.RoomUpdate{
 			RoomID:      r.RoomID,
 			PlayerCount: 0,
@@ -55,6 +55,7 @@ func (r *Room) GetRoomUpdate() model.RoomUpdate {
 				Sequence:          p.Sequence,
 				Stage:             p.Stage,
 				ReadyToMove:       p.ReadyToMove,
+				Message:           p.Message,
 				HeadPosition:      p.HeadPosition,
 				HeadForward:       p.HeadForward,
 				LeftHandPosition:  p.LeftHandPosition,
@@ -98,7 +99,7 @@ func (c *Controller) read() {
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, Newline, Space, -1))
 		c.InChannel <- message
-		log.Printf("Controller room %s: Received message: %s", c.Room.RoomID, message)
+		// log.Printf("Controller room %s: Received message: %s", c.Room.RoomID, message)
 	}
 }
 func (c *Controller) write() {

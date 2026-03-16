@@ -3,8 +3,7 @@ package main
 import (
 	"log"
 
-	questroutes "vrcontrol/server/quest/routes"
-	"vrcontrol/server/routes"
+	questroutes "vrcontrol/server/routes"
 	"vrcontrol/server/utilities"
 
 	"github.com/gin-gonic/gin"
@@ -27,13 +26,6 @@ func createRouter() *gin.Engine {
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 	router.Use(utilities.CORSall)
-
-	ws := router.Group("/ws")
-	routes.SetClientWsRoutes(ws)
-	simple := router.Group("/simple")
-	routes.SetSimpleControlRoutes(simple)
-	control := router.Group("/control")
-	routes.SetControlRoute(control)
 
 	// Quest 模組路由
 	questroutes.SetupQuestRoutes(router, "./data")

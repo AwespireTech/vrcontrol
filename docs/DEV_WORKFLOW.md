@@ -2,17 +2,17 @@
 
 ## 新增動作類型
 
-1. 後端動作常量：[server/quest/model/action.go](../server/quest/model/action.go)
-2. 執行邏輯：`executeActionToDevice` in [server/quest/service/action_service.go](../server/quest/service/action_service.go)
+1. 後端動作常量：[server/model/action.go](../server/model/action.go)
+2. 執行邏輯：`executeActionToDevice` in [server/service/action_service.go](../server/service/action_service.go)
 3. 前端動作型別：[client/src/services/quest-types.ts](../client/src/services/quest-types.ts)
 4. UI 顯示與對應字串：Quest 動作頁相關元件
 5. 更新動作參數規格：[docs/ACTION_PARAMETERS.md](ACTION_PARAMETERS.md)
 
 ## 新增 API 端點
 
-1. Service 層：server/quest/service
-2. Controller 層：server/quest/controller
-3. 路由註冊：[server/quest/routes/quest_routes.go](../server/quest/routes/quest_routes.go)
+1. Service 層：server/service
+2. Controller 層：server/controller
+3. 路由註冊：[server/routes/quest_routes.go](../server/routes/quest_routes.go)
 4. 前端呼叫封裝：[client/src/services/quest-api.ts](../client/src/services/quest-api.ts)
 5. 更新 API 列表：[docs/API.md](API.md)
 

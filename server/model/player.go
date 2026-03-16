@@ -41,6 +41,7 @@ type Heartbeat struct {
 	LeftHandAvail    bool     `json:"left_hand_available"`
 	RightHandAvail   bool     `json:"right_hand_available"`
 }
+
 type ShotEvent struct {
 	Timestamp int64    `json:"timestamp"`
 	DeviceID  string   `json:"device_id"`
@@ -48,6 +49,7 @@ type ShotEvent struct {
 	Position  Vector3f `json:"position"`
 	Direction Vector3f `json:"direction"`
 }
+
 type Lantern struct {
 	Timestamp int64      `json:"timestamp"`
 	DeviceID  string     `json:"device_id"`
@@ -55,11 +57,13 @@ type Lantern struct {
 	LineID    int        `json:"lid"`
 	Postions  []Vector3f `json:"postions"`
 }
+
 type ReadyToMove struct {
 	Timestamp int64  `json:"timestamp"`
 	DeviceID  string `json:"device_id"`
 	Stage     int    `json:"chapter"`
 }
+
 type QA struct {
 	QuestionID int  `json:"question_id"`
 	StateBool  bool `json:"state_bool"`

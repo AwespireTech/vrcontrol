@@ -1,7 +1,7 @@
 import { SERVER } from "@/environment"
 
 // Quest API 基礎配置
-export const QUEST_API_BASE = `${SERVER}/api/quest`
+export const QUEST_API_BASE = `${SERVER}/api`
 
 // Quest 設備狀態
 export const QUEST_DEVICE_STATUS = {
