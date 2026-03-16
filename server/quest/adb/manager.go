@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -329,9 +330,13 @@ func (m *ADBManager) ConnectBatch(targets []string, maxWorkers int) []ConnectRes
 
 // Device 設備資訊
 type Device struct {
-	Serial string
-	State  string
-	Model  string
+	Serial         string `json:"serial"`
+	State          string `json:"state"`
+	Model          string `json:"model"`
+	IP             string `json:"ip,omitempty"`
+	ConnectionType string `json:"connection_type"`
+	TCPIPEnabled   bool   `json:"tcpip_enabled"`
+	TCPIPPort      *int   `json:"tcpip_port,omitempty"`
 }
 
 // DeviceInfo 設備詳細資訊
@@ -355,6 +360,12 @@ type ConnectResult struct {
 	Target  string
 	Success bool
 	Error   error
+}
+
+// TCPIPStatus 表示裝置目前的 adb tcpip 模式狀態。
+type TCPIPStatus struct {
+	Enabled bool
+	Port    *int
 }
 
 // ResolveConnectedDevice finds a connected ADB device by exact serial/target.
@@ -397,6 +408,102 @@ func (m *ADBManager) ResolveConnectedDevice(target string, retries int, retryDel
 	return nil, fmt.Errorf("device %s not found in adb device list", target)
 }
 
+// GetUSBDevices returns currently connected USB devices and enriches them with tcpip status.
+func (m *ADBManager) GetUSBDevices() ([]Device, error) {
+	devices, err := m.GetDevices()
+	if err != nil {
+		return nil, err
+	}
+
+	usbDevices := make([]Device, 0)
+	for _, device := range devices {
+		if device.State != "device" || device.ConnectionType != "usb" {
+			continue
+		}
+
+		status, statusErr := m.GetTCPIPStatus(device.Serial)
+		if statusErr == nil {
+			device.TCPIPEnabled = status.Enabled
+			device.TCPIPPort = status.Port
+		}
+
+		deviceIP, ipErr := m.GetDeviceIP(device.Serial)
+		if ipErr == nil {
+			device.IP = deviceIP
+		}
+
+		usbDevices = append(usbDevices, device)
+	}
+
+	return usbDevices, nil
+}
+
+// GetDeviceIP tries to read the current IPv4 address from the device network stack.
+func (m *ADBManager) GetDeviceIP(serial string) (string, error) {
+	commands := []string{
+		"ip -f inet addr show wlan0",
+		"ip route",
+	}
+
+	for _, command := range commands {
+		output, err := m.ExecuteShellCommand(serial, command, 5*time.Second)
+		if err != nil {
+			continue
+		}
+
+		if ip := parseDeviceIPv4(output); ip != "" {
+			return ip, nil
+		}
+	}
+
+	return "", fmt.Errorf("device ip not found")
+}
+
+// GetTCPIPStatus reads adb tcpip state from the device property service.adb.tcp.port.
+func (m *ADBManager) GetTCPIPStatus(serial string) (*TCPIPStatus, error) {
+	output, err := m.ExecuteShellCommand(serial, "getprop service.adb.tcp.port", 5*time.Second)
+	if err != nil {
+		return nil, err
+	}
+
+	value := strings.TrimSpace(output)
+	if value == "" || value == "0" || value == "-1" {
+		return &TCPIPStatus{Enabled: false}, nil
+	}
+
+	port, convErr := strconv.Atoi(value)
+	if convErr != nil {
+		return nil, fmt.Errorf("invalid tcpip port value %q", value)
+	}
+
+	return &TCPIPStatus{
+		Enabled: port > 0,
+		Port:    &port,
+	}, nil
+}
+
+// EnableTCPIP switches the target device into adb tcpip mode on the given port.
+func (m *ADBManager) EnableTCPIP(serial string, port int) error {
+	if strings.TrimSpace(serial) == "" {
+		return fmt.Errorf("serial is required")
+	}
+	if port < 1 || port > 65535 {
+		return fmt.Errorf("invalid tcpip port: %d", port)
+	}
+
+	output, err := m.ExecuteCommand([]string{"-s", serial, "tcpip", strconv.Itoa(port)}, 10*time.Second)
+	if err != nil {
+		return fmt.Errorf("failed to enable tcpip on %s: %w", serial, err)
+	}
+
+	trimmed := strings.TrimSpace(output)
+	if strings.Contains(trimmed, "restarting in TCP mode") || strings.Contains(trimmed, "already in TCP mode") {
+		return nil
+	}
+
+	return fmt.Errorf("failed to enable tcpip on %s: %s", serial, trimmed)
+}
+
 // parseDeviceList 解析設備列表
 func parseDeviceList(output string) []Device {
 	var devices []Device
@@ -411,8 +518,9 @@ func parseDeviceList(output string) []Device {
 		parts := strings.Fields(line)
 		if len(parts) >= 2 {
 			device := Device{
-				Serial: parts[0],
-				State:  parts[1],
+				Serial:         parts[0],
+				State:          parts[1],
+				ConnectionType: detectConnectionType(parts[0], line),
 			}
 
 			// 解析 model
@@ -429,6 +537,43 @@ func parseDeviceList(output string) []Device {
 	}
 
 	return devices
+}
+
+func detectConnectionType(serial, line string) string {
+	if isNetworkSerial(serial) {
+		return "network"
+	}
+
+	return "usb"
+}
+
+func isNetworkSerial(serial string) bool {
+	index := strings.LastIndex(serial, ":")
+	if index <= 0 || index >= len(serial)-1 {
+		return false
+	}
+
+	port, err := strconv.Atoi(serial[index+1:])
+	if err != nil || port < 1 || port > 65535 {
+		return false
+	}
+
+	host := serial[:index]
+	return host != ""
+}
+
+func parseDeviceIPv4(output string) string {
+	inetPattern := regexp.MustCompile(`inet\s+(\d+\.\d+\.\d+\.\d+)`)
+	if matches := inetPattern.FindStringSubmatch(output); len(matches) > 1 {
+		return matches[1]
+	}
+
+	srcPattern := regexp.MustCompile(`src\s+(\d+\.\d+\.\d+\.\d+)`)
+	if matches := srcPattern.FindStringSubmatch(output); len(matches) > 1 {
+		return matches[1]
+	}
+
+	return ""
 }
 
 // parseDeviceStatus 解析設備狀態

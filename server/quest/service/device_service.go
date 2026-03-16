@@ -181,6 +181,42 @@ type DevicePatch struct {
 	AutoReconnectEnabled *bool   `json:"auto_reconnect_enabled"`
 }
 
+type USBDeviceEnableTCPIPRequest struct {
+	Serial string `json:"serial" binding:"required"`
+	Port   int    `json:"port"`
+}
+
+func (s *DeviceService) GetUSBDevices() ([]adb.Device, error) {
+	return s.adbManager.GetUSBDevices()
+}
+
+func (s *DeviceService) EnableUSBDeviceTCPIP(serial string, port int) error {
+	if strings.TrimSpace(serial) == "" {
+		return fmt.Errorf("serial is required")
+	}
+
+	if port == 0 {
+		port = 5555
+	}
+
+	if port < 1 || port > 65535 {
+		return fmt.Errorf("invalid port value")
+	}
+
+	usbDevices, err := s.adbManager.GetUSBDevices()
+	if err != nil {
+		return err
+	}
+
+	for _, device := range usbDevices {
+		if device.Serial == serial {
+			return s.adbManager.EnableTCPIP(serial, port)
+		}
+	}
+
+	return fmt.Errorf("usb device %s not found", serial)
+}
+
 // PatchDevice 嚴格白名單的局部更新（避免 partial PUT 清空欄位）
 func (s *DeviceService) PatchDevice(deviceID string, patch DevicePatch) (*model.QuestDevice, error) {
 	device, err := s.deviceRepo.GetByID(deviceID)

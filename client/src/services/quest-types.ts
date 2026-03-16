@@ -95,6 +95,16 @@ export interface IsolationDevice {
   last_seen: string
 }
 
+export interface USBDevice {
+  serial: string
+  state: string
+  model: string
+  ip?: string
+  connection_type: "usb" | "network" | "unknown"
+  tcpip_enabled: boolean
+  tcpip_port?: number
+}
+
 // 房間類型
 export interface QuestRoom {
   room_id: string

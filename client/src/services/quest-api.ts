@@ -3,6 +3,7 @@ import {
   type ApiResponse,
   type QuestDevice,
   type IsolationDevice,
+  type USBDevice,
   type QuestRoom,
   type QuestAction,
   type BatchExecuteRequest,
@@ -35,6 +36,13 @@ export const deviceApi = {
   getIsolation: async (): Promise<IsolationDevice[]> => {
     const res = await fetch(`${QUEST_API_BASE}/devices/isolation`)
     const data: ApiResponse<IsolationDevice[]> = await res.json()
+    return data.data || []
+  },
+
+  // 獲取目前透過 USB 連線的裝置
+  getUSBDevices: async (): Promise<USBDevice[]> => {
+    const res = await fetch(`${QUEST_API_BASE}/devices/usb`)
+    const data: ApiResponse<USBDevice[]> = await res.json()
     return data.data || []
   },
 
@@ -110,6 +118,17 @@ export const deviceApi = {
     })
     const data: ApiResponse<void> = await res.json()
     if (!data.success) throw new Error(data.error || "Failed to disconnect device")
+  },
+
+  // 對 USB 裝置啟用 adb tcpip 模式
+  enableUSBTCPIP: async (serial: string, port = 5555): Promise<void> => {
+    const res = await fetch(`${QUEST_API_BASE}/devices/usb/tcpip/enable`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ serial, port }),
+    })
+    const data: ApiResponse<void> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to enable tcpip mode")
   },
 
   // 獲取設備狀態

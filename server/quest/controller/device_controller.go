@@ -258,6 +258,51 @@ func (c *DeviceController) DisconnectDevice(ctx *gin.Context) {
 	})
 }
 
+// GetUSBDevices 獲取目前透過 USB 連線的裝置。
+// @Router /api/quest/devices/usb [get]
+func (c *DeviceController) GetUSBDevices(ctx *gin.Context) {
+	devices, err := c.deviceService.GetUSBDevices()
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    devices,
+	})
+}
+
+// EnableUSBDeviceTCPIP 啟用 USB 裝置的 adb tcpip 模式。
+// @Router /api/quest/devices/usb/tcpip/enable [post]
+func (c *DeviceController) EnableUSBDeviceTCPIP(ctx *gin.Context) {
+	var req service.USBDeviceEnableTCPIPRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "Invalid request body",
+			"message": err.Error(),
+		})
+		return
+	}
+
+	if err := c.deviceService.EnableUSBDeviceTCPIP(req.Serial, req.Port); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"success": false,
+			"error":   err.Error(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "TCPIP mode enabled successfully",
+	})
+}
+
 // SetAutoReconnectEnabledBatch 批次設定設備是否允許自動重連
 // @Router /api/quest/devices/batch/auto-reconnect [post]
 func (c *DeviceController) SetAutoReconnectEnabledBatch(ctx *gin.Context) {
