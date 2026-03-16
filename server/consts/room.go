@@ -4,42 +4,55 @@ import (
 	"encoding/json"
 	"log"
 	"os"
+	"path/filepath"
 )
 
+const controlDataDir = "data/control"
+
 func LoadAssignedRoom() map[string]string {
-	path := "sequence/assigned_room.json"
-	// Check if file exists
+	path := filepath.Join(controlDataDir, "assigned_room.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		log.Println("Error creating directory: ", err)
+		return make(map[string]string)
+	}
+
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return make(map[string]string)
 	}
+
 	file, err := os.Open(path)
 	if err != nil {
 		log.Println("Error opening file: ", err)
 		return make(map[string]string)
 	}
 	defer file.Close()
+
 	var roomMap map[string]string
-	err = json.NewDecoder(file).Decode(&roomMap)
-	if err != nil {
+	if err := json.NewDecoder(file).Decode(&roomMap); err != nil {
 		log.Println("Error decoding file: ", err)
 		return make(map[string]string)
 	}
-	log.Println("Assigned room map loaded from file: ", path)
+	log.Println("[Control] Assigned room map loaded from file: ", path)
 	return roomMap
 }
+
 func SaveAssignedRoom(roomMap map[string]string) {
-	path := "sequence/assigned_room.json"
-	//Overwrite the file if it exists, create it if it doesn't
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0644)
+	path := filepath.Join(controlDataDir, "assigned_room.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		log.Println("Error creating directory: ", err)
+		return
+	}
+
+	file, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 	if err != nil {
 		log.Println("Error creating file: ", err)
 		return
 	}
 	defer file.Close()
-	err = json.NewEncoder(file).Encode(roomMap)
-	if err != nil {
+
+	if err := json.NewEncoder(file).Encode(roomMap); err != nil {
 		log.Println("Error encoding file: ", err)
 		return
 	}
-	log.Println("Assigned room map saved to file: ", path)
+	log.Println("[Control] Assigned room map saved to file: ", path)
 }

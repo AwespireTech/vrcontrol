@@ -1,0 +1,596 @@
+import {
+  API_BASE,
+  type ApiResponse,
+  type Device,
+  type IsolationDevice,
+  type USBDevice,
+  type Room,
+  type Action,
+  type BatchExecuteRequest,
+  type BatchExecuteResponse,
+  type MonitoringStatus,
+  type ExecutionResult,
+  type ScrcpyConfig,
+  type ScrcpySession,
+  type ScrcpySystemInfo,
+  type ScrcpyBatchStartRequest,
+  type ScrcpyBatchStartResponse,
+  type UserPreference,
+  type BatchStatusResponse,
+} from "./api-types"
+
+const CONTROL_BASE = `${API_BASE}/control`
+const SIMPLE_BASE = `${API_BASE}/simple`
+
+// ============ 設備 API ============
+
+export const deviceApi = {
+  // 獲取所有設備
+  getAll: async (): Promise<Device[]> => {
+    const res = await fetch(`${API_BASE}/devices`)
+    const data: ApiResponse<Device[]> = await res.json()
+    return data.data || []
+  },
+
+  // 獲取隔離區連線清單
+  getIsolation: async (): Promise<IsolationDevice[]> => {
+    const res = await fetch(`${API_BASE}/devices/isolation`)
+    const data: ApiResponse<IsolationDevice[]> = await res.json()
+    return data.data || []
+  },
+
+  // 獲取目前透過 USB 連線的裝置
+  getUSBDevices: async (): Promise<USBDevice[]> => {
+    const res = await fetch(`${API_BASE}/devices/usb`)
+    const data: ApiResponse<USBDevice[]> = await res.json()
+    return data.data || []
+  },
+
+  // 獲取單個設備
+  get: async (deviceId: string): Promise<Device | null> => {
+    const res = await fetch(`${API_BASE}/devices/${deviceId}`)
+    const data: ApiResponse<Device> = await res.json()
+    return data.data || null
+  },
+
+  // 創建設備
+  create: async (device: Partial<Device>): Promise<Device> => {
+    const res = await fetch(`${API_BASE}/devices`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(device),
+    })
+    const data: ApiResponse<Device> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to create device")
+    return data.data!
+  },
+
+  // 取代設備（PUT = replace）
+  replace: async (deviceId: string, device: Device): Promise<Device> => {
+    const { room_id, ...safeDevice } = device
+    void room_id
+    const res = await fetch(`${API_BASE}/devices/${deviceId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(safeDevice),
+    })
+    const data: ApiResponse<Device> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to update device")
+    return data.data!
+  },
+
+  // 局部更新設備（PATCH = strict whitelist on server）
+  patch: async (deviceId: string, patch: Partial<Device>): Promise<Device> => {
+    const { room_id, ...safePatch } = patch
+    void room_id
+    const res = await fetch(`${API_BASE}/devices/${deviceId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(safePatch),
+    })
+    const data: ApiResponse<Device> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to patch device")
+    return data.data!
+  },
+
+  // 刪除設備
+  delete: async (deviceId: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/devices/${deviceId}`, {
+      method: "DELETE",
+    })
+    const data: ApiResponse<void> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to delete device")
+  },
+
+  // 連接設備
+  connect: async (deviceId: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/devices/${deviceId}/connect`, {
+      method: "POST",
+    })
+    const data: ApiResponse<void> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to connect device")
+  },
+
+  // 斷開設備
+  disconnect: async (deviceId: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/devices/${deviceId}/disconnect`, {
+      method: "POST",
+    })
+    const data: ApiResponse<void> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to disconnect device")
+  },
+
+  // 對 USB 裝置啟用 adb tcpip 模式
+  enableUSBTCPIP: async (serial: string, port = 5555): Promise<void> => {
+    const res = await fetch(`${API_BASE}/devices/usb/tcpip/enable`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ serial, port }),
+    })
+    const data: ApiResponse<void> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to enable tcpip mode")
+  },
+
+  // 獲取設備狀態
+  getStatus: async (deviceId: string): Promise<Device> => {
+    const res = await fetch(`${API_BASE}/devices/${deviceId}/status`)
+    const data: ApiResponse<Device> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to get device status")
+    return data.data!
+  },
+
+  // Ping 設備
+  ping: async (deviceId: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/devices/${deviceId}/ping`, {
+      method: "POST",
+    })
+    const data: ApiResponse<void> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to ping device")
+  },
+
+  // 批量連接
+  connectBatch: async (deviceIds: string[], maxWorkers?: number): Promise<BatchExecuteResponse> => {
+    const res = await fetch(`${API_BASE}/devices/batch/connect`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ device_ids: deviceIds, max_workers: maxWorkers }),
+    })
+    return await res.json()
+  },
+
+  // 批量 Ping
+  pingBatch: async (deviceIds: string[], maxWorkers?: number): Promise<BatchExecuteResponse> => {
+    const res = await fetch(`${API_BASE}/devices/batch/ping`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ device_ids: deviceIds, max_workers: maxWorkers }),
+    })
+    return await res.json()
+  },
+
+  // 批量獲取設備狀態
+  getStatusBatch: async (
+    deviceIds: string[],
+    maxWorkers?: number,
+  ): Promise<BatchStatusResponse> => {
+    const res = await fetch(`${API_BASE}/devices/batch/status`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ device_ids: deviceIds, max_workers: maxWorkers }),
+    })
+    return await res.json()
+  },
+
+  // 批次設定是否允許自動重連（依前端篩選後的 device_ids 為準）
+  setAutoReconnectEnabledBatch: async (
+    deviceIds: string[],
+    enabled: boolean,
+  ): Promise<{
+    total: number
+    success_count: number
+    failed_count: number
+    failed: Record<string, string>
+  }> => {
+    const res = await fetch(`${API_BASE}/devices/batch/auto-reconnect`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ device_ids: deviceIds, enabled }),
+    })
+    const data: ApiResponse<{
+      total: number
+      success_count: number
+      failed_count: number
+      failed: Record<string, string>
+    }> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to update auto-reconnect settings")
+    return data.data!
+  },
+
+  // 重置單台設備自動重連狀態
+  resetAutoReconnect: async (deviceId: string): Promise<Device> => {
+    const res = await fetch(`${API_BASE}/devices/${deviceId}/auto-reconnect/reset`, {
+      method: "POST",
+    })
+    const data: ApiResponse<Device> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to reset auto-reconnect status")
+    return data.data!
+  },
+
+  // 批次重置自動重連狀態
+  resetAutoReconnectBatch: async (
+    deviceIds: string[],
+  ): Promise<{
+    total: number
+    success_count: number
+    failed_count: number
+    failed: Record<string, string>
+  }> => {
+    const res = await fetch(`${API_BASE}/devices/batch/auto-reconnect/reset`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ device_ids: deviceIds }),
+    })
+    const data: ApiResponse<{
+      total: number
+      success_count: number
+      failed_count: number
+      failed: Record<string, string>
+    }> = await res.json()
+    if (!data.success)
+      throw new Error(data.error || "Failed to reset auto-reconnect status (batch)")
+    return data.data!
+  },
+}
+
+// ============ 房間 API ============
+
+export const roomApi = {
+  // 獲取所有房間
+  getAll: async (): Promise<Room[]> => {
+    const res = await fetch(`${API_BASE}/rooms`)
+    const data: ApiResponse<Room[]> = await res.json()
+    return data.data || []
+  },
+
+  // 獲取單個房間
+  get: async (roomId: string): Promise<Room | null> => {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}`)
+    const data: ApiResponse<Room> = await res.json()
+    return data.data || null
+  },
+
+  // 創建房間
+  create: async (room: Partial<Room>): Promise<Room> => {
+    const res = await fetch(`${API_BASE}/rooms`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(room),
+    })
+    const data: ApiResponse<Room> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to create room")
+    return data.data!
+  },
+
+  // 取代房間（PUT = replace）
+  replace: async (roomId: string, room: Room): Promise<Room> => {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(room),
+    })
+    const data: ApiResponse<Room> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to update room")
+    return data.data!
+  },
+
+  // 局部更新房間（PATCH = strict whitelist on server）
+  patch: async (roomId: string, patch: Partial<Room>): Promise<Room> => {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    })
+    const data: ApiResponse<Room> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to patch room")
+    return data.data!
+  },
+
+  // 刪除房間
+  delete: async (roomId: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}`, {
+      method: "DELETE",
+    })
+    const data: ApiResponse<void> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to delete room")
+  },
+
+  // 添加設備到房間
+  addDevice: async (roomId: string, deviceId: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/devices/${deviceId}`, {
+      method: "POST",
+    })
+    const data: ApiResponse<void> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to add device to room")
+  },
+
+  // 從房間移除設備
+  removeDevice: async (roomId: string, deviceId: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/devices/${deviceId}`, {
+      method: "DELETE",
+    })
+    const data: ApiResponse<void> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to remove device from room")
+  },
+}
+
+// ============ 控制 API（鏡像 /control） ============
+
+export const controlApi = {
+  // 指派序列
+  assignSeq: async (roomId: string, clientId: string, seq: number): Promise<void> => {
+    await fetch(`${CONTROL_BASE}/assignseq/${roomId}/${clientId}/${seq}`, {
+      method: "POST",
+    })
+  },
+}
+
+// ============ 簡化控制 API（鏡像 /simple） ============
+
+export const simpleApi = {
+  // 強制所有玩家移動
+  forceAllMove: async (roomId: string, dest: string): Promise<void> => {
+    await fetch(`${SIMPLE_BASE}/forceallmove/${roomId}/${dest}`)
+  },
+
+  // 強制單一玩家移動
+  forceMove: async (roomId: string, clientId: string, dest: string): Promise<void> => {
+    await fetch(`${SIMPLE_BASE}/forcemove/${roomId}/${clientId}/${dest}`)
+  },
+}
+
+// ============ 動作 API ============
+
+export const actionApi = {
+  // 獲取所有動作
+  getAll: async (): Promise<Action[]> => {
+    const res = await fetch(`${API_BASE}/actions`)
+    const data: ApiResponse<Action[]> = await res.json()
+    return data.data || []
+  },
+
+  // 獲取單個動作
+  get: async (actionId: string): Promise<Action | null> => {
+    const res = await fetch(`${API_BASE}/actions/${actionId}`)
+    const data: ApiResponse<Action> = await res.json()
+    return data.data || null
+  },
+
+  // 創建動作
+  create: async (action: Partial<Action>): Promise<Action> => {
+    const res = await fetch(`${API_BASE}/actions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(action),
+    })
+    const data: ApiResponse<Action> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to create action")
+    return data.data!
+  },
+
+  // 取代動作（PUT = replace）
+  replace: async (actionId: string, action: Action): Promise<Action> => {
+    const res = await fetch(`${API_BASE}/actions/${actionId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(action),
+    })
+    const data: ApiResponse<Action> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to update action")
+    return data.data!
+  },
+
+  // 局部更新動作（PATCH = strict whitelist on server）
+  patch: async (actionId: string, patch: Partial<Action>): Promise<Action> => {
+    const res = await fetch(`${API_BASE}/actions/${actionId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    })
+    const data: ApiResponse<Action> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to patch action")
+    return data.data!
+  },
+
+  // 刪除動作
+  delete: async (actionId: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/actions/${actionId}`, {
+      method: "DELETE",
+    })
+    const data: ApiResponse<void> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to delete action")
+  },
+
+  // 執行動作
+  execute: async (actionId: string, deviceId: string): Promise<ExecutionResult> => {
+    const res = await fetch(`${API_BASE}/actions/${actionId}/execute`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ device_id: deviceId }),
+    })
+    const data: ApiResponse<ExecutionResult> = await res.json()
+    return data.data!
+  },
+
+  // 批量執行動作
+  executeBatch: async (request: BatchExecuteRequest): Promise<BatchExecuteResponse> => {
+    const res = await fetch(`${API_BASE}/actions/batch/execute`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    })
+    return await res.json()
+  },
+}
+
+// ============ 監控 API ============
+
+export const monitoringApi = {
+  // 獲取監控狀態
+  getStatus: async (): Promise<MonitoringStatus> => {
+    const res = await fetch(`${API_BASE}/monitoring/status`)
+    const payload = (await res.json()) as
+      | { success?: boolean; data?: { running?: boolean }; running?: boolean; error?: string }
+      | undefined
+
+    if (!payload?.success) {
+      throw new Error(payload?.error || "Failed to get monitoring status")
+    }
+
+    // New format: { success: true, data: { running: boolean } }
+    // Legacy format: { success: true, running: boolean }
+    const running = payload?.data?.running ?? payload?.running
+    if (typeof running !== "boolean") {
+      throw new Error("Invalid monitoring status response")
+    }
+
+    return { running }
+  },
+
+  // 啟動監控
+  start: async (): Promise<void> => {
+    const res = await fetch(`${API_BASE}/monitoring/start`, {
+      method: "POST",
+    })
+    const data: ApiResponse<void> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to start monitoring")
+  },
+
+  // 停止監控
+  stop: async (): Promise<void> => {
+    const res = await fetch(`${API_BASE}/monitoring/stop`, {
+      method: "POST",
+    })
+    const data: ApiResponse<void> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to stop monitoring")
+  },
+
+  // 設置監控間隔
+  setInterval: async (intervalSeconds: number): Promise<void> => {
+    const res = await fetch(`${API_BASE}/monitoring/interval`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ interval: intervalSeconds }),
+    })
+    const data: ApiResponse<void> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to set monitoring interval")
+  },
+
+  // 手動執行一次監控
+  runOnce: async (): Promise<void> => {
+    const res = await fetch(`${API_BASE}/monitoring/run-once`, {
+      method: "POST",
+    })
+    const data: ApiResponse<void> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to run monitoring")
+  },
+}
+
+// ============ Scrcpy API ============
+
+export const scrcpyApi = {
+  // 獲取 scrcpy 系統信息（檢查是否已安裝）
+  getSystemInfo: async (): Promise<ScrcpySystemInfo> => {
+    const res = await fetch(`${API_BASE}/scrcpy/system-info`)
+    const data: ApiResponse<ScrcpySystemInfo> = await res.json()
+    return data.data!
+  },
+
+  // 啟動單個設備的 scrcpy
+  start: async (deviceId: string, config?: Partial<ScrcpyConfig>): Promise<void> => {
+    const res = await fetch(`${API_BASE}/scrcpy/start/${deviceId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: config ? JSON.stringify(config) : undefined,
+    })
+    const data: ApiResponse<void> = await res.json()
+    if (!res.ok || !data.success) {
+      throw new Error(data.error || data.message || "Failed to start scrcpy")
+    }
+  },
+
+  // 停止設備的 scrcpy
+  stop: async (deviceId: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/scrcpy/stop/${deviceId}`, {
+      method: "POST",
+    })
+    const data: ApiResponse<void> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to stop scrcpy")
+  },
+
+  // 批量啟動多個設備的 scrcpy
+  startBatch: async (request: ScrcpyBatchStartRequest): Promise<ScrcpyBatchStartResponse> => {
+    const res = await fetch(`${API_BASE}/scrcpy/batch/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(request),
+    })
+    return await res.json()
+  },
+
+  // 獲取所有活躍的 scrcpy 會話
+  getSessions: async (): Promise<ScrcpySession[]> => {
+    const res = await fetch(`${API_BASE}/scrcpy/sessions`)
+    const data: ApiResponse<ScrcpySession[]> = await res.json()
+    return data.data || []
+  },
+
+  // 刷新會話狀態
+  refreshSessions: async (): Promise<ScrcpySession[]> => {
+    const res = await fetch(`${API_BASE}/scrcpy/sessions/refresh`, {
+      method: "POST",
+    })
+    const data: ApiResponse<ScrcpySession[]> = await res.json()
+    return data.data || []
+  },
+
+  // 獲取 scrcpy 配置
+  getConfig: async (): Promise<ScrcpyConfig> => {
+    const res = await fetch(`${API_BASE}/scrcpy/config`)
+    const data: ApiResponse<ScrcpyConfig> = await res.json()
+    return data.data!
+  },
+
+  // 更新 scrcpy 配置
+  updateConfig: async (config: ScrcpyConfig): Promise<void> => {
+    const res = await fetch(`${API_BASE}/scrcpy/config`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(config),
+    })
+    const data: ApiResponse<void> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to update scrcpy config")
+  },
+}
+
+// ============ 使用者偏好 API ============
+
+export const preferenceApi = {
+  // 獲取使用者偏好
+  get: async (): Promise<UserPreference> => {
+    const res = await fetch(`${API_BASE}/preferences`)
+    const data: ApiResponse<UserPreference> = await res.json()
+    return data.data!
+  },
+
+  // 更新使用者偏好
+  update: async (preference: Partial<UserPreference>): Promise<UserPreference> => {
+    const res = await fetch(`${API_BASE}/preferences`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(preference),
+    })
+    const data: ApiResponse<UserPreference> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to update preference")
+    return data.data!
+  },
+}

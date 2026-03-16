@@ -5,8 +5,8 @@ import (
 	"log"
 	"time"
 
-	"vrcontrol/server/consts"
 	"vrcontrol/server/model"
+	"vrcontrol/server/utils"
 )
 
 type MessageType string
@@ -28,6 +28,7 @@ type Room struct {
 	PlayerBroadcast  chan []byte
 	PlayerRegister   chan *Player
 	PlayerUnregister chan *Player
+	PlayerDetach     chan *Player
 	MoveControl      chan Movement
 	Signals          chan ControlSignal
 	Players          map[*Player]bool
@@ -62,11 +63,12 @@ func NewRoom(roomID string) *Room {
 		PlayerBroadcast:  make(chan []byte, 1024),
 		PlayerRegister:   make(chan *Player),
 		PlayerUnregister: make(chan *Player),
+		PlayerDetach:     make(chan *Player),
 		Players:          make(map[*Player]bool),
 		MoveControl:      make(chan Movement),
 		Signals:          make(chan ControlSignal),
 	}
-	room.AssignedSequence = consts.LoadAssignedSequence(roomID)
+	room.AssignedSequence = make(map[string]int)
 	return room
 }
 func (r *Room) Run() {
@@ -116,6 +118,17 @@ func (r *Room) Run() {
 					log.Println("Updater Stopped")
 				}
 			}
+		case player := <-r.PlayerDetach:
+			if _, ok := r.Players[player]; ok {
+				delete(r.Players, player)
+				player.Room = nil
+				log.Println("Player Detached: ", player.DeiviceID)
+				if len(r.Players) == 0 {
+					updater = false
+					updaterChannel <- struct{}{}
+					log.Println("Updater Stopped")
+				}
+			}
 		case message := <-r.PlayerBroadcast:
 			//Handle Messages from Players
 
@@ -134,6 +147,7 @@ func (r *Room) Run() {
 				log.Panicln("ReadyToMove should be handled in Player")
 			case model.MessageTypeShotEvent:
 				// Broadcast the shot event to all players
+				senderIDKey := utils.NormalizeDeviceIDKey(playerMessage.ShotEvent.DeviceID)
 				eventMessage := model.EventMessage{
 					EventType: model.EventTypeShotEvent,
 					ShotEvent: &model.ShotEventMessage{
@@ -148,7 +162,7 @@ func (r *Room) Run() {
 					continue
 				}
 				for player := range r.Players {
-					if player == nil || player.DeiviceID == playerMessage.ShotEvent.DeviceID {
+					if player == nil || player.DeiviceID == senderIDKey {
 						continue
 					} else {
 						select {
@@ -161,6 +175,7 @@ func (r *Room) Run() {
 				}
 			case model.MessageTypeLantern:
 				// Broadcast the lantern event to all players
+				senderIDKey := utils.NormalizeDeviceIDKey(playerMessage.Latern.DeviceID)
 				eventMessage := model.EventMessage{
 					EventType: model.EventTypeLatern,
 					Latern: &model.LanternEventMessage{
@@ -175,7 +190,7 @@ func (r *Room) Run() {
 					continue
 				}
 				for player := range r.Players {
-					if player == nil || player.DeiviceID == playerMessage.Latern.DeviceID {
+					if player == nil || player.DeiviceID == senderIDKey {
 						continue
 					} else {
 						select {
@@ -303,7 +318,8 @@ func (r *Room) Run() {
 					continue
 				}
 				// Update the assigned sequence for the player
-				if seq, ok := r.AssignedSequence[signal.Target.DeiviceID]; ok {
+				normalizedID := utils.NormalizeDeviceIDKey(signal.Target.DeiviceID)
+				if seq, ok := r.AssignedSequence[normalizedID]; ok {
 					signal.Target.Sequence = seq
 					log.Println("ControlSignalTypeSeqUpdate: Player found in AssignedSequence, Sequence: ", seq)
 				} else {
@@ -344,8 +360,12 @@ func (r *Room) UpdateInfo(stop chan struct{}) {
 			//Send Player Position Info to all players
 			playerPostionInfos := make([]PlayerPositionInfo, 0, len(r.Players))
 			for player := range r.Players {
+				deviceIDForWire := player.RawDeviceID
+				if deviceIDForWire == "" {
+					deviceIDForWire = player.DeiviceID
+				}
 				playerPostionInfos = append(playerPostionInfos, PlayerPositionInfo{
-					DeviceID:          player.DeiviceID,
+					DeviceID:          deviceIDForWire,
 					HeadPosition:      player.HeadPosition,
 					HeadForward:       player.HeadForward,
 					LeftHandPosition:  player.LeftHandPosition,
@@ -378,8 +398,9 @@ func (r *Room) UpdateInfo(stop chan struct{}) {
 	}
 }
 func (r *Room) GetPlayerByDeviceID(deviceID string) *Player {
+	normalizedID := utils.NormalizeDeviceIDKey(deviceID)
 	for player := range r.Players {
-		if player.DeiviceID == deviceID {
+		if utils.NormalizeDeviceIDKey(player.DeiviceID) == normalizedID {
 			return player
 		}
 	}

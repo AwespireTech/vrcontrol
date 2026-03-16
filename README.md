@@ -1,6 +1,6 @@
 # VR Control
 
-整合 Go 後端與 Vite + React 前端的 VR 控制系統，包含 Quest 設備管理、房間管理、動作控制與監控機制。
+整合 Go 後端與 Vite + React 前端的 VR 控制系統，包含設備管理、房間管理、動作控制與監控機制。
 
 ## 來源與致謝
 
@@ -16,7 +16,6 @@
 vrcontrol/
 ├── server/          # Go 後端
 │   ├── main.go
-│   ├── quest/        # Quest 模組
 │   ├── routes/
 │   ├── controller/
 │   └── data/
@@ -31,7 +30,7 @@ vrcontrol/
 
 ### 先決條件：ADB 與 Scrcpy
 
-本專案的 Quest 裝置控制與螢幕鏡像功能需要在系統中安裝 **ADB** 與 **scrcpy**，並加入 `PATH`。
+本專案的 VR 裝置控制與螢幕鏡像功能需要在系統中安裝 **ADB** 與 **scrcpy**，並加入 `PATH`。
 
 **官方下載**
 - Android Platform Tools (ADB)：https://developer.android.com/tools/releases/platform-tools
@@ -75,7 +74,8 @@ npm run dev
 Vite 會將以下路徑代理到後端：
 
 - `/api/*` → `http://localhost:8080`
-- `/ws/*` → `ws://localhost:8080`
+
+目前前端 API 與 WebSocket 都統一經由 `/api/*` 命名空間對接後端。
 
 ## Docker（選用）
 
@@ -88,7 +88,7 @@ docker compose up
 ## 重要文件
 
 - AI Agent 指南：[AGENTS.md](AGENTS.md)
-- Quest 模組詳情：[server/README.md](server/README.md)
+- 後端 API 詳情：[server/README.md](server/README.md)
 - 動作參數規格：[docs/ACTION_PARAMETERS.md](docs/ACTION_PARAMETERS.md)
 - API 總表：[docs/API.md](docs/API.md)
 - 架構概覽：[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
@@ -96,11 +96,13 @@ docker compose up
 
 ## 資料儲存
 
-Quest 模組資料以 JSON 儲存在 `server/data/` 目錄：
+系統資料以 JSON 儲存在 `server/data/` 目錄：
 
-- `quest_devices.json`
-- `quest_rooms.json`
-- `quest_actions.json`
+- `devices.json`
+- `rooms.json`
+- `actions.json`
+- `scrcpy_config.json`
+- `preferences.json`
 
 ## 技術棧
 

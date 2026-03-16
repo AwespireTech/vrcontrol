@@ -8,12 +8,15 @@ import (
 
 	"vrcontrol/server/model"
 	"vrcontrol/server/utilities"
+	"vrcontrol/server/utils"
 
 	"github.com/gorilla/websocket"
 )
 
 type Player struct {
 	DeiviceID         string
+	RawDeviceID       string
+	StableID          string
 	Connection        *websocket.Conn
 	Room              *Room
 	Stage             int
@@ -36,6 +39,8 @@ type Player struct {
 func HandlePlayerConnect(conn *websocket.Conn, id string, sdc chan string) *Player {
 	player := Player{
 		DeiviceID:         id,
+		RawDeviceID:       id,
+		StableID:          id,
 		Connection:        conn,
 		StandbyDisconnect: sdc,
 		LastUpdate:        time.Now(),
@@ -51,8 +56,8 @@ func (p *Player) read() {
 			p.Room.PlayerUnregister <- p
 		} else {
 			log.Printf("Player %s disconnected before being assigned to a room.", p.DeiviceID)
-			p.StandbyDisconnect <- p.DeiviceID
 		}
+		p.StandbyDisconnect <- p.StableID
 		p.Connection.Close()
 	}()
 	p.Connection.SetReadLimit(MaxMessageSize)
@@ -70,7 +75,7 @@ func (p *Player) read() {
 
 		message = bytes.TrimSpace(bytes.Replace(message, Newline, Space, -1))
 		if p.Room == nil {
-			log.Printf("Player %s is in standby, message receeived: %s", p.DeiviceID, string(message))
+			// log.Printf("Player %s is in standby, message receeived: %s", p.DeiviceID, string(message))
 			// If the player is not in a room, we just log the message and continue
 			continue
 		}
@@ -92,13 +97,15 @@ func (p *Player) read() {
 			p.LeftHandAvail = heartbeat.LeftHandAvail
 			p.RightHandAvail = heartbeat.RightHandAvail
 			p.Stage = heartbeat.Stage
-			p.DeiviceID = heartbeat.DeviceID
+			p.RawDeviceID = heartbeat.DeviceID
+			p.DeiviceID = utils.NormalizeDeviceIDKey(heartbeat.DeviceID)
 			p.Message = heartbeat.Message
 			p.LastUpdate = utilities.TicksToDateTime(heartbeat.Timestamp)
 		case model.MessageTypeReadyToMove:
 			readyToMove := playerMessage.ReadyToMove
 			p.Stage = readyToMove.Stage
-			p.DeiviceID = readyToMove.DeviceID
+			p.RawDeviceID = readyToMove.DeviceID
+			p.DeiviceID = utils.NormalizeDeviceIDKey(readyToMove.DeviceID)
 			// p.ReadyToMove = true
 			p.ReadyToMove = readyToMove.Stage > 0
 

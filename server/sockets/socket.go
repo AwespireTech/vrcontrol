@@ -3,28 +3,28 @@ package sockets
 import (
 	"net/http"
 
-	"vrcontrol/server/consts"
+	questconsts "vrcontrol/server/consts"
 
 	"github.com/gorilla/websocket"
 )
 
 var (
 	// Time allowed to write a message to the peer.
-	WriteWait = consts.WriteWait
+	WriteWait = questconsts.WriteWait
 
 	// Time allowed to read the next pong message from the peer.
-	PongWait = consts.PongWait
+	PongWait = questconsts.PongWait
 
 	// Send pings to peer with this period. Must be less than pongWait.
-	PingPeriod = consts.PingPeriod
+	PingPeriod = questconsts.PingPeriod
 
 	// Maximum message size allowed from peer.
-	MaxMessageSize = int64(consts.MaxMessageSize)
+	MaxMessageSize = int64(questconsts.MaxMessageSize)
 
-	BufferSize = consts.BufferSize
+	BufferSize = questconsts.BufferSize
 
 	//Tick Per Second
-	TickRate = consts.TickRate
+	TickRate = questconsts.TickRate
 
 	Newline = []byte{'\n'}
 	Space   = []byte{' '}

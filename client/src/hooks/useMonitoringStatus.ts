@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { DEFAULT_MONITORING_STATUS_POLL_INTERVAL_SECONDS } from "@/environment"
-import { monitoringApi } from "@/services/quest-api"
+import { monitoringApi } from "@/services/api"
 
 type MonitoringStatusState = {
   known: boolean
