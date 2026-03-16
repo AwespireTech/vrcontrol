@@ -14,7 +14,7 @@ import (
 // DeviceRepository 設備資料存儲
 type DeviceRepository struct {
 	repo    *JSONRepository
-	devices map[string]*model.QuestDevice
+	devices map[string]*model.Device
 	mu      sync.RWMutex
 }
 
@@ -22,13 +22,13 @@ type DeviceRepository struct {
 func NewDeviceRepository(filePath string) *DeviceRepository {
 	return &DeviceRepository{
 		repo:    NewJSONRepository(filePath),
-		devices: make(map[string]*model.QuestDevice),
+		devices: make(map[string]*model.Device),
 	}
 }
 
 // Load 加載所有設備
 func (r *DeviceRepository) Load() error {
-	var devices []*model.QuestDevice
+	var devices []*model.Device
 	if err := r.repo.Load(&devices); err != nil {
 		return err
 	}
@@ -36,7 +36,7 @@ func (r *DeviceRepository) Load() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.devices = make(map[string]*model.QuestDevice)
+	r.devices = make(map[string]*model.Device)
 	for _, device := range devices {
 		r.devices[device.DeviceID] = device
 	}
@@ -46,7 +46,7 @@ func (r *DeviceRepository) Load() error {
 
 // save 內部保存方法（不加鎖）
 func (r *DeviceRepository) save() error {
-	devices := make([]*model.QuestDevice, 0, len(r.devices))
+	devices := make([]*model.Device, 0, len(r.devices))
 	for _, device := range r.devices {
 		devices = append(devices, device)
 	}
@@ -64,11 +64,11 @@ func (r *DeviceRepository) Save() error {
 }
 
 // GetAll 獲取所有設備
-func (r *DeviceRepository) GetAll() []*model.QuestDevice {
+func (r *DeviceRepository) GetAll() []*model.Device {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	devices := make([]*model.QuestDevice, 0, len(r.devices))
+	devices := make([]*model.Device, 0, len(r.devices))
 	for _, device := range r.devices {
 		devices = append(devices, device)
 	}
@@ -78,7 +78,7 @@ func (r *DeviceRepository) GetAll() []*model.QuestDevice {
 	return devices
 }
 
-func (r *DeviceRepository) sortDevices(devices []*model.QuestDevice) {
+func (r *DeviceRepository) sortDevices(devices []*model.Device) {
 	sort.SliceStable(devices, func(i, j int) bool {
 		aliasI := strings.ToLower(devices[i].Alias)
 		aliasJ := strings.ToLower(devices[j].Alias)
@@ -90,7 +90,7 @@ func (r *DeviceRepository) sortDevices(devices []*model.QuestDevice) {
 }
 
 // GetByID 根據 ID 獲取設備
-func (r *DeviceRepository) GetByID(deviceID string) (*model.QuestDevice, error) {
+func (r *DeviceRepository) GetByID(deviceID string) (*model.Device, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -103,7 +103,7 @@ func (r *DeviceRepository) GetByID(deviceID string) (*model.QuestDevice, error) 
 }
 
 // GetBySerial 根據序列號獲取設備
-func (r *DeviceRepository) GetBySerial(serial string) (*model.QuestDevice, error) {
+func (r *DeviceRepository) GetBySerial(serial string) (*model.Device, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -117,11 +117,11 @@ func (r *DeviceRepository) GetBySerial(serial string) (*model.QuestDevice, error
 }
 
 // GetByRoomID 獲取房間內的所有設備
-func (r *DeviceRepository) GetByRoomID(roomID string) []*model.QuestDevice {
+func (r *DeviceRepository) GetByRoomID(roomID string) []*model.Device {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	devices := make([]*model.QuestDevice, 0)
+	devices := make([]*model.Device, 0)
 	for _, device := range r.devices {
 		if device.RoomID == roomID {
 			devices = append(devices, device)
@@ -132,7 +132,7 @@ func (r *DeviceRepository) GetByRoomID(roomID string) []*model.QuestDevice {
 }
 
 // Create 創建新設備
-func (r *DeviceRepository) Create(device *model.QuestDevice) error {
+func (r *DeviceRepository) Create(device *model.Device) error {
 	log.Printf("[DeviceRepo] Create: 開始創建設備 - ID: %s\n", device.DeviceID)
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -162,7 +162,7 @@ func (r *DeviceRepository) Create(device *model.QuestDevice) error {
 }
 
 // Update 更新設備
-func (r *DeviceRepository) Update(device *model.QuestDevice) error {
+func (r *DeviceRepository) Update(device *model.Device) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

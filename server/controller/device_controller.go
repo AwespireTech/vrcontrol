@@ -58,7 +58,7 @@ func (c *DeviceController) GetDevice(ctx *gin.Context) {
 // @Router /api/devices [post]
 func (c *DeviceController) CreateDevice(ctx *gin.Context) {
 	log.Println("[DeviceController] CreateDevice: 開始處理請求")
-	var device model.QuestDevice
+	var device model.Device
 	if err := ctx.ShouldBindJSON(&device); err != nil {
 		log.Printf("[DeviceController] CreateDevice: JSON 綁定失敗 - %v\n", err)
 		ctx.JSON(http.StatusBadRequest, gin.H{
@@ -94,7 +94,7 @@ func (c *DeviceController) CreateDevice(ctx *gin.Context) {
 func (c *DeviceController) UpdateDevice(ctx *gin.Context) {
 	deviceID := ctx.Param("id")
 
-	var device model.QuestDevice
+	var device model.Device
 	if err := ctx.ShouldBindJSON(&device); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"success": false,

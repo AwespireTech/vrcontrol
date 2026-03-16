@@ -51,7 +51,7 @@ func (c *ActionController) GetAction(ctx *gin.Context) {
 
 // CreateAction 創建新動作
 func (c *ActionController) CreateAction(ctx *gin.Context) {
-	var action model.QuestAction
+	var action model.Action
 	if err := ctx.ShouldBindJSON(&action); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -79,7 +79,7 @@ func (c *ActionController) CreateAction(ctx *gin.Context) {
 func (c *ActionController) UpdateAction(ctx *gin.Context) {
 	actionID := ctx.Param("id")
 
-	var action model.QuestAction
+	var action model.Action
 	if err := ctx.ShouldBindJSON(&action); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"success": false,

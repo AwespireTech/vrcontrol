@@ -1,12 +1,10 @@
-import QuestDeviceSelectionModal, {
-  type QuestDeviceSelectionTarget,
-} from "@/components/quest/quest-device-selection-modal"
+import DeviceSelectionModal, {
+  type DeviceSelectionTarget,
+} from "@/components/console/device-selection-modal"
 
-// Backward-compatible alias (legacy name)
-export type QuestActionExecuteTarget = QuestDeviceSelectionTarget
+export type ActionExecuteTarget = DeviceSelectionTarget
 
-// Backward-compatible wrapper (legacy component)
-export default function QuestActionExecuteModal({
+export default function ActionExecuteModal({
   open,
   actionName,
   targets,
@@ -18,7 +16,7 @@ export default function QuestActionExecuteModal({
 }: {
   open: boolean
   actionName: string
-  targets: QuestActionExecuteTarget[]
+  targets: ActionExecuteTarget[]
   selectedIds: string[]
   onSelectedIdsChange: (next: string[]) => void
   confirmPending: boolean
@@ -26,7 +24,7 @@ export default function QuestActionExecuteModal({
   onClose: () => void
 }) {
   return (
-    <QuestDeviceSelectionModal
+    <DeviceSelectionModal
       open={open}
       title={`執行動作: ${actionName}`}
       confirmText="執行"

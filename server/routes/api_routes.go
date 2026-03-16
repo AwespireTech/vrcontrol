@@ -13,8 +13,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// SetupQuestRoutes 設置 Quest 模組的所有路由
-func SetupQuestRoutes(router *gin.Engine, dataDir string) {
+// SetupRoutes 設置 API 路由
+func SetupRoutes(router *gin.Engine, dataDir string) {
 	// 初始化 Managers
 	adbManager := adb.NewADBManager("", 30*time.Second)
 	pingManager := adb.NewPingManager(2 * time.Second)
@@ -22,44 +22,44 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 	scrcpyStreamManager := scrcpy.NewStreamManager()
 
 	// 初始化 Repositories
-	deviceRepo := repository.NewDeviceRepository(dataDir + "/quest_devices.json")
-	roomRepo := repository.NewRoomRepository(dataDir + "/quest_rooms.json")
-	actionRepo := repository.NewActionRepository(dataDir + "/quest_actions.json")
-	scrcpyConfigRepo := repository.NewScrcpyConfigRepository(dataDir + "/quest_scrcpy_config.json")
-	preferenceRepo := repository.NewPreferenceRepository(dataDir + "/quest_preferences.json")
+	deviceRepo := repository.NewDeviceRepository(dataDir + "/devices.json")
+	roomRepo := repository.NewRoomRepository(dataDir + "/rooms.json")
+	actionRepo := repository.NewActionRepository(dataDir + "/actions.json")
+	scrcpyConfigRepo := repository.NewScrcpyConfigRepository(dataDir + "/scrcpy_config.json")
+	preferenceRepo := repository.NewPreferenceRepository(dataDir + "/preferences.json")
 
 	// 從文件載入已保存的數據
-	log.Println("[Quest] 開始載入已保存的數據...")
+	log.Println("[API] 開始載入已保存的數據...")
 	if err := deviceRepo.Load(); err != nil {
-		log.Printf("[Quest] 警告: 載入設備數據失敗 - %v\n", err)
+		log.Printf("[API] 警告: 載入設備數據失敗 - %v\n", err)
 	} else {
-		log.Printf("[Quest] 成功載入 %d 個設備\n", len(deviceRepo.GetAll()))
+		log.Printf("[API] 成功載入 %d 個設備\n", len(deviceRepo.GetAll()))
 	}
 
 	if err := roomRepo.Load(); err != nil {
-		log.Printf("[Quest] 警告: 載入房間數據失敗 - %v\n", err)
+		log.Printf("[API] 警告: 載入房間數據失敗 - %v\n", err)
 	} else {
-		log.Printf("[Quest] 成功載入 %d 個房間\n", len(roomRepo.GetAll()))
+		log.Printf("[API] 成功載入 %d 個房間\n", len(roomRepo.GetAll()))
 	}
 
 	if err := actionRepo.Load(); err != nil {
-		log.Printf("[Quest] 警告: 載入動作數據失敗 - %v\n", err)
+		log.Printf("[API] 警告: 載入動作數據失敗 - %v\n", err)
 	} else {
-		log.Printf("[Quest] 成功載入 %d 個動作\n", len(actionRepo.GetAll()))
+		log.Printf("[API] 成功載入 %d 個動作\n", len(actionRepo.GetAll()))
 	}
 
 	if err := scrcpyConfigRepo.Load(); err != nil {
-		log.Printf("[Quest] 警告: 載入 Scrcpy 配置失敗 - %v\n", err)
+		log.Printf("[API] 警告: 載入 Scrcpy 配置失敗 - %v\n", err)
 	} else {
-		log.Println("[Quest] 成功載入 Scrcpy 配置")
+		log.Println("[API] 成功載入 Scrcpy 配置")
 	}
 
 	if err := preferenceRepo.Load(); err != nil {
-		log.Printf("[Quest] 警告: 載入使用者偏好失敗 - %v\n", err)
-		log.Println("[Quest] 將使用記憶體中的預設偏好設定")
+		log.Printf("[API] 警告: 載入使用者偏好失敗 - %v\n", err)
+		log.Println("[API] 將使用記憶體中的預設偏好設定")
 	} else {
 		pref := preferenceRepo.Get()
-		log.Printf("[Quest] 成功載入使用者偏好 (輪詢: %ds, 批大小: %d, 併發: %d)\n",
+		log.Printf("[API] 成功載入使用者偏好 (輪詢: %ds, 批大小: %d, 併發: %d)\n",
 			pref.PollIntervalSec, pref.BatchSize, pref.MaxConcurrency)
 	}
 
@@ -80,9 +80,9 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 
 	// 啟動時以 DeviceIDs 去重並整理房間關聯（不再寫入 assigned_room.json）
 	if assigned, err := roomService.ReconcileDeviceAssignmentsByRoomUpdate(); err != nil {
-		log.Printf("[Quest] 整理設備房間關聯失敗: %v\n", err)
+		log.Printf("[API] 整理設備房間關聯失敗: %v\n", err)
 	} else {
-		log.Printf("[Quest] 設備房間關聯整理完成: %d 筆\n", len(assigned))
+		log.Printf("[API] 設備房間關聯整理完成: %d 筆\n", len(assigned))
 	}
 
 	// 初始化 Controllers
@@ -94,33 +94,33 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 	scrcpyStreamController := controller.NewScrcpyStreamController(scrcpyStreamService)
 	webrtcStreamController := controller.NewWebRTCStreamController(scrcpyStreamService)
 	preferenceController := controller.NewPreferenceController(preferenceService)
-	controller.SetQuestRoomService(roomService)
-	controller.SetQuestDeviceService(deviceService)
+	controller.SetRoomService(roomService)
+	controller.SetDeviceService(deviceService)
 
-	// Quest API 路由群組
-	questAPI := router.Group("/api")
+	// API 路由群組
+	api := router.Group("/api")
 	{
-		// 控制 API 路由（Quest 內部副本）
-		control := questAPI.Group("/control")
+		// 控制 API 路由
+		control := api.Group("/control")
 		{
-			SetQuestControlRoutes(control)
+			SetControlRoutes(control)
 		}
 
-		// 簡化控制 API 路由（Quest 內部副本）
-		simple := questAPI.Group("/simple")
+		// 簡化控制 API 路由
+		simple := api.Group("/simple")
 		{
-			SetQuestSimpleRoutes(simple)
+			SetSimpleRoutes(simple)
 		}
 
-		// WebSocket 控制路由（Quest 內部副本）
-		socket := questAPI.Group("/ws")
+		// WebSocket 控制路由
+		socket := api.Group("/ws")
 		{
-			SetQuestSocketRoutes(socket)
+			SetSocketRoutes(socket)
 			socket.GET("/webrtc/:deviceId", webrtcStreamController.Stream)
 		}
 
 		// 設備管理路由
-		devices := questAPI.Group("/devices")
+		devices := api.Group("/devices")
 		{
 			devices.GET("", deviceController.GetAllDevices)
 			devices.GET("/isolation", controller.GetIsolationDevices)
@@ -144,7 +144,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 		}
 
 		// 房間管理路由
-		rooms := questAPI.Group("/rooms")
+		rooms := api.Group("/rooms")
 		{
 			rooms.GET("", roomController.GetAllRooms)
 			rooms.GET("/:id", roomController.GetRoom)
@@ -157,7 +157,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 		}
 
 		// 動作管理路由
-		actions := questAPI.Group("/actions")
+		actions := api.Group("/actions")
 		{
 			actions.GET("", actionController.GetAllActions)
 			actions.GET("/:id", actionController.GetAction)
@@ -170,7 +170,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 		}
 
 		// 監控服務路由
-		monitoring := questAPI.Group("/monitoring")
+		monitoring := api.Group("/monitoring")
 		{
 			monitoring.GET("/status", monitoringController.GetStatus)
 			monitoring.POST("/start", monitoringController.Start)
@@ -180,7 +180,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 		}
 
 		// Scrcpy 螢幕鏡像路由
-		scrcpyGroup := questAPI.Group("/scrcpy")
+		scrcpyGroup := api.Group("/scrcpy")
 		{
 			scrcpyGroup.GET("/system-info", scrcpyController.GetSystemInfo)
 			scrcpyGroup.POST("/start/:id", scrcpyController.StartScrcpy)
@@ -194,7 +194,7 @@ func SetupQuestRoutes(router *gin.Engine, dataDir string) {
 		}
 
 		// 使用者偏好路由
-		questAPI.GET("/preferences", preferenceController.GetPreference)
-		questAPI.PUT("/preferences", preferenceController.UpdatePreference)
+		api.GET("/preferences", preferenceController.GetPreference)
+		api.PUT("/preferences", preferenceController.UpdatePreference)
 	}
 }

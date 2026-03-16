@@ -52,7 +52,7 @@ func (c *RoomController) GetRoom(ctx *gin.Context) {
 
 // CreateRoom 創建新房間
 func (c *RoomController) CreateRoom(ctx *gin.Context) {
-	var room model.QuestRoom
+	var room model.Room
 	if err := ctx.ShouldBindJSON(&room); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -80,7 +80,7 @@ func (c *RoomController) CreateRoom(ctx *gin.Context) {
 func (c *RoomController) UpdateRoom(ctx *gin.Context) {
 	roomID := ctx.Param("id")
 
-	var room model.QuestRoom
+	var room model.Room
 	if err := ctx.ShouldBindJSON(&room); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{
 			"success": false,

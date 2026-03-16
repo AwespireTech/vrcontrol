@@ -1,32 +1,32 @@
 import { useEffect, useMemo, useState } from "react"
-import { deviceApi, monitoringApi } from "@/services/quest-api"
-import { QUEST_DEVICE_STATUS, type QuestDevice } from "@/services/quest-types"
+import { deviceApi, monitoringApi } from "@/services/api"
+import { DEVICE_STATUS, type Device } from "@/services/api-types"
 import { getDisplayName } from "@/lib/utils/device"
 import { useMonitoringStatus } from "@/hooks/useMonitoringStatus"
-import QuestPageShell from "@/components/quest/quest-page-shell"
+import PageShell from "@/components/console/page-shell"
 import Button from "@/components/button"
 
-type StatusFilter = "all" | QuestDevice["status"]
+type StatusFilter = "all" | Device["status"]
 type AutoReconnectFilter = "all" | "enabled" | "disabled"
 
 function getStatusText(status: string) {
   switch (status) {
-    case QUEST_DEVICE_STATUS.ONLINE:
+    case DEVICE_STATUS.ONLINE:
       return "在線"
-    case QUEST_DEVICE_STATUS.OFFLINE:
+    case DEVICE_STATUS.OFFLINE:
       return "離線"
-    case QUEST_DEVICE_STATUS.CONNECTING:
+    case DEVICE_STATUS.CONNECTING:
       return "連線中"
-    case QUEST_DEVICE_STATUS.ERROR:
+    case DEVICE_STATUS.ERROR:
       return "錯誤"
-    case QUEST_DEVICE_STATUS.DISCONNECTED:
+    case DEVICE_STATUS.DISCONNECTED:
       return "手動斷開"
     default:
       return "未知"
   }
 }
 
-function getReasonText(reason?: QuestDevice["auto_reconnect_disabled_reason"]) {
+function getReasonText(reason?: Device["auto_reconnect_disabled_reason"]) {
   switch (reason) {
     case "manual_disconnect":
       return "手動斷開"
@@ -43,20 +43,20 @@ function getReasonText(reason?: QuestDevice["auto_reconnect_disabled_reason"]) {
   }
 }
 
-function getWsStatusText(status?: QuestDevice["ws_status"]) {
+function getWsStatusText(status?: Device["ws_status"]) {
   if (status === "connected") return "已連線"
   if (status === "disconnected") return "未連線"
   return "未知"
 }
 
-function getWsStatusBadge(status?: QuestDevice["ws_status"]) {
+function getWsStatusBadge(status?: Device["ws_status"]) {
   if (status === "connected") return "ui-badge-success"
   if (status === "disconnected") return "ui-badge-muted"
   return "ui-badge-muted"
 }
 
-export default function QuestMonitoringPage() {
-  const [devices, setDevices] = useState<QuestDevice[]>([])
+export default function MonitoringPage() {
+  const [devices, setDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(true)
   const monitoring = useMonitoringStatus()
 
@@ -239,7 +239,7 @@ export default function QuestMonitoringPage() {
   }
 
   return (
-    <QuestPageShell
+    <PageShell
       title="監控中心"
       subtitle="篩選設備，批次設定自動重連與重置狀態"
       actions={
@@ -283,11 +283,11 @@ export default function QuestMonitoringPage() {
             className="ui-select w-full px-4 py-2"
           >
             <option value="all">狀態：全部</option>
-            <option value={QUEST_DEVICE_STATUS.ONLINE}>狀態：在線</option>
-            <option value={QUEST_DEVICE_STATUS.OFFLINE}>狀態：離線</option>
-            <option value={QUEST_DEVICE_STATUS.ERROR}>狀態：錯誤</option>
-            <option value={QUEST_DEVICE_STATUS.DISCONNECTED}>狀態：手動斷開</option>
-            <option value={QUEST_DEVICE_STATUS.CONNECTING}>狀態：連線中</option>
+            <option value={DEVICE_STATUS.ONLINE}>狀態：在線</option>
+            <option value={DEVICE_STATUS.OFFLINE}>狀態：離線</option>
+            <option value={DEVICE_STATUS.ERROR}>狀態：錯誤</option>
+            <option value={DEVICE_STATUS.DISCONNECTED}>狀態：手動斷開</option>
+            <option value={DEVICE_STATUS.CONNECTING}>狀態：連線中</option>
           </select>
 
           <select
@@ -407,11 +407,11 @@ export default function QuestMonitoringPage() {
                 <div className="col-span-2">
                   <span
                     className={`ui-badge ${
-                      d.status === QUEST_DEVICE_STATUS.ONLINE
+                      d.status === DEVICE_STATUS.ONLINE
                         ? "ui-badge-success"
-                        : d.status === QUEST_DEVICE_STATUS.ERROR
+                        : d.status === DEVICE_STATUS.ERROR
                           ? "ui-badge-danger"
-                          : d.status === QUEST_DEVICE_STATUS.CONNECTING
+                          : d.status === DEVICE_STATUS.CONNECTING
                             ? "ui-badge-warning"
                             : "ui-badge-muted"
                     }`}
@@ -467,6 +467,6 @@ export default function QuestMonitoringPage() {
           })
         )}
       </div>
-    </QuestPageShell>
+    </PageShell>
   )
 }

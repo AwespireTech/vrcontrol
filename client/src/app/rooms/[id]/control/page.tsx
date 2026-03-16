@@ -3,12 +3,12 @@ import { useNavigate, useParams } from "react-router-dom"
 import { DEFAULT_POLL_INTERVAL_SECONDS, SERVER } from "@/environment"
 import Button from "@/components/button"
 import PlayerInfo from "@/components/player-info"
-import { actionApi, controlApi, deviceApi, roomApi, scrcpyApi, simpleApi } from "@/services/quest-api"
-import { QUEST_DEVICE_STATUS, type QuestAction, type QuestDevice } from "@/services/quest-types"
+import { actionApi, controlApi, deviceApi, roomApi, scrcpyApi, simpleApi } from "@/services/api"
+import { DEVICE_STATUS, type Action, type Device } from "@/services/api-types"
 import { getDisplayName } from "@/lib/utils/device"
 import type { PlayerData, RoomInfoData } from "@/interfaces/room.interface"
-import QuestPageShell from "@/components/quest/quest-page-shell"
-import QuestDeviceSelectionModal from "@/components/quest/quest-device-selection-modal"
+import PageShell from "@/components/console/page-shell"
+import DeviceSelectionModal from "@/components/console/device-selection-modal"
 
 const TotalChapters = 11
 
@@ -21,7 +21,7 @@ export default function RoomControlPage() {
   const host = SERVER.replace(/^https?:\/\//, "")
 
   const [playerData, setPlayerData] = useState<PlayerData[]>([])
-  const [deviceMap, setDeviceMap] = useState<Map<string, QuestDevice>>(new Map())
+  const [deviceMap, setDeviceMap] = useState<Map<string, Device>>(new Map())
   const [connectionStatus, setConnectionStatus] = useState<
     "connecting" | "connected" | "disconnected"
   >("connecting")
@@ -39,7 +39,7 @@ export default function RoomControlPage() {
   const [roomList, setRoomList] = useState<{ value: string; label: string }[]>([])
   const [roomDeviceIds, setRoomDeviceIds] = useState<string[]>([])
 
-  const [actions, setActions] = useState<QuestAction[]>([])
+  const [actions, setActions] = useState<Action[]>([])
   const [selectedActionId, setSelectedActionId] = useState<string>("")
   const [batchModalOpen, setBatchModalOpen] = useState(false)
   const [batchMode, setBatchMode] = useState<"action" | "monitor">("action")
@@ -81,15 +81,15 @@ export default function RoomControlPage() {
 
   const loadControlData = useCallback(async () => {
     try {
-      const [questRooms, devices] = await Promise.all([roomApi.getAll(), deviceApi.getAll()])
-      const roomOptions = questRooms
+      const [rooms, devices] = await Promise.all([roomApi.getAll(), deviceApi.getAll()])
+      const roomOptions = rooms
         .map((room) => ({ value: room.room_id, label: room.name }))
         .sort((a, b) => a.label.localeCompare(b.label))
       setRoomList(roomOptions)
       setDeviceMap(new Map(devices.map((device) => [device.device_id, device])))
 
       if (roomId) {
-        const currentRoom = questRooms.find((room) => room.room_id === roomId)
+        const currentRoom = rooms.find((room) => room.room_id === roomId)
         setRoomDeviceIds(currentRoom?.device_ids || [])
       }
     } catch (error) {
@@ -297,39 +297,39 @@ export default function RoomControlPage() {
     }
   }
 
-  const getAdbStatusText = (status?: QuestDevice["status"]) => {
+  const getAdbStatusText = (status?: Device["status"]) => {
     switch (status) {
-      case QUEST_DEVICE_STATUS.ONLINE:
+      case DEVICE_STATUS.ONLINE:
         return "在線"
-      case QUEST_DEVICE_STATUS.OFFLINE:
+      case DEVICE_STATUS.OFFLINE:
         return "離線"
-      case QUEST_DEVICE_STATUS.CONNECTING:
+      case DEVICE_STATUS.CONNECTING:
         return "連線中"
-      case QUEST_DEVICE_STATUS.ERROR:
+      case DEVICE_STATUS.ERROR:
         return "錯誤"
-      case QUEST_DEVICE_STATUS.DISCONNECTED:
+      case DEVICE_STATUS.DISCONNECTED:
         return "手動斷開"
       default:
         return "未知"
     }
   }
 
-  const getAdbStatusBadgeClass = (status?: QuestDevice["status"]) => {
+  const getAdbStatusBadgeClass = (status?: Device["status"]) => {
     switch (status) {
-      case QUEST_DEVICE_STATUS.ONLINE:
+      case DEVICE_STATUS.ONLINE:
         return "ui-badge-success"
-      case QUEST_DEVICE_STATUS.CONNECTING:
+      case DEVICE_STATUS.CONNECTING:
         return "ui-badge-warning"
-      case QUEST_DEVICE_STATUS.ERROR:
+      case DEVICE_STATUS.ERROR:
         return "ui-badge-danger"
-      case QUEST_DEVICE_STATUS.OFFLINE:
-      case QUEST_DEVICE_STATUS.DISCONNECTED:
+      case DEVICE_STATUS.OFFLINE:
+      case DEVICE_STATUS.DISCONNECTED:
       default:
         return "ui-badge-muted"
     }
   }
 
-  const getWsStatusText = (status?: QuestDevice["ws_status"]) => {
+  const getWsStatusText = (status?: Device["ws_status"]) => {
     switch (status) {
       case "connected":
         return "已連線"
@@ -340,7 +340,7 @@ export default function RoomControlPage() {
     }
   }
 
-  const getWsStatusBadgeClass = (status?: QuestDevice["ws_status"]) => {
+  const getWsStatusBadgeClass = (status?: Device["ws_status"]) => {
     switch (status) {
       case "connected":
         return "ui-badge-success"
@@ -351,10 +351,10 @@ export default function RoomControlPage() {
     }
   }
 
-  type AdbStatus = (typeof QUEST_DEVICE_STATUS)[keyof typeof QUEST_DEVICE_STATUS]
+  type AdbStatus = (typeof DEVICE_STATUS)[keyof typeof DEVICE_STATUS]
 
-  const isQuestDeviceStatus = (status?: string): status is AdbStatus => {
-    return !!status && (Object.values(QUEST_DEVICE_STATUS) as string[]).includes(status)
+  const isSupportedDeviceStatus = (status?: string): status is AdbStatus => {
+    return !!status && (Object.values(DEVICE_STATUS) as string[]).includes(status)
   }
 
   const options = Array.from({ length: TotalChapters }, (_, i) => i.toString())
@@ -466,7 +466,7 @@ export default function RoomControlPage() {
   }
 
   return (
-    <QuestPageShell
+    <PageShell
       title="房間控制"
       subtitle={`房間: ${currentRoomName}`}
       actions={
@@ -624,10 +624,10 @@ export default function RoomControlPage() {
                 const player = playerByDeviceId.get(deviceId)
                 const device = deviceMap.get(deviceId)
                 const alias = device ? getDisplayName(device) : deviceId
-                const adbStatus = isQuestDeviceStatus(device?.status) ? device?.status : undefined
+                const adbStatus = isSupportedDeviceStatus(device?.status) ? device?.status : undefined
                 const wsStatus = device?.ws_status
-                const isAdbOnline = adbStatus === QUEST_DEVICE_STATUS.ONLINE
-                const isAdbConnecting = adbStatus === QUEST_DEVICE_STATUS.CONNECTING
+                const isAdbOnline = adbStatus === DEVICE_STATUS.ONLINE
+                const isAdbConnecting = adbStatus === DEVICE_STATUS.CONNECTING
                 const devicePendingAction = deviceActionPending[deviceId]
                 const isDevicePending = !!devicePendingAction
                 const batteryText =
@@ -725,7 +725,7 @@ export default function RoomControlPage() {
         </div>
       </div>
 
-      <QuestDeviceSelectionModal
+      <DeviceSelectionModal
         open={batchModalOpen}
         title={
           batchMode === "action"
@@ -752,6 +752,6 @@ export default function RoomControlPage() {
           setBatchSelectedDeviceIds([])
         }}
       />
-    </QuestPageShell>
+    </PageShell>
   )
 }

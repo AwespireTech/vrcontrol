@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { roomApi, deviceApi } from "@/services/quest-api"
-import type { QuestRoom, QuestDevice } from "@/services/quest-types"
+import { roomApi, deviceApi } from "@/services/api"
+import type { Room, Device } from "@/services/api-types"
 import { getDisplayName } from "@/lib/utils/device"
-import QuestPageShell from "@/components/quest/quest-page-shell"
+import PageShell from "@/components/console/page-shell"
 import Button from "@/components/button"
 
-const getStatusText = (status: QuestDevice["status"]) => {
+const getStatusText = (status: Device["status"]) => {
   switch (status) {
     case "online":
       return "在線"
@@ -23,7 +23,7 @@ const getStatusText = (status: QuestDevice["status"]) => {
   }
 }
 
-const getAdbStatusBadgeClass = (status: QuestDevice["status"]) => {
+const getAdbStatusBadgeClass = (status: Device["status"]) => {
   switch (status) {
     case "online":
       return "ui-badge-success"
@@ -38,13 +38,13 @@ const getAdbStatusBadgeClass = (status: QuestDevice["status"]) => {
   }
 }
 
-const getWsStatusText = (status?: QuestDevice["ws_status"]) => {
+const getWsStatusText = (status?: Device["ws_status"]) => {
   if (status === "connected") return "已連線"
   if (status === "disconnected") return "未連線"
   return "未知"
 }
 
-const getWsStatusBadgeClass = (status?: QuestDevice["ws_status"]) => {
+const getWsStatusBadgeClass = (status?: Device["ws_status"]) => {
   if (status === "connected") return "ui-badge-success"
   if (status === "disconnected") return "ui-badge-muted"
   return "ui-badge-muted"
@@ -53,10 +53,10 @@ const getWsStatusBadgeClass = (status?: QuestDevice["ws_status"]) => {
 export default function RoomDevicesPage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
-  const [room, setRoom] = useState<QuestRoom | null>(null)
-  const [allDevices, setAllDevices] = useState<QuestDevice[]>([])
+  const [room, setRoom] = useState<Room | null>(null)
+  const [allDevices, setAllDevices] = useState<Device[]>([])
   const [roomNameMap, setRoomNameMap] = useState<Map<string, string>>(new Map())
-  const [roomDevices, setRoomDevices] = useState<QuestDevice[]>([])
+  const [roomDevices, setRoomDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(true)
   const [devicePending, setDevicePending] = useState<Record<string, "add" | "remove">>({})
 
@@ -90,7 +90,7 @@ export default function RoomDevicesPage() {
     loadData()
   }, [loadData])
 
-  const handleAddDevice = async (device: QuestDevice) => {
+  const handleAddDevice = async (device: Device) => {
     if (!id) return
     if (devicePending[device.device_id]) return
 
@@ -161,7 +161,7 @@ export default function RoomDevicesPage() {
   const availableDevices = allDevices.filter((d) => !room.device_ids?.includes(d.device_id))
 
   return (
-    <QuestPageShell
+    <PageShell
       title="管理房間設備"
       subtitle={`房間: ${room.name}`}
       maxWidth="lg"
@@ -298,6 +298,6 @@ export default function RoomDevicesPage() {
           )}
         </div>
       </div>
-    </QuestPageShell>
+    </PageShell>
   )
 }

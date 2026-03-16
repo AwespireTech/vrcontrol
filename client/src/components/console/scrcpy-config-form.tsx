@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import type { ScrcpyConfig } from "@/services/quest-types"
+import type { ScrcpyConfig } from "@/services/api-types"
 
 interface ScrcpyConfigFormProps {
   value: ScrcpyConfig
@@ -222,7 +222,7 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
 
         <div className="rounded-xl border border-warning/40 bg-warning/10 p-3">
           <p className="text-sm text-warning">
-            ⚠️ 建議關閉「啟用音訊轉發」以保留 Quest 設備的內建音訊功能
+            ⚠️ 建議關閉「啟用音訊轉發」以保留裝置的內建音訊功能
           </p>
         </div>
       </div>

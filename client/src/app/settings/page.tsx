@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react"
-import { monitoringApi, scrcpyApi, preferenceApi } from "@/services/quest-api"
-import { ScrcpyConfigForm } from "@/components/quest/scrcpy-config-form"
-import type { ScrcpyConfig, ScrcpySystemInfo, UserPreference } from "@/services/quest-types"
-import QuestPageShell from "@/components/quest/quest-page-shell"
+import { monitoringApi, scrcpyApi, preferenceApi } from "@/services/api"
+import { ScrcpyConfigForm } from "@/components/console/scrcpy-config-form"
+import type { ScrcpyConfig, ScrcpySystemInfo, UserPreference } from "@/services/api-types"
+import PageShell from "@/components/console/page-shell"
 import Button from "@/components/button"
 import {
   DEFAULT_BATCH_SIZE,
@@ -10,7 +10,7 @@ import {
   DEFAULT_POLL_INTERVAL_SECONDS,
 } from "@/environment"
 
-export default function QuestSettingsPage() {
+export default function SettingsPage() {
   const [monitoringInterval, setMonitoringInterval] = useState(10)
   const [loading, setLoading] = useState(true)
 
@@ -119,7 +119,7 @@ export default function QuestSettingsPage() {
   }
 
   return (
-    <QuestPageShell title="Quest 系統設定" subtitle="偏好、監控與 Scrcpy 的設定總覽" maxWidth="md">
+    <PageShell title="系統設定" subtitle="偏好、監控與 Scrcpy 的設定總覽" maxWidth="md">
       <div className="space-y-6">
         {/* 設備狀態設定 */}
         <div className="surface-card p-6">
@@ -268,7 +268,7 @@ export default function QuestSettingsPage() {
             <div className="surface-panel p-4">
               <p className="mb-2 font-semibold text-foreground">說明</p>
               <p className="text-sm text-foreground/70">
-                監控的啟動/停止與手動執行已移至 Quest 總覽頁，此頁僅保留監控相關設定。
+                監控的啟動/停止與手動執行已移至總覽頁，此頁僅保留監控相關設定。
               </p>
             </div>
 
@@ -393,7 +393,7 @@ export default function QuestSettingsPage() {
         <div className="surface-card p-6">
           <h2 className="mb-4 text-xl font-bold text-foreground">關於</h2>
           <p className="mb-2 text-foreground/70">
-            Quest 設備管理模組提供完整的 Meta Quest 設備管理功能，包括：
+            本控制模組提供完整的 Meta Quest 設備管理功能，包括：
           </p>
           <ul className="ml-4 list-inside list-disc space-y-1 text-foreground/70">
             <li>設備連線與狀態監控</li>
@@ -404,6 +404,6 @@ export default function QuestSettingsPage() {
           </ul>
         </div>
       </div>
-    </QuestPageShell>
+    </PageShell>
   )
 }

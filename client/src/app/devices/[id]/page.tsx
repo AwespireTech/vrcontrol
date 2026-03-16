@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { deviceApi, roomApi } from "@/services/quest-api"
-import DeviceForm from "@/components/quest/device-form"
-import type { QuestDevice } from "@/services/quest-types"
-import QuestPageShell from "@/components/quest/quest-page-shell"
+import { deviceApi, roomApi } from "@/services/api"
+import DeviceForm from "@/components/console/device-form"
+import type { Device } from "@/services/api-types"
+import PageShell from "@/components/console/page-shell"
 
 export default function EditDevicePage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
-  const [device, setDevice] = useState<QuestDevice | null>(null)
+  const [device, setDevice] = useState<Device | null>(null)
   const [roomName, setRoomName] = useState<string>("")
   const [loading, setLoading] = useState(true)
 
@@ -37,7 +37,7 @@ export default function EditDevicePage() {
     loadDevice()
   }, [id, navigate])
 
-  const handleSubmit = async (updatedDevice: Partial<QuestDevice>) => {
+  const handleSubmit = async (updatedDevice: Partial<Device>) => {
     if (!id) return
 
     try {
@@ -68,7 +68,7 @@ export default function EditDevicePage() {
   }
 
   return (
-    <QuestPageShell
+    <PageShell
       title="編輯設備"
       subtitle="更新設備資訊與連線狀態"
       maxWidth="sm"
@@ -110,6 +110,6 @@ export default function EditDevicePage() {
           onCancel={() => navigate("/devices")}
         />
       </div>
-    </QuestPageShell>
+    </PageShell>
   )
 }

@@ -93,7 +93,7 @@ func (s *DeviceService) SyncWSStatusAtStartup() {
 	log.Printf("[DeviceService] WS 啟動校正完成: 檢查=%d, 已重設=%d\n", checked, updated)
 }
 
-func (s *DeviceService) isDeviceOnlineInADB(device *model.QuestDevice, onlineSerials map[string]struct{}) bool {
+func (s *DeviceService) isDeviceOnlineInADB(device *model.Device, onlineSerials map[string]struct{}) bool {
 	if device.Serial != "" {
 		if _, ok := onlineSerials[device.Serial]; ok {
 			return true
@@ -118,17 +118,17 @@ func (s *DeviceService) isDeviceOnlineInADB(device *model.QuestDevice, onlineSer
 }
 
 // GetAllDevices 獲取所有設備
-func (s *DeviceService) GetAllDevices() []*model.QuestDevice {
+func (s *DeviceService) GetAllDevices() []*model.Device {
 	return s.deviceRepo.GetAll()
 }
 
 // GetDevice 獲取單個設備
-func (s *DeviceService) GetDevice(deviceID string) (*model.QuestDevice, error) {
+func (s *DeviceService) GetDevice(deviceID string) (*model.Device, error) {
 	return s.deviceRepo.GetByID(deviceID)
 }
 
 // CreateDevice 創建新設備
-func (s *DeviceService) CreateDevice(device *model.QuestDevice) error {
+func (s *DeviceService) CreateDevice(device *model.Device) error {
 	log.Println("[DeviceService] CreateDevice: 開始創建設備")
 	// 驗證並生成 DeviceID（DEV- + 8 位英數）
 	if device.DeviceID == "" {
@@ -218,7 +218,7 @@ func (s *DeviceService) EnableUSBDeviceTCPIP(serial string, port int) error {
 }
 
 // PatchDevice 嚴格白名單的局部更新（避免 partial PUT 清空欄位）
-func (s *DeviceService) PatchDevice(deviceID string, patch DevicePatch) (*model.QuestDevice, error) {
+func (s *DeviceService) PatchDevice(deviceID string, patch DevicePatch) (*model.Device, error) {
 	device, err := s.deviceRepo.GetByID(deviceID)
 	if err != nil {
 		return nil, err
@@ -274,7 +274,7 @@ func (s *DeviceService) SetAutoReconnectEnabledBatch(deviceIDs []string, enabled
 // - 僅 error → offline
 // - disconnected 不改（包含不清除重連狀態）
 // - 其他狀態不改，只清 retry/disabled/next/last_error
-func (s *DeviceService) ResetAutoReconnect(deviceID string) (*model.QuestDevice, error) {
+func (s *DeviceService) ResetAutoReconnect(deviceID string) (*model.Device, error) {
 	device, err := s.deviceRepo.GetByID(deviceID)
 	if err != nil {
 		return nil, err
@@ -318,7 +318,7 @@ func (s *DeviceService) ResetAutoReconnectBatch(deviceIDs []string) (map[string]
 }
 
 // UpdateDevice 更新設備
-func (s *DeviceService) UpdateDevice(device *model.QuestDevice) error {
+func (s *DeviceService) UpdateDevice(device *model.Device) error {
 	return s.deviceRepo.Update(device)
 }
 
@@ -602,7 +602,7 @@ func (s *DeviceService) PingBatch(deviceIDs []string, maxWorkers int) map[string
 }
 
 // GetDevicesByRoom 獲取房間內的設備
-func (s *DeviceService) GetDevicesByRoom(roomID string) []*model.QuestDevice {
+func (s *DeviceService) GetDevicesByRoom(roomID string) []*model.Device {
 	return s.deviceRepo.GetByRoomID(roomID)
 }
 

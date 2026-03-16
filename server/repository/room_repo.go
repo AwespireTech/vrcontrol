@@ -11,7 +11,7 @@ import (
 // RoomRepository 房間資料存儲
 type RoomRepository struct {
 	repo  *JSONRepository
-	rooms map[string]*model.QuestRoom
+	rooms map[string]*model.Room
 	mu    sync.RWMutex
 }
 
@@ -19,13 +19,13 @@ type RoomRepository struct {
 func NewRoomRepository(filePath string) *RoomRepository {
 	return &RoomRepository{
 		repo:  NewJSONRepository(filePath),
-		rooms: make(map[string]*model.QuestRoom),
+		rooms: make(map[string]*model.Room),
 	}
 }
 
 // Load 加載所有房間
 func (r *RoomRepository) Load() error {
-	var rooms []*model.QuestRoom
+	var rooms []*model.Room
 	if err := r.repo.Load(&rooms); err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func (r *RoomRepository) Load() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.rooms = make(map[string]*model.QuestRoom)
+	r.rooms = make(map[string]*model.Room)
 	for _, room := range rooms {
 		r.rooms[room.RoomID] = room
 	}
@@ -43,7 +43,7 @@ func (r *RoomRepository) Load() error {
 
 // save 內部保存方法（不加鎖）
 func (r *RoomRepository) save() error {
-	rooms := make([]*model.QuestRoom, 0, len(r.rooms))
+	rooms := make([]*model.Room, 0, len(r.rooms))
 	for _, room := range r.rooms {
 		rooms = append(rooms, room)
 	}
@@ -58,11 +58,11 @@ func (r *RoomRepository) Save() error {
 }
 
 // GetAll 獲取所有房間
-func (r *RoomRepository) GetAll() []*model.QuestRoom {
+func (r *RoomRepository) GetAll() []*model.Room {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	rooms := make([]*model.QuestRoom, 0, len(r.rooms))
+	rooms := make([]*model.Room, 0, len(r.rooms))
 	for _, room := range r.rooms {
 		rooms = append(rooms, room)
 	}
@@ -71,7 +71,7 @@ func (r *RoomRepository) GetAll() []*model.QuestRoom {
 }
 
 // GetByID 根據 ID 獲取房間
-func (r *RoomRepository) GetByID(roomID string) (*model.QuestRoom, error) {
+func (r *RoomRepository) GetByID(roomID string) (*model.Room, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -84,7 +84,7 @@ func (r *RoomRepository) GetByID(roomID string) (*model.QuestRoom, error) {
 }
 
 // GetByName 根據名稱獲取房間
-func (r *RoomRepository) GetByName(name string) (*model.QuestRoom, error) {
+func (r *RoomRepository) GetByName(name string) (*model.Room, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -98,7 +98,7 @@ func (r *RoomRepository) GetByName(name string) (*model.QuestRoom, error) {
 }
 
 // Create 創建新房間
-func (r *RoomRepository) Create(room *model.QuestRoom) error {
+func (r *RoomRepository) Create(room *model.Room) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -126,7 +126,7 @@ func (r *RoomRepository) Create(room *model.QuestRoom) error {
 }
 
 // Update 更新房間
-func (r *RoomRepository) Update(room *model.QuestRoom) error {
+func (r *RoomRepository) Update(room *model.Room) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

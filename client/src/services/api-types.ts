@@ -1,10 +1,10 @@
 import { SERVER } from "@/environment"
 
-// Quest API 基礎配置
-export const QUEST_API_BASE = `${SERVER}/api`
+// API 基礎配置
+export const API_BASE = `${SERVER}/api`
 
-// Quest 設備狀態
-export const QUEST_DEVICE_STATUS = {
+// 設備狀態
+export const DEVICE_STATUS = {
   ONLINE: "online",
   OFFLINE: "offline",
   CONNECTING: "connecting",
@@ -12,16 +12,16 @@ export const QUEST_DEVICE_STATUS = {
   DISCONNECTED: "disconnected",
 } as const
 
-// Quest 設備 Ping 狀態
-export const QUEST_DEVICE_PING_STATUS = {
+// 設備 Ping 狀態
+export const DEVICE_PING_STATUS = {
   OK: "ok",
   FAIL: "fail",
   TIMEOUT: "timeout",
   UNKNOWN: "unknown",
 } as const
 
-// Quest 動作類型
-export const QUEST_ACTION_TYPES = {
+// 動作類型
+export const ACTION_TYPES = {
   WAKE_UP: "wake_up",
   SLEEP: "sleep",
   LAUNCH_APP: "launch_app",
@@ -41,7 +41,7 @@ export interface ApiResponse<T> {
 }
 
 // 設備類型
-export interface QuestDevice {
+export interface Device {
   device_id: string
   serial: string
   alias: string
@@ -106,7 +106,7 @@ export interface USBDevice {
 }
 
 // 房間類型
-export interface QuestRoom {
+export interface Room {
   room_id: string
   name: string
   description: string
@@ -122,7 +122,7 @@ export interface QuestRoom {
 }
 
 // 動作類型
-export interface QuestAction {
+export interface Action {
   action_id: string
   name: string
   description: string

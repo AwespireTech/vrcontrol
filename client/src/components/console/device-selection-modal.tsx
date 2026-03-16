@@ -1,6 +1,6 @@
 import Button from "@/components/button"
 
-export type QuestDeviceSelectionTarget = {
+export type DeviceSelectionTarget = {
   id: string
   label: string
   ip?: string
@@ -8,7 +8,7 @@ export type QuestDeviceSelectionTarget = {
   isOnline: boolean
 }
 
-export default function QuestDeviceSelectionModal({
+export default function DeviceSelectionModal({
   open,
   title,
   confirmText,
@@ -22,7 +22,7 @@ export default function QuestDeviceSelectionModal({
   open: boolean
   title: string
   confirmText: string
-  targets: QuestDeviceSelectionTarget[]
+  targets: DeviceSelectionTarget[]
   selectedIds: string[]
   onSelectedIdsChange: (next: string[]) => void
   confirmPending: boolean

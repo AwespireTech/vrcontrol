@@ -55,7 +55,7 @@ func DefaultScrcpyConfig() *ScrcpyConfig {
 		Fullscreen:    false,
 		AlwaysOnTop:   false,
 		TurnScreenOff: false,
-		EnableAudio:   false, // Default to false to preserve Quest's built-in audio
+		EnableAudio:   false, // Default to false to preserve the device's built-in audio
 		RenderDriver:  "",
 	}
 }

@@ -257,7 +257,7 @@ func (m *Manager) buildScrcpyArgs(deviceSerial string, deviceID string, displayN
 		args = append(args, "--turn-screen-off")
 	}
 
-	// Audio settings (default to --no-audio to preserve Quest's built-in audio)
+	// Audio settings (default to --no-audio to preserve the device's built-in audio)
 	if !config.EnableAudio {
 		args = append(args, "--no-audio")
 	}

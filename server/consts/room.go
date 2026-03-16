@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 )
 
-const questControlDir = "data/quest_control"
+const controlDataDir = "data/control"
 
 func LoadAssignedRoom() map[string]string {
-	path := filepath.Join(questControlDir, "assigned_room.json")
+	path := filepath.Join(controlDataDir, "assigned_room.json")
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		log.Println("Error creating directory: ", err)
 		return make(map[string]string)
@@ -32,12 +32,12 @@ func LoadAssignedRoom() map[string]string {
 		log.Println("Error decoding file: ", err)
 		return make(map[string]string)
 	}
-	log.Println("[Quest] Assigned room map loaded from file: ", path)
+	log.Println("[Control] Assigned room map loaded from file: ", path)
 	return roomMap
 }
 
 func SaveAssignedRoom(roomMap map[string]string) {
-	path := filepath.Join(questControlDir, "assigned_room.json")
+	path := filepath.Join(controlDataDir, "assigned_room.json")
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		log.Println("Error creating directory: ", err)
 		return
@@ -54,5 +54,5 @@ func SaveAssignedRoom(roomMap map[string]string) {
 		log.Println("Error encoding file: ", err)
 		return
 	}
-	log.Println("[Quest] Assigned room map saved to file: ", path)
+	log.Println("[Control] Assigned room map saved to file: ", path)
 }

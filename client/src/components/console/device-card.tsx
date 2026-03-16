@@ -1,11 +1,11 @@
-import { type QuestDevice, QUEST_DEVICE_STATUS } from "@/services/quest-types"
+import { DEVICE_STATUS, type Device } from "@/services/api-types"
 import { getDisplayName } from "@/lib/utils/device"
 import Button from "@/components/button"
 
 export type StatusErrorType = "idle" | "ok" | "timeout" | "adb-error"
 
 interface DeviceCardProps {
-  device: QuestDevice
+  device: Device
   onConnect?: (deviceId: string) => void
   onDisconnect?: (deviceId: string) => void
   onEdit?: (deviceId: string) => void
@@ -40,7 +40,7 @@ export default function DeviceCard({
   deleteLoading,
 }: DeviceCardProps) {
   const getAutoReconnectDisabledReasonText = (
-    reason?: QuestDevice["auto_reconnect_disabled_reason"],
+    reason?: Device["auto_reconnect_disabled_reason"],
   ) => {
     switch (reason) {
       case "manual_disconnect":
@@ -59,15 +59,15 @@ export default function DeviceCard({
   }
   const getStatusColor = (status: string) => {
     switch (status) {
-      case QUEST_DEVICE_STATUS.ONLINE:
+      case DEVICE_STATUS.ONLINE:
         return "bg-success"
-      case QUEST_DEVICE_STATUS.OFFLINE:
+      case DEVICE_STATUS.OFFLINE:
         return "bg-muted"
-      case QUEST_DEVICE_STATUS.CONNECTING:
+      case DEVICE_STATUS.CONNECTING:
         return "bg-warning"
-      case QUEST_DEVICE_STATUS.ERROR:
+      case DEVICE_STATUS.ERROR:
         return "bg-danger"
-      case QUEST_DEVICE_STATUS.DISCONNECTED:
+      case DEVICE_STATUS.DISCONNECTED:
         return "bg-muted"
       default:
         return "bg-muted"
@@ -76,23 +76,23 @@ export default function DeviceCard({
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case QUEST_DEVICE_STATUS.ONLINE:
+      case DEVICE_STATUS.ONLINE:
         return "在線"
-      case QUEST_DEVICE_STATUS.OFFLINE:
+      case DEVICE_STATUS.OFFLINE:
         return "離線"
-      case QUEST_DEVICE_STATUS.CONNECTING:
+      case DEVICE_STATUS.CONNECTING:
         return "連線中"
-      case QUEST_DEVICE_STATUS.ERROR:
+      case DEVICE_STATUS.ERROR:
         return "錯誤"
-      case QUEST_DEVICE_STATUS.DISCONNECTED:
+      case DEVICE_STATUS.DISCONNECTED:
         return "手動斷開"
       default:
         return "未知"
     }
   }
 
-  const isOnline = device.status === QUEST_DEVICE_STATUS.ONLINE
-  const isConnecting = device.status === QUEST_DEVICE_STATUS.CONNECTING
+  const isOnline = device.status === DEVICE_STATUS.ONLINE
+  const isConnecting = device.status === DEVICE_STATUS.CONNECTING
   const disabledReasonText = getAutoReconnectDisabledReasonText(
     device.auto_reconnect_disabled_reason,
   )

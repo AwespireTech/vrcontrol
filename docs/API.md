@@ -4,7 +4,7 @@
 - 本機開發：`http://localhost:8080`
 - API 前綴：`/api`
 
-## Quest API
+## API 路由
 
 ### 裝置管理
 - `GET /api/devices`

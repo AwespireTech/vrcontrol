@@ -1,12 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import type { QuestDevice } from "@/services/quest-types"
+import type { Device } from "@/services/api-types"
 import Button from "@/components/button"
 
 interface DeviceFormProps {
-  device?: QuestDevice
-  onSubmit: (device: Partial<QuestDevice>) => Promise<void>
+  device?: Device
+  onSubmit: (device: Partial<Device>) => Promise<void>
   onCancel: () => void
 }
 
@@ -31,7 +31,7 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
             name: formData.name,
             ip: formData.ip,
             port: formData.port,
-          } as Partial<QuestDevice>)
+          } as Partial<Device>)
         : {
             ...formData,
             device_id: formData.device_id.trim(),
@@ -88,7 +88,7 @@ export default function DeviceForm({ device, onSubmit, onCancel }: DeviceFormPro
           onChange={handleChange}
           required
           className="ui-input w-full px-4 py-2"
-          placeholder="例如: Quest 1"
+          placeholder="例如: Device 1"
         />
         <p className="mt-1 text-xs text-foreground/50">設備的自訂顯示名稱</p>
       </div>

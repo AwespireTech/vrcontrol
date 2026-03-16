@@ -37,7 +37,7 @@ func NewActionService(actionRepo *repository.ActionRepository, deviceRepo *repos
 }
 
 // GetAllActions 獲取所有動作
-func (s *ActionService) GetAllActions() []*model.QuestAction {
+func (s *ActionService) GetAllActions() []*model.Action {
 	actions := s.actionRepo.GetAll()
 	sort.SliceStable(actions, func(i, j int) bool {
 		nameI := strings.ToLower(actions[i].Name)
@@ -51,12 +51,12 @@ func (s *ActionService) GetAllActions() []*model.QuestAction {
 }
 
 // GetAction 獲取單個動作
-func (s *ActionService) GetAction(actionID string) (*model.QuestAction, error) {
+func (s *ActionService) GetAction(actionID string) (*model.Action, error) {
 	return s.actionRepo.GetByID(actionID)
 }
 
 // CreateAction 創建新動作
-func (s *ActionService) CreateAction(action *model.QuestAction) error {
+func (s *ActionService) CreateAction(action *model.Action) error {
 	// 生成 ActionID
 	if action.ActionID == "" {
 		action.ActionID = fmt.Sprintf("ACT-%d", time.Now().UnixNano()%1000000)
@@ -66,12 +66,12 @@ func (s *ActionService) CreateAction(action *model.QuestAction) error {
 }
 
 // UpdateAction 更新動作
-func (s *ActionService) UpdateAction(action *model.QuestAction) error {
+func (s *ActionService) UpdateAction(action *model.Action) error {
 	return s.actionRepo.Update(action)
 }
 
 // PatchAction 局部更新動作（嚴格白名單）
-func (s *ActionService) PatchAction(actionID string, patch ActionPatch) (*model.QuestAction, error) {
+func (s *ActionService) PatchAction(actionID string, patch ActionPatch) (*model.Action, error) {
 	existing, err := s.actionRepo.GetByID(actionID)
 	if err != nil {
 		return nil, err
@@ -176,7 +176,7 @@ func (s *ActionService) ExecuteActionBatch(actionID string, deviceIDs []string, 
 }
 
 // executeActionToDevice 執行動作到設備
-func (s *ActionService) executeActionToDevice(action *model.QuestAction, device *model.QuestDevice) *model.ExecutionResult {
+func (s *ActionService) executeActionToDevice(action *model.Action, device *model.Device) *model.ExecutionResult {
 	result := &model.ExecutionResult{
 		DeviceID: device.DeviceID,
 		Success:  false,

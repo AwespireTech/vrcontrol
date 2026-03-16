@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
-import { deviceApi, roomApi, actionApi } from "@/services/quest-api"
-import type { QuestDevice, QuestRoom, QuestAction } from "@/services/quest-types"
+import { actionApi, deviceApi, roomApi } from "@/services/api"
+import type { Action, Device, Room } from "@/services/api-types"
 import { useMonitoringStatus } from "@/hooks/useMonitoringStatus"
-import QuestPageShell from "@/components/quest/quest-page-shell"
+import PageShell from "@/components/console/page-shell"
 
-export default function QuestPage() {
-  const [devices, setDevices] = useState<QuestDevice[]>([])
-  const [rooms, setRooms] = useState<QuestRoom[]>([])
-  const [actions, setActions] = useState<QuestAction[]>([])
+export default function DashboardPage() {
+  const [devices, setDevices] = useState<Device[]>([])
+  const [rooms, setRooms] = useState<Room[]>([])
+  const [actions, setActions] = useState<Action[]>([])
   const monitoring = useMonitoringStatus()
 
   const loadData = async () => {
@@ -22,7 +22,7 @@ export default function QuestPage() {
       setRooms(roomsData)
       setActions(actionsData)
     } catch (error) {
-      console.error("Failed to load Quest data:", error)
+      console.error("Failed to load dashboard data:", error)
     }
   }
 
@@ -34,9 +34,9 @@ export default function QuestPage() {
   const totalDevices = devices.length
 
   return (
-    <QuestPageShell
-      title="Quest 設備管理"
-      subtitle="管理 Meta Quest 設備、房間與動作"
+    <PageShell
+      title="設備控制台"
+      subtitle="管理 VR 設備、房間與動作"
       actions={
         <Link
           to="/settings"
@@ -73,7 +73,7 @@ export default function QuestPage() {
             to: "/devices",
             icon: "📱",
             title: "設備管理",
-            desc: "建立、編輯與管理 Quest 設備，查看設備狀態",
+            desc: "建立、編輯與管理設備，查看設備狀態",
           },
           {
             to: "/rooms",
@@ -109,6 +109,6 @@ export default function QuestPage() {
           </Link>
         ))}
       </div>
-    </QuestPageShell>
+    </PageShell>
   )
 }

@@ -41,13 +41,13 @@ func ConnectToRoomSocket(c *gin.Context) {
 		return
 	}
 
-	if questDeviceService == nil || !questDeviceService.Exists(deviceId) {
+	if deviceServiceRef == nil || !deviceServiceRef.Exists(deviceId) {
 		recordIsolation(clientId, clientIP, true, deviceId, false, false)
 		StandbyPlayerMap[playerId] = p
 		return
 	}
 
-	device, err := questDeviceService.GetDevice(deviceId)
+	device, err := deviceServiceRef.GetDevice(deviceId)
 	if err != nil || device == nil {
 		recordIsolation(clientId, clientIP, true, deviceId, true, false)
 		StandbyPlayerMap[playerId] = p
@@ -80,7 +80,7 @@ func ConnectToRoomSocket(c *gin.Context) {
 				return
 			}
 			room = sockets.NewRoom(roomId)
-			room.AssignedSequence = getQuestAssignedSequences(roomId)
+			room.AssignedSequence = getAssignedSequences(roomId)
 			RoomList[roomId] = room
 			go room.Run()
 			log.Println("Room Created: ", roomId)
@@ -101,7 +101,7 @@ func ConnectToRoomControlSocket(c *gin.Context) {
 			return
 		}
 		room = sockets.NewRoom(roomId)
-		room.AssignedSequence = getQuestAssignedSequences(roomId)
+		room.AssignedSequence = getAssignedSequences(roomId)
 		RoomList[roomId] = room
 		go room.Run()
 		log.Println("Room Created: ", roomId)

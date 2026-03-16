@@ -34,7 +34,7 @@ func NewRoomService(roomRepo *repository.RoomRepository, deviceRepo *repository.
 }
 
 // GetAllRooms 獲取所有房間
-func (s *RoomService) GetAllRooms() []*model.QuestRoom {
+func (s *RoomService) GetAllRooms() []*model.Room {
 	rooms := s.roomRepo.GetAll()
 	sort.SliceStable(rooms, func(i, j int) bool {
 		nameI := strings.ToLower(rooms[i].Name)
@@ -48,12 +48,12 @@ func (s *RoomService) GetAllRooms() []*model.QuestRoom {
 }
 
 // GetRoom 獲取單個房間
-func (s *RoomService) GetRoom(roomID string) (*model.QuestRoom, error) {
+func (s *RoomService) GetRoom(roomID string) (*model.Room, error) {
 	return s.roomRepo.GetByID(roomID)
 }
 
 // CreateRoom 創建新房間
-func (s *RoomService) CreateRoom(room *model.QuestRoom) error {
+func (s *RoomService) CreateRoom(room *model.Room) error {
 	// 生成 RoomID
 	if room.RoomID == "" {
 		room.RoomID = fmt.Sprintf("ROOM-%d", time.Now().UnixNano()%1000000)
@@ -74,12 +74,12 @@ func (s *RoomService) CreateRoom(room *model.QuestRoom) error {
 }
 
 // UpdateRoom 更新房間
-func (s *RoomService) UpdateRoom(room *model.QuestRoom) error {
+func (s *RoomService) UpdateRoom(room *model.Room) error {
 	return s.roomRepo.Update(room)
 }
 
 // PatchRoom 局部更新房間（嚴格白名單）
-func (s *RoomService) PatchRoom(roomID string, patch RoomPatch) (*model.QuestRoom, error) {
+func (s *RoomService) PatchRoom(roomID string, patch RoomPatch) (*model.Room, error) {
 	existing, err := s.roomRepo.GetByID(roomID)
 	if err != nil {
 		return nil, err
@@ -242,7 +242,7 @@ func (s *RoomService) RemoveDeviceFromAllRooms(deviceID string) error {
 	return nil
 }
 
-// BuildAssignedRoomMap 從 QuestRoom.DeviceIDs 建立 device_id -> room_id 對應
+// BuildAssignedRoomMap 從 Room.DeviceIDs 建立 device_id -> room_id 對應
 func (s *RoomService) BuildAssignedRoomMap() map[string]string {
 	roomMap := buildAssignedRoomMapFromRooms(s.roomRepo.GetAll())
 	devices := s.deviceRepo.GetAll()
@@ -366,7 +366,7 @@ func (s *RoomService) syncAssignedRoomMap() {
 	_ = buildAssignedRoomMapFromRooms(s.roomRepo.GetAll())
 }
 
-func buildAssignedRoomMapFromRooms(rooms []*model.QuestRoom) map[string]string {
+func buildAssignedRoomMapFromRooms(rooms []*model.Room) map[string]string {
 	if len(rooms) == 0 {
 		return make(map[string]string)
 	}
@@ -400,7 +400,7 @@ func buildAssignedRoomMapFromRooms(rooms []*model.QuestRoom) map[string]string {
 	return roomMap
 }
 
-func roomHasDevice(room *model.QuestRoom, deviceID string) bool {
+func roomHasDevice(room *model.Room, deviceID string) bool {
 	normalizedID := utils.NormalizeDeviceIDKey(deviceID)
 	if normalizedID == "" {
 		return false
@@ -425,7 +425,7 @@ func stringSliceEqual(a, b []string) bool {
 	return true
 }
 
-func effectiveRoomUpdatedAt(room *model.QuestRoom) time.Time {
+func effectiveRoomUpdatedAt(room *model.Room) time.Time {
 	if room == nil {
 		return time.Time{}
 	}

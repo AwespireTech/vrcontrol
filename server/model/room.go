@@ -2,8 +2,8 @@ package model
 
 import "time"
 
-// QuestRoom Quest 房間模型
-type QuestRoom struct {
+// Room 房間模型
+type Room struct {
 	RoomID            string         `json:"room_id"`
 	Name              string         `json:"name"`
 	Description       string         `json:"description"`

@@ -1,8 +1,8 @@
-import { type QuestRoom } from "@/services/quest-types"
+import type { Room } from "@/services/api-types"
 import Button from "@/components/button"
 
 interface RoomCardProps {
-  room: QuestRoom
+  room: Room
   deviceNames?: Map<string, string>
   onEdit?: (roomId: string) => void
   onDelete?: (roomId: string) => void

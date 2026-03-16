@@ -2,8 +2,8 @@ package model
 
 import "time"
 
-// QuestDevice Quest 設備模型
-type QuestDevice struct {
+// Device 設備模型
+type Device struct {
 	DeviceID       string  `json:"device_id"`
 	Serial         string  `json:"serial"`
 	Alias          string  `json:"alias"`
@@ -58,7 +58,7 @@ const (
 )
 
 // GetDisplayName 獲取設備顯示名稱，優先使用 Alias，其次使用 Name，最後使用 DeviceID
-func (d *QuestDevice) GetDisplayName() string {
+func (d *Device) GetDisplayName() string {
 	if d.Alias != "" {
 		return d.Alias
 	}

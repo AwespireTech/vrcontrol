@@ -2,8 +2,8 @@ package model
 
 import "time"
 
-// QuestAction Quest 動作模型
-type QuestAction struct {
+// Action 動作模型
+type Action struct {
 	ActionID       string                 `json:"action_id"`
 	Name           string                 `json:"name"`
 	Description    string                 `json:"description"`

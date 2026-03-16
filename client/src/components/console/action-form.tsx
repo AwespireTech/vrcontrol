@@ -1,13 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import type { QuestAction } from "@/services/quest-types"
+import type { Action } from "@/services/api-types"
 import Button from "@/components/button"
-import { QUEST_ACTION_TYPES } from "@/services/quest-types"
+import { ACTION_TYPES } from "@/services/api-types"
 
 interface ActionFormProps {
-  action?: QuestAction
-  onSubmit: (action: Partial<QuestAction>) => Promise<void>
+  action?: Action
+  onSubmit: (action: Partial<Action>) => Promise<void>
   onCancel: () => void
 }
 
@@ -15,7 +15,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
   const [formData, setFormData] = useState({
     name: action?.name || "",
     description: action?.description || "",
-    action_type: action?.action_type || QUEST_ACTION_TYPES.WAKE_UP,
+    action_type: action?.action_type || ACTION_TYPES.WAKE_UP,
     params: action?.params ? JSON.stringify(action.params, null, 2) : "{}",
   })
   const [submitting, setSubmitting] = useState(false)
@@ -23,9 +23,9 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
   const validateParams = (actionType: string, params: Record<string, unknown>): string | null => {
     // Validate required parameters based on action type
     switch (actionType) {
-      case QUEST_ACTION_TYPES.LAUNCH_APP:
-      case QUEST_ACTION_TYPES.STOP_APP:
-      case QUEST_ACTION_TYPES.RESTART_APP:
+      case ACTION_TYPES.LAUNCH_APP:
+      case ACTION_TYPES.STOP_APP:
+      case ACTION_TYPES.RESTART_APP:
         if (!("package" in params) || typeof params.package !== "string") {
           return "Missing required parameter: package (string)"
         }
@@ -34,7 +34,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
         }
         break
 
-      case QUEST_ACTION_TYPES.SEND_KEY:
+      case ACTION_TYPES.SEND_KEY:
         if (!("keycode" in params) || typeof params.keycode !== "number") {
           return "Missing required parameter: keycode (number)"
         }
@@ -43,7 +43,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
         }
         break
 
-      case QUEST_ACTION_TYPES.INSTALL_APK:
+      case ACTION_TYPES.INSTALL_APK:
         if (!("apk_path" in params) || typeof params.apk_path !== "string") {
           return "Missing required parameter: apk_path (string)"
         }
@@ -147,7 +147,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
 
   const getParameterTemplate = (actionType: string) => {
     switch (actionType) {
-      case QUEST_ACTION_TYPES.LAUNCH_APP:
+      case ACTION_TYPES.LAUNCH_APP:
         return JSON.stringify(
           {
             package: "com.example.app",
@@ -156,8 +156,8 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
           null,
           2,
         )
-      case QUEST_ACTION_TYPES.STOP_APP:
-      case QUEST_ACTION_TYPES.RESTART_APP:
+      case ACTION_TYPES.STOP_APP:
+      case ACTION_TYPES.RESTART_APP:
         return JSON.stringify(
           {
             package: "com.example.app",
@@ -165,7 +165,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
           null,
           2,
         )
-      case QUEST_ACTION_TYPES.KEEP_AWAKE:
+      case ACTION_TYPES.KEEP_AWAKE:
         return JSON.stringify(
           {
             duration_seconds: 3600,
@@ -173,7 +173,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
           null,
           2,
         )
-      case QUEST_ACTION_TYPES.SEND_KEY:
+      case ACTION_TYPES.SEND_KEY:
         return JSON.stringify(
           {
             keycode: 26,
@@ -181,7 +181,7 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
           null,
           2,
         )
-      case QUEST_ACTION_TYPES.INSTALL_APK:
+      case ACTION_TYPES.INSTALL_APK:
         return JSON.stringify(
           {
             apk_path: "/path/to/app.apk",
@@ -227,14 +227,14 @@ export default function ActionForm({ action, onSubmit, onCancel }: ActionFormPro
           required
           className="ui-select w-full px-4 py-2"
         >
-          <option value={QUEST_ACTION_TYPES.WAKE_UP}>☀️ 喚醒設備</option>
-          <option value={QUEST_ACTION_TYPES.SLEEP}>🌙 休眠設備</option>
-          <option value={QUEST_ACTION_TYPES.LAUNCH_APP}>🚀 啟動應用</option>
-          <option value={QUEST_ACTION_TYPES.STOP_APP}>⏹️ 停止應用</option>
-          <option value={QUEST_ACTION_TYPES.RESTART_APP}>🔄 重啟應用</option>
-          <option value={QUEST_ACTION_TYPES.KEEP_AWAKE}>⏰ 保持喚醒</option>
-          <option value={QUEST_ACTION_TYPES.SEND_KEY}>⌨️ 發送按鍵</option>
-          <option value={QUEST_ACTION_TYPES.INSTALL_APK}>📦 安裝 APK</option>
+          <option value={ACTION_TYPES.WAKE_UP}>☀️ 喚醒設備</option>
+          <option value={ACTION_TYPES.SLEEP}>🌙 休眠設備</option>
+          <option value={ACTION_TYPES.LAUNCH_APP}>🚀 啟動應用</option>
+          <option value={ACTION_TYPES.STOP_APP}>⏹️ 停止應用</option>
+          <option value={ACTION_TYPES.RESTART_APP}>🔄 重啟應用</option>
+          <option value={ACTION_TYPES.KEEP_AWAKE}>⏰ 保持喚醒</option>
+          <option value={ACTION_TYPES.SEND_KEY}>⌨️ 發送按鍵</option>
+          <option value={ACTION_TYPES.INSTALL_APK}>📦 安裝 APK</option>
         </select>
       </div>
 

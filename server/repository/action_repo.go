@@ -11,7 +11,7 @@ import (
 // ActionRepository 動作資料存儲
 type ActionRepository struct {
 	repo    *JSONRepository
-	actions map[string]*model.QuestAction
+	actions map[string]*model.Action
 	mu      sync.RWMutex
 }
 
@@ -19,13 +19,13 @@ type ActionRepository struct {
 func NewActionRepository(filePath string) *ActionRepository {
 	return &ActionRepository{
 		repo:    NewJSONRepository(filePath),
-		actions: make(map[string]*model.QuestAction),
+		actions: make(map[string]*model.Action),
 	}
 }
 
 // Load 加載所有動作
 func (r *ActionRepository) Load() error {
-	var actions []*model.QuestAction
+	var actions []*model.Action
 	if err := r.repo.Load(&actions); err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func (r *ActionRepository) Load() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.actions = make(map[string]*model.QuestAction)
+	r.actions = make(map[string]*model.Action)
 	for _, action := range actions {
 		r.actions[action.ActionID] = action
 	}
@@ -43,7 +43,7 @@ func (r *ActionRepository) Load() error {
 
 // save 內部保存方法（不加鎖）
 func (r *ActionRepository) save() error {
-	actions := make([]*model.QuestAction, 0, len(r.actions))
+	actions := make([]*model.Action, 0, len(r.actions))
 	for _, action := range r.actions {
 		actions = append(actions, action)
 	}
@@ -58,11 +58,11 @@ func (r *ActionRepository) Save() error {
 }
 
 // GetAll 獲取所有動作
-func (r *ActionRepository) GetAll() []*model.QuestAction {
+func (r *ActionRepository) GetAll() []*model.Action {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	actions := make([]*model.QuestAction, 0, len(r.actions))
+	actions := make([]*model.Action, 0, len(r.actions))
 	for _, action := range r.actions {
 		actions = append(actions, action)
 	}
@@ -71,7 +71,7 @@ func (r *ActionRepository) GetAll() []*model.QuestAction {
 }
 
 // GetByID 根據 ID 獲取動作
-func (r *ActionRepository) GetByID(actionID string) (*model.QuestAction, error) {
+func (r *ActionRepository) GetByID(actionID string) (*model.Action, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -84,11 +84,11 @@ func (r *ActionRepository) GetByID(actionID string) (*model.QuestAction, error) 
 }
 
 // GetByType 根據類型獲取動作
-func (r *ActionRepository) GetByType(actionType string) []*model.QuestAction {
+func (r *ActionRepository) GetByType(actionType string) []*model.Action {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	actions := make([]*model.QuestAction, 0)
+	actions := make([]*model.Action, 0)
 	for _, action := range r.actions {
 		if action.ActionType == actionType {
 			actions = append(actions, action)
@@ -99,7 +99,7 @@ func (r *ActionRepository) GetByType(actionType string) []*model.QuestAction {
 }
 
 // Create 創建新動作
-func (r *ActionRepository) Create(action *model.QuestAction) error {
+func (r *ActionRepository) Create(action *model.Action) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -121,7 +121,7 @@ func (r *ActionRepository) Create(action *model.QuestAction) error {
 }
 
 // Update 更新動作
-func (r *ActionRepository) Update(action *model.QuestAction) error {
+func (r *ActionRepository) Update(action *model.Action) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 

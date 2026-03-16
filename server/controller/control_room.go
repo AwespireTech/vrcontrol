@@ -15,16 +15,16 @@ var RoomList map[string]*sockets.Room = make(map[string]*sockets.Room)
 var DeviceRoomMap map[string]string = make(map[string]string)
 var StandbyPlayerMap map[string]*sockets.Player = make(map[string]*sockets.Player)
 var StandbyPlayerDisconnect = make(chan string)
-var questRoomService *service.RoomService
-var questDeviceService *service.DeviceService
+var roomServiceRef *service.RoomService
+var deviceServiceRef *service.DeviceService
 
-func SetQuestRoomService(svc *service.RoomService) {
-	questRoomService = svc
+func SetRoomService(svc *service.RoomService) {
+	roomServiceRef = svc
 	refreshDeviceRoomMapFromService()
 }
 
-func SetQuestDeviceService(svc *service.DeviceService) {
-	questDeviceService = svc
+func SetDeviceService(svc *service.DeviceService) {
+	deviceServiceRef = svc
 }
 
 func init() {
@@ -44,15 +44,15 @@ func init() {
 }
 
 func refreshDeviceRoomMapFromService() {
-	if questRoomService == nil {
+	if roomServiceRef == nil {
 		return
 	}
-	DeviceRoomMap = questRoomService.BuildAssignedRoomMap()
+	DeviceRoomMap = roomServiceRef.BuildAssignedRoomMap()
 }
 
 func GetRoomList(c *gin.Context) {
-	if questRoomService != nil {
-		rooms := questRoomService.GetAllRooms()
+	if roomServiceRef != nil {
+		rooms := roomServiceRef.GetAllRooms()
 		if len(rooms) > 0 {
 			lis := make([]string, 0, len(rooms))
 			for _, room := range rooms {
@@ -76,11 +76,11 @@ func GetRoomList(c *gin.Context) {
 
 }
 
-func updateQuestAssignedSequence(roomId string, deviceId string, seq int) {
-	if questRoomService == nil {
+func updateAssignedSequence(roomId string, deviceId string, seq int) {
+	if roomServiceRef == nil {
 		return
 	}
-	room, err := questRoomService.GetRoom(roomId)
+	room, err := roomServiceRef.GetRoom(roomId)
 	if err != nil || room == nil {
 		return
 	}
@@ -97,14 +97,14 @@ func updateQuestAssignedSequence(roomId string, deviceId string, seq int) {
 		}
 	}
 	room.AssignedSequences[normalizedID] = seq
-	_ = questRoomService.UpdateRoom(room)
+	_ = roomServiceRef.UpdateRoom(room)
 }
 
-func getQuestAssignedSequences(roomId string) map[string]int {
-	if questRoomService == nil {
+func getAssignedSequences(roomId string) map[string]int {
+	if roomServiceRef == nil {
 		return make(map[string]int)
 	}
-	room, err := questRoomService.GetRoom(roomId)
+	room, err := roomServiceRef.GetRoom(roomId)
 	if err != nil || room == nil || room.AssignedSequences == nil {
 		return make(map[string]int)
 	}
@@ -153,7 +153,7 @@ func AssignConnectedPlayerToRoom(roomId, deviceId string) {
 			return
 		}
 		room = sockets.NewRoom(roomId)
-		room.AssignedSequence = getQuestAssignedSequences(roomId)
+		room.AssignedSequence = getAssignedSequences(roomId)
 		RoomList[roomId] = room
 		go room.Run()
 	}

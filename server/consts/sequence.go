@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 )
 
-const questControlSequenceDir = "data/quest_control/sequence"
+const controlSequenceDir = "data/control/sequence"
 
 func LoadAssignedSequence(room string) map[string]int {
-	path := filepath.Join(questControlSequenceDir, room+".json")
+	path := filepath.Join(controlSequenceDir, room+".json")
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		log.Println("Error creating directory: ", err)
 		return make(map[string]int)
@@ -36,7 +36,7 @@ func LoadAssignedSequence(room string) map[string]int {
 }
 
 func SaveAssignedSequence(room string, sequenceMap map[string]int) {
-	path := filepath.Join(questControlSequenceDir, room+".json")
+	path := filepath.Join(controlSequenceDir, room+".json")
 	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		log.Println("Error creating directory: ", err)
 		return
@@ -53,5 +53,5 @@ func SaveAssignedSequence(room string, sequenceMap map[string]int) {
 		log.Println("Error encoding file: ", err)
 		return
 	}
-	log.Println("[Quest] Sequence map saved to file: ", path)
+	log.Println("[Control] Sequence map saved to file: ", path)
 }

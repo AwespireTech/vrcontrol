@@ -1,32 +1,32 @@
 # AI Agent Guide
 
 ## TL;DR
-- VR 裝置控制系統：Go 後端 + React 前端，核心功能是 Quest 設備、房間、動作管理與監控
+- VR 裝置控制系統：Go 後端 + React 前端，核心功能是設備、房間、動作管理與監控
 - 後端入口：[server/main.go](server/main.go)
 - 前端入口：[client/src/main.tsx](client/src/main.tsx) → [client/src/App.tsx](client/src/App.tsx)
-- Quest API 基底路徑：`/api`
+- API 基底路徑：`/api`
 
 ## Repo Map
-- 後端服務與 Quest 模組：[server](server)
+- 後端服務與 API 模組：[server](server)
 - 前端 UI 與頁面：[client](client)
 - 重要規格與說明文件：[docs](docs)
 
 ## Entry Points
 - 伺服器啟動：`go run main.go`
 - 前端啟動：`npm run dev`
-- Quest 路由註冊：[server/routes/quest_routes.go](server/routes/quest_routes.go)
+- 路由註冊：[server/routes/api_routes.go](server/routes/api_routes.go)
 
 ## Frontend Routes
-- Quest 首頁頁面：[client/src/app/page.tsx](client/src/app/page.tsx)
-- Quest 子頁面：`client/src/app/{devices,rooms,actions,monitoring,settings}`
+- 首頁頁面：[client/src/app/page.tsx](client/src/app/page.tsx)
+- 子頁面：`client/src/app/{devices,rooms,actions,monitoring,settings}`
 
 ## Key Data Stores
-- Quest 資料儲存目錄：[server/data](server/data)
-  - 裝置：[server/data/quest_devices.json](server/data/quest_devices.json)
-  - 房間：[server/data/quest_rooms.json](server/data/quest_rooms.json)
-  - 動作：[server/data/quest_actions.json](server/data/quest_actions.json)
-  - Scrcpy 設定：[server/data/quest_scrcpy_config.json](server/data/quest_scrcpy_config.json)
-  - 使用者偏好：[server/data/quest_preferences.json](server/data/quest_preferences.json)
+- 資料儲存目錄：[server/data](server/data)
+  - 裝置：[server/data/devices.json](server/data/devices.json)
+  - 房間：[server/data/rooms.json](server/data/rooms.json)
+  - 動作：[server/data/actions.json](server/data/actions.json)
+  - Scrcpy 設定：[server/data/scrcpy_config.json](server/data/scrcpy_config.json)
+  - 使用者偏好：[server/data/preferences.json](server/data/preferences.json)
 
 ## Dependencies
 - 必要工具：ADB、scrcpy（需在 PATH）

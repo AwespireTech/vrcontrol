@@ -1,14 +1,14 @@
 import { Outlet } from "react-router-dom"
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { PointerEvent as ReactPointerEvent } from "react"
-import QuestSidebar from "./quest-sidebar.tsx"
+import AppSidebar from "./app-sidebar"
 
 const SIDEBAR_MIN_WIDTH = 220
 const SIDEBAR_MAX_WIDTH = 420
 const SIDEBAR_COLLAPSED_WIDTH = 68
 const SMALL_SCREEN_QUERY = "(max-width: 1024px)"
 
-export default function QuestLayout() {
+export default function AppLayout() {
   const [sidebarWidth, setSidebarWidth] = useState(296)
   const [collapsed, setCollapsed] = useState(false)
   const [dragging, setDragging] = useState(false)
@@ -73,7 +73,7 @@ export default function QuestLayout() {
 
   return (
     <div className="relative -m-10 min-h-screen bg-background text-foreground">
-      <QuestSidebar
+      <AppSidebar
         collapsed={collapsed}
         dragging={dragging}
         collapsedWidth={SIDEBAR_COLLAPSED_WIDTH}

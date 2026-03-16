@@ -9,7 +9,7 @@ type NavItem = {
 }
 
 const buildItems = (): NavItem[] => [
-  { label: "Quest 總覽", to: "/", icon: "🧭", exact: true },
+  { label: "總覽", to: "/", icon: "🧭", exact: true },
   { label: "設備", to: "/devices", icon: "📱" },
   { label: "房間", to: "/rooms", icon: "🏠" },
   { label: "動作", to: "/actions", icon: "⚡" },
@@ -17,7 +17,7 @@ const buildItems = (): NavItem[] => [
   { label: "設定", to: "/settings", icon: "⚙️" },
 ]
 
-type QuestSidebarProps = {
+type SidebarProps = {
   width: number
   collapsedWidth: number
   collapsed: boolean
@@ -26,14 +26,14 @@ type QuestSidebarProps = {
   onResizePointerDown: (event: React.PointerEvent<HTMLDivElement>) => void
 }
 
-export default function QuestSidebar({
+export default function AppSidebar({
   width,
   collapsedWidth,
   collapsed,
   dragging,
   onToggleCollapsed,
   onResizePointerDown,
-}: QuestSidebarProps) {
+}: SidebarProps) {
   const location = useLocation()
   const items = useMemo(buildItems, [])
 
@@ -62,7 +62,7 @@ export default function QuestSidebar({
         dragging ? "" : "transition-[width] duration-200"
       }`}
       style={{ width: sidebarWidth }}
-      aria-label="Quest 導覽"
+      aria-label="主導覽"
     >
       <div className="flex h-14 items-center justify-start px-4">
         <button
@@ -103,7 +103,7 @@ export default function QuestSidebar({
             }`}
           >
             <div className="whitespace-nowrap text-sm uppercase leading-none tracking-[0.2em] text-foreground/50">
-              Quest
+              VR Control
             </div>
             <div className="whitespace-nowrap text-lg font-semibold leading-none text-foreground">
               控制中樞

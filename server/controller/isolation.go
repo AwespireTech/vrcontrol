@@ -137,7 +137,7 @@ func normalizeDeviceIDFromClient(clientId string) (string, bool) {
 }
 
 func updateDeviceWSStatus(deviceId, status string) {
-	if questDeviceService == nil {
+	if deviceServiceRef == nil {
 		return
 	}
 	if !strings.HasPrefix(strings.ToUpper(deviceId), "DEV-") {
@@ -147,7 +147,7 @@ func updateDeviceWSStatus(deviceId, status string) {
 	if normalizedID == "" || !strings.HasPrefix(normalizedID, "DEV-") {
 		return
 	}
-	_ = questDeviceService.UpdateWSStatus(normalizedID, status)
+	_ = deviceServiceRef.UpdateWSStatus(normalizedID, status)
 }
 
 // GetIsolationDevices 回傳隔離區連線清單

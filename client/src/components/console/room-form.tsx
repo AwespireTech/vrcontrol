@@ -1,12 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import type { QuestRoom } from "@/services/quest-types"
+import type { Room } from "@/services/api-types"
 import Button from "@/components/button"
 
 interface RoomFormProps {
-  room?: QuestRoom
-  onSubmit: (room: Partial<QuestRoom>) => Promise<void>
+  room?: Room
+  onSubmit: (room: Partial<Room>) => Promise<void>
   onCancel: () => void
 }
 

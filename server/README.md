@@ -86,7 +86,7 @@ npm run dev
 
 ## API 概覽
 
-Quest API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)）：
+API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)）：
 
 ### 設備管理
 - `GET /api/devices`
@@ -233,11 +233,13 @@ Quest API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API
 
 ## 資料儲存
 
-Quest 模組資料存於 `data/`：
+系統資料存於 `data/`：
 
-- `quest_devices.json`
-- `quest_rooms.json`
-- `quest_actions.json`
+- `devices.json`
+- `rooms.json`
+- `actions.json`
+- `scrcpy_config.json`
+- `preferences.json`
 
 ## 故障排除
 

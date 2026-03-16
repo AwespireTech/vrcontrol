@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { roomApi, deviceApi } from "@/services/quest-api"
-import type { QuestRoom } from "@/services/quest-types"
+import { roomApi, deviceApi } from "@/services/api"
+import type { Room } from "@/services/api-types"
 import { getDisplayName } from "@/lib/utils/device"
-import QuestPageShell from "@/components/quest/quest-page-shell"
+import PageShell from "@/components/console/page-shell"
 import Button from "@/components/button"
 
 export default function RoomsPage() {
   const navigate = useNavigate()
-  const [rooms, setRooms] = useState<QuestRoom[]>([])
+  const [rooms, setRooms] = useState<Room[]>([])
   const [deviceNameMap, setDeviceNameMap] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
   const [countdown, setCountdown] = useState(5)
@@ -76,7 +76,7 @@ export default function RoomsPage() {
   }
 
   return (
-    <QuestPageShell
+    <PageShell
       title="房間管理"
       subtitle={`下次更新 ${countdown} 秒`}
       actions={
@@ -165,6 +165,6 @@ export default function RoomsPage() {
           ))}
         </div>
       )}
-    </QuestPageShell>
+    </PageShell>
   )
 }

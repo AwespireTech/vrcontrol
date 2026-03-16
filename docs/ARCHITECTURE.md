@@ -3,13 +3,13 @@
 ## 系統總覽
 
 - 後端：Go + Gin，負責設備/房間/動作/監控與 Socket 管理
-- 前端：React + Vite，提供 Quest 管理 UI
+- 前端：React + Vite，提供設備管理 UI
 - 外部依賴：ADB（裝置控制）、scrcpy（螢幕鏡像）
 
 ## 模組分層
 
-### 後端（Quest 模組）
-- 路由註冊：[server/routes/quest_routes.go](../server/routes/quest_routes.go)
+### 後端（API 模組）
+- 路由註冊：[server/routes/api_routes.go](../server/routes/api_routes.go)
 - 控制器：server/controller
 - 服務層：server/service
 - 資料存取：server/repository
@@ -19,10 +19,10 @@
 
 ### 前端
 - App 入口：[client/src/App.tsx](../client/src/App.tsx)
-- Quest 頁面實作：client/src/app
-- 主要前端入口 URL：`/`（Quest 管理介面）
-- API 封裝：client/src/services/quest-api.ts
-- 型別定義：client/src/services/quest-types.ts
+- 頁面實作：client/src/app
+- 主要前端入口 URL：`/`（管理介面）
+- API 封裝：client/src/services/api.ts
+- 型別定義：client/src/services/api-types.ts
 
 ## 資料流
 
@@ -43,11 +43,11 @@
 
 ## 重要資料儲存
 
-- [server/data/quest_devices.json](../server/data/quest_devices.json)
-- [server/data/quest_rooms.json](../server/data/quest_rooms.json)
-- [server/data/quest_actions.json](../server/data/quest_actions.json)
-- [server/data/quest_scrcpy_config.json](../server/data/quest_scrcpy_config.json)
-- [server/data/quest_preferences.json](../server/data/quest_preferences.json)
+- [server/data/devices.json](../server/data/devices.json)
+- [server/data/rooms.json](../server/data/rooms.json)
+- [server/data/actions.json](../server/data/actions.json)
+- [server/data/scrcpy_config.json](../server/data/scrcpy_config.json)
+- [server/data/preferences.json](../server/data/preferences.json)
 
 ## 已知限制
 

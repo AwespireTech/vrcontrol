@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { actionApi } from "@/services/quest-api"
-import ActionForm from "@/components/quest/action-form"
-import type { QuestAction } from "@/services/quest-types"
-import QuestPageShell from "@/components/quest/quest-page-shell"
+import { actionApi } from "@/services/api"
+import ActionForm from "@/components/console/action-form"
+import type { Action } from "@/services/api-types"
+import PageShell from "@/components/console/page-shell"
 
 export default function EditActionPage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
-  const [action, setAction] = useState<QuestAction | null>(null)
+  const [action, setAction] = useState<Action | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export default function EditActionPage() {
     loadAction()
   }, [id, navigate])
 
-  const handleSubmit = async (updatedAction: Partial<QuestAction>) => {
+  const handleSubmit = async (updatedAction: Partial<Action>) => {
     if (!id) return
 
     try {
@@ -61,7 +61,7 @@ export default function EditActionPage() {
   }
 
   return (
-    <QuestPageShell
+    <PageShell
       title="編輯動作"
       subtitle="更新動作設定與參數"
       maxWidth="sm"
@@ -81,6 +81,6 @@ export default function EditActionPage() {
           onCancel={() => navigate("/actions")}
         />
       </div>
-    </QuestPageShell>
+    </PageShell>
   )
 }

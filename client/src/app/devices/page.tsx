@@ -1,19 +1,19 @@
 import { useEffect, useState, useRef, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
 import { getDisplayName } from "@/lib/utils/device"
-import { actionApi, deviceApi, roomApi, scrcpyApi, preferenceApi } from "@/services/quest-api"
+import { actionApi, deviceApi, roomApi, scrcpyApi, preferenceApi } from "@/services/api"
 import {
-  QUEST_ACTION_TYPES,
-  QUEST_DEVICE_STATUS,
-  type QuestAction,
-  type QuestDevice,
+  ACTION_TYPES,
+  DEVICE_STATUS,
+  type Action,
+  type Device,
   type IsolationDevice,
   type USBDevice,
   ScrcpySession,
   ScrcpySystemInfo,
   UserPreference,
-} from "@/services/quest-types"
-import QuestPageShell from "@/components/quest/quest-page-shell"
+} from "@/services/api-types"
+import PageShell from "@/components/console/page-shell"
 import Button from "@/components/button"
 import {
   DEFAULT_BATCH_SIZE,
@@ -25,10 +25,10 @@ type StatusErrorType = "idle" | "ok" | "timeout" | "adb-error"
 
 export default function DevicesPage() {
   const navigate = useNavigate()
-  const [devices, setDevices] = useState<QuestDevice[]>([])
+  const [devices, setDevices] = useState<Device[]>([])
   const [rooms, setRooms] = useState<Array<{ room_id: string; name: string }>>([])
   const [roomNameMap, setRoomNameMap] = useState<Map<string, string>>(new Map())
-  const [actions, setActions] = useState<QuestAction[]>([])
+  const [actions, setActions] = useState<Action[]>([])
   const [selectedActionIds, setSelectedActionIds] = useState<Record<string, string>>({})
   const [actionRunningIds, setActionRunningIds] = useState<Record<string, boolean>>({})
   const [isolationDevices, setIsolationDevices] = useState<IsolationDevice[]>([])
@@ -57,7 +57,7 @@ export default function DevicesPage() {
   const statusIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // 避免 useCallback 依賴 devices 導致輪詢 interval 反覆重設
-  const devicesRef = useRef<QuestDevice[]>([])
+  const devicesRef = useRef<Device[]>([])
   useEffect(() => {
     devicesRef.current = devices
   }, [devices])
@@ -267,45 +267,45 @@ export default function DevicesPage() {
     }
   }, [preference, refreshOnlineStatuses, refreshPageData])
 
-  const getStatusText = (status: QuestDevice["status"]) => {
+  const getStatusText = (status: Device["status"]) => {
     switch (status) {
-      case QUEST_DEVICE_STATUS.ONLINE:
+      case DEVICE_STATUS.ONLINE:
         return "在線"
-      case QUEST_DEVICE_STATUS.OFFLINE:
+      case DEVICE_STATUS.OFFLINE:
         return "離線"
-      case QUEST_DEVICE_STATUS.CONNECTING:
+      case DEVICE_STATUS.CONNECTING:
         return "連線中"
-      case QUEST_DEVICE_STATUS.ERROR:
+      case DEVICE_STATUS.ERROR:
         return "錯誤"
-      case QUEST_DEVICE_STATUS.DISCONNECTED:
+      case DEVICE_STATUS.DISCONNECTED:
         return "手動斷開"
       default:
         return "未知"
     }
   }
 
-  const getAdbStatusBadgeClass = (status: QuestDevice["status"]) => {
+  const getAdbStatusBadgeClass = (status: Device["status"]) => {
     switch (status) {
-      case QUEST_DEVICE_STATUS.ONLINE:
+      case DEVICE_STATUS.ONLINE:
         return "ui-badge-success"
-      case QUEST_DEVICE_STATUS.CONNECTING:
+      case DEVICE_STATUS.CONNECTING:
         return "ui-badge-warning"
-      case QUEST_DEVICE_STATUS.ERROR:
+      case DEVICE_STATUS.ERROR:
         return "ui-badge-danger"
-      case QUEST_DEVICE_STATUS.OFFLINE:
-      case QUEST_DEVICE_STATUS.DISCONNECTED:
+      case DEVICE_STATUS.OFFLINE:
+      case DEVICE_STATUS.DISCONNECTED:
       default:
         return "ui-badge-muted"
     }
   }
 
-  const getWsStatusText = (status?: QuestDevice["ws_status"]) => {
+  const getWsStatusText = (status?: Device["ws_status"]) => {
     if (status === "connected") return "已連線"
     if (status === "disconnected") return "未連線"
     return "未知"
   }
 
-  const getWsStatusBadgeClass = (status?: QuestDevice["ws_status"]) => {
+  const getWsStatusBadgeClass = (status?: Device["ws_status"]) => {
     if (status === "connected") return "ui-badge-success"
     if (status === "disconnected") return "ui-badge-muted"
     return "ui-badge-muted"
@@ -318,21 +318,21 @@ export default function DevicesPage() {
 
   const getActionTypeText = (type: string) => {
     switch (type) {
-      case QUEST_ACTION_TYPES.WAKE_UP:
+      case ACTION_TYPES.WAKE_UP:
         return "喚醒"
-      case QUEST_ACTION_TYPES.SLEEP:
+      case ACTION_TYPES.SLEEP:
         return "休眠"
-      case QUEST_ACTION_TYPES.LAUNCH_APP:
+      case ACTION_TYPES.LAUNCH_APP:
         return "啟動應用"
-      case QUEST_ACTION_TYPES.STOP_APP:
+      case ACTION_TYPES.STOP_APP:
         return "停止應用"
-      case QUEST_ACTION_TYPES.RESTART_APP:
+      case ACTION_TYPES.RESTART_APP:
         return "重啟應用"
-      case QUEST_ACTION_TYPES.KEEP_AWAKE:
+      case ACTION_TYPES.KEEP_AWAKE:
         return "保持喚醒"
-      case QUEST_ACTION_TYPES.SEND_KEY:
+      case ACTION_TYPES.SEND_KEY:
         return "發送按鍵"
-      case QUEST_ACTION_TYPES.INSTALL_APK:
+      case ACTION_TYPES.INSTALL_APK:
         return "安裝 APK"
       default:
         return type
@@ -421,7 +421,7 @@ export default function DevicesPage() {
   }
 
   const getAutoReconnectDisabledReasonText = (
-    reason?: QuestDevice["auto_reconnect_disabled_reason"],
+    reason?: Device["auto_reconnect_disabled_reason"],
   ) => {
     switch (reason) {
       case "manual_disconnect":
@@ -524,7 +524,7 @@ export default function DevicesPage() {
     }
   }
 
-  const handleAssignRoom = async (device: QuestDevice, nextRoomId: string) => {
+  const handleAssignRoom = async (device: Device, nextRoomId: string) => {
     const currentRoomId = device.room_id || ""
     if (nextRoomId === currentRoomId) return
 
@@ -658,7 +658,7 @@ export default function DevicesPage() {
   }
 
   return (
-    <QuestPageShell
+    <PageShell
       title="設備管理"
       subtitle={`下次更新 ${countdown} 秒`}
       actions={
@@ -685,8 +685,8 @@ export default function DevicesPage() {
             <div className="col-span-3 text-right">操作</div>
           </div>
           {devices.map((device) => {
-            const isOnline = device.status === QUEST_DEVICE_STATUS.ONLINE
-            const isConnecting = device.status === QUEST_DEVICE_STATUS.CONNECTING
+            const isOnline = device.status === DEVICE_STATUS.ONLINE
+            const isConnecting = device.status === DEVICE_STATUS.CONNECTING
             const statusErrorType = statusErrors[device.device_id] || "idle"
             const disabledReasonText = getAutoReconnectDisabledReasonText(
               device.auto_reconnect_disabled_reason,
@@ -1078,6 +1078,6 @@ export default function DevicesPage() {
           </div>
         </div>
       )}
-    </QuestPageShell>
+    </PageShell>
   )
 }

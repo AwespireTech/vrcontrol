@@ -1,29 +1,29 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { actionApi, deviceApi } from "@/services/quest-api"
-import { QUEST_ACTION_TYPES, type QuestAction, QuestDevice } from "@/services/quest-types"
+import { actionApi, deviceApi } from "@/services/api"
+import { ACTION_TYPES, type Action, Device } from "@/services/api-types"
 import { getDisplayName } from "@/lib/utils/device"
-import QuestPageShell from "@/components/quest/quest-page-shell"
+import PageShell from "@/components/console/page-shell"
 import Button from "@/components/button"
-import QuestDeviceSelectionModal from "@/components/quest/quest-device-selection-modal"
+import DeviceSelectionModal from "@/components/console/device-selection-modal"
 
 const getActionTypeText = (type: string) => {
   switch (type) {
-    case QUEST_ACTION_TYPES.WAKE_UP:
+    case ACTION_TYPES.WAKE_UP:
       return "喚醒"
-    case QUEST_ACTION_TYPES.SLEEP:
+    case ACTION_TYPES.SLEEP:
       return "休眠"
-    case QUEST_ACTION_TYPES.LAUNCH_APP:
+    case ACTION_TYPES.LAUNCH_APP:
       return "啟動應用"
-    case QUEST_ACTION_TYPES.STOP_APP:
+    case ACTION_TYPES.STOP_APP:
       return "停止應用"
-    case QUEST_ACTION_TYPES.RESTART_APP:
+    case ACTION_TYPES.RESTART_APP:
       return "重啟應用"
-    case QUEST_ACTION_TYPES.KEEP_AWAKE:
+    case ACTION_TYPES.KEEP_AWAKE:
       return "保持喚醒"
-    case QUEST_ACTION_TYPES.SEND_KEY:
+    case ACTION_TYPES.SEND_KEY:
       return "發送按鍵"
-    case QUEST_ACTION_TYPES.INSTALL_APK:
+    case ACTION_TYPES.INSTALL_APK:
       return "安裝 APK"
     default:
       return type
@@ -32,21 +32,21 @@ const getActionTypeText = (type: string) => {
 
 const getActionIcon = (type: string) => {
   switch (type) {
-    case QUEST_ACTION_TYPES.WAKE_UP:
+    case ACTION_TYPES.WAKE_UP:
       return "☀️"
-    case QUEST_ACTION_TYPES.SLEEP:
+    case ACTION_TYPES.SLEEP:
       return "🌙"
-    case QUEST_ACTION_TYPES.LAUNCH_APP:
+    case ACTION_TYPES.LAUNCH_APP:
       return "🚀"
-    case QUEST_ACTION_TYPES.STOP_APP:
+    case ACTION_TYPES.STOP_APP:
       return "⏹️"
-    case QUEST_ACTION_TYPES.RESTART_APP:
+    case ACTION_TYPES.RESTART_APP:
       return "🔄"
-    case QUEST_ACTION_TYPES.KEEP_AWAKE:
+    case ACTION_TYPES.KEEP_AWAKE:
       return "⏰"
-    case QUEST_ACTION_TYPES.SEND_KEY:
+    case ACTION_TYPES.SEND_KEY:
       return "⌨️"
-    case QUEST_ACTION_TYPES.INSTALL_APK:
+    case ACTION_TYPES.INSTALL_APK:
       return "📦"
     default:
       return "⚡"
@@ -55,12 +55,12 @@ const getActionIcon = (type: string) => {
 
 export default function ActionsPage() {
   const navigate = useNavigate()
-  const [actions, setActions] = useState<QuestAction[]>([])
-  const [devices, setDevices] = useState<QuestDevice[]>([])
+  const [actions, setActions] = useState<Action[]>([])
+  const [devices, setDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(true)
   const [countdown, setCountdown] = useState(5)
   const [showExecuteModal, setShowExecuteModal] = useState(false)
-  const [selectedAction, setSelectedAction] = useState<QuestAction | null>(null)
+  const [selectedAction, setSelectedAction] = useState<Action | null>(null)
   const [selectedDevices, setSelectedDevices] = useState<string[]>([])
   const [actionPending, setActionPending] = useState<Record<string, "delete">>({})
   const [executePending, setExecutePending] = useState(false)
@@ -162,7 +162,7 @@ export default function ActionsPage() {
   }
 
   return (
-    <QuestPageShell
+    <PageShell
       title="動作管理"
       subtitle={`下次更新 ${countdown} 秒`}
       actions={
@@ -251,7 +251,7 @@ export default function ActionsPage() {
         </div>
       )}
 
-      <QuestDeviceSelectionModal
+      <DeviceSelectionModal
         open={showExecuteModal && !!selectedAction}
         title={`執行動作: ${selectedAction?.name || ""}`}
         confirmText="執行"
@@ -266,6 +266,6 @@ export default function ActionsPage() {
           setSelectedDevices([])
         }}
       />
-    </QuestPageShell>
+    </PageShell>
   )
 }

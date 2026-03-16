@@ -176,7 +176,7 @@ func (s *MonitoringService) performMonitoring() {
 	}
 
 	// 過濾需要監控的設備
-	var monitorDevices []*model.QuestDevice
+	var monitorDevices []*model.Device
 	for _, device := range devices {
 		// 跳過連接中與手動斷開的設備（disconnected 完全不 ping、不自動重連）
 		if device.Status == model.DeviceStatusConnecting || device.Status == model.DeviceStatusDisconnected {
@@ -308,7 +308,7 @@ func (s *MonitoringService) performMonitoring() {
 }
 
 // pingDevicesConcurrently 並發 ping 多個設備
-func (s *MonitoringService) pingDevicesConcurrently(devices []*model.QuestDevice) map[string]*adb.PingResult {
+func (s *MonitoringService) pingDevicesConcurrently(devices []*model.Device) map[string]*adb.PingResult {
 	results := make(map[string]*adb.PingResult)
 	var mutex sync.Mutex
 	var wg sync.WaitGroup
@@ -319,7 +319,7 @@ func (s *MonitoringService) pingDevicesConcurrently(devices []*model.QuestDevice
 
 	for _, device := range devices {
 		wg.Add(1)
-		go func(dev *model.QuestDevice) {
+		go func(dev *model.Device) {
 			defer wg.Done()
 
 			semaphore <- struct{}{}
@@ -338,7 +338,7 @@ func (s *MonitoringService) pingDevicesConcurrently(devices []*model.QuestDevice
 }
 
 // isDeviceOnlineInADB 根據 ADB 裝置清單判斷是否在線
-func (s *MonitoringService) isDeviceOnlineInADB(device *model.QuestDevice, onlineSerials map[string]struct{}) bool {
+func (s *MonitoringService) isDeviceOnlineInADB(device *model.Device, onlineSerials map[string]struct{}) bool {
 	if device.Serial != "" {
 		if _, ok := onlineSerials[device.Serial]; ok {
 			return true
@@ -363,7 +363,7 @@ func (s *MonitoringService) isDeviceOnlineInADB(device *model.QuestDevice, onlin
 }
 
 // tryReconnectDevice 嘗試重新連接設備
-func (s *MonitoringService) tryReconnectDevice(device *model.QuestDevice) error {
+func (s *MonitoringService) tryReconnectDevice(device *model.Device) error {
 	// 更新為連接中狀態
 	s.deviceRepo.UpdateStatus(device.DeviceID, model.DeviceStatusConnecting)
 

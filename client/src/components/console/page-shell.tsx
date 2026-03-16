@@ -1,6 +1,6 @@
 import type { ReactNode } from "react"
 
-type QuestPageShellProps = {
+type PageShellProps = {
   title: string
   subtitle?: string
   eyebrow?: string
@@ -16,14 +16,14 @@ const maxWidthMap = {
   xl: "max-w-7xl",
 }
 
-export default function QuestPageShell({
+export default function PageShell({
   title,
   subtitle,
-  eyebrow = "Quest Console",
+  eyebrow = "VR Control Console",
   actions,
   children,
   maxWidth = "lg",
-}: QuestPageShellProps) {
+}: PageShellProps) {
   return (
     <div className="min-h-screen bg-background px-6 py-8">
       <div className={`mx-auto flex w-full flex-col gap-8 ${maxWidthMap[maxWidth]}`}>

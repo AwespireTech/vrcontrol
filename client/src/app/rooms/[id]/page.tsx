@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { roomApi } from "@/services/quest-api"
-import RoomForm from "@/components/quest/room-form"
-import type { QuestRoom } from "@/services/quest-types"
-import QuestPageShell from "@/components/quest/quest-page-shell"
+import { roomApi } from "@/services/api"
+import RoomForm from "@/components/console/room-form"
+import type { Room } from "@/services/api-types"
+import PageShell from "@/components/console/page-shell"
 
 export default function EditRoomPage() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
-  const [room, setRoom] = useState<QuestRoom | null>(null)
+  const [room, setRoom] = useState<Room | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -30,7 +30,7 @@ export default function EditRoomPage() {
     loadRoom()
   }, [id, navigate])
 
-  const handleSubmit = async (updatedRoom: Partial<QuestRoom>) => {
+  const handleSubmit = async (updatedRoom: Partial<Room>) => {
     if (!id) return
 
     try {
@@ -61,7 +61,7 @@ export default function EditRoomPage() {
   }
 
   return (
-    <QuestPageShell
+    <PageShell
       title="編輯房間"
       subtitle={`房間 ID: ${id}`}
       maxWidth="sm"
@@ -91,6 +91,6 @@ export default function EditRoomPage() {
       <div className="surface-card p-6">
         <RoomForm room={room} onSubmit={handleSubmit} onCancel={() => navigate("/rooms")} />
       </div>
-    </QuestPageShell>
+    </PageShell>
   )
 }

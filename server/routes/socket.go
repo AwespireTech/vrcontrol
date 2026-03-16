@@ -6,8 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// SetQuestSocketRoutes defines Quest websocket endpoints (copied from base socket routes).
-func SetQuestSocketRoutes(router *gin.RouterGroup) {
+// SetSocketRoutes defines websocket endpoints.
+func SetSocketRoutes(router *gin.RouterGroup) {
 	router.GET("/client/:clientId", controller.ConnectToRoomSocket)
 	router.GET("/control/:roomId", controller.ConnectToRoomControlSocket)
 }
