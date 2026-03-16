@@ -4,7 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/binary"
+	"fmt"
 	"io"
+	"log"
+	"net"
 	"time"
 
 	"github.com/pion/rtp"
@@ -17,6 +20,7 @@ const (
 	h264ClockRate   = 90000
 	maxAnnexBBuffer = 2 * 1024 * 1024
 	rtpMTU          = 1200
+	readPollTimeout = 500 * time.Millisecond
 )
 
 func StreamH264(ctx context.Context, reader io.Reader, track *pion.TrackLocalStaticRTP, fps int) error {
@@ -39,17 +43,65 @@ func StreamH264(ctx context.Context, reader io.Reader, track *pion.TrackLocalSta
 
 	buffer := make([]byte, 0, maxAnnexBBuffer)
 	chunk := make([]byte, 4096)
+	firstPacketAt := time.Time{}
+	firstPacketDeadline := time.Now().Add(8 * time.Second)
+	firstDataAt := time.Time{}
+	lastNoStartCodeWarn := time.Time{}
+	packetsSent := 0
+	statsTicker := time.NewTicker(1 * time.Second)
+	defer statsTicker.Stop()
+
+	deadlineReader, hasReadDeadline := reader.(interface{ SetReadDeadline(time.Time) error })
 
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-statsTicker.C:
+			if !firstPacketAt.IsZero() {
+				log.Printf("[WebRTC][stream] packets/s=%d", packetsSent)
+			}
+			packetsSent = 0
 		default:
 		}
 
+		if firstPacketAt.IsZero() && time.Now().After(firstPacketDeadline) {
+			return fmt.Errorf("no H264 packets produced within startup timeout")
+		}
+
+		if hasReadDeadline {
+			_ = deadlineReader.SetReadDeadline(time.Now().Add(readPollTimeout))
+		}
+
 		n, err := reader.Read(chunk)
+		if hasReadDeadline {
+			_ = deadlineReader.SetReadDeadline(time.Time{})
+		}
 		if n > 0 {
+			if firstDataAt.IsZero() {
+				firstDataAt = time.Now()
+			}
 			buffer = append(buffer, chunk[:n]...)
+		}
+
+		if err != nil {
+			if netErr, ok := err.(net.Error); ok && netErr.Timeout() {
+				continue
+			}
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+
+		if firstPacketAt.IsZero() && len(buffer) >= 128*1024 && findStartCode(buffer, 0) < 0 {
+			if lastNoStartCodeWarn.IsZero() || time.Since(lastNoStartCodeWarn) >= 1*time.Second {
+				log.Printf("[WebRTC][stream] no Annex-B start code yet, buffered=%d bytes", len(buffer))
+				lastNoStartCodeWarn = time.Now()
+			}
+			if !firstDataAt.IsZero() && time.Since(firstDataAt) >= 3*time.Second && len(buffer) >= 256*1024 {
+				return fmt.Errorf("invalid_h264_annexb_stream")
+			}
 		}
 
 		for {
@@ -80,6 +132,11 @@ func StreamH264(ctx context.Context, reader io.Reader, track *pion.TrackLocalSta
 					if writeErr := track.WriteRTP(pkt); writeErr != nil {
 						return writeErr
 					}
+					packetsSent += 1
+					if firstPacketAt.IsZero() {
+						firstPacketAt = time.Now()
+						log.Printf("[WebRTC][stream] first RTP packet sent")
+					}
 				}
 
 				nalType := nalu[0] & 0x1f
@@ -91,12 +148,6 @@ func StreamH264(ctx context.Context, reader io.Reader, track *pion.TrackLocalSta
 			buffer = buffer[next:]
 		}
 
-		if err != nil {
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
 	}
 }
 

@@ -31,6 +31,7 @@ export function ScrcpyStreamPlayer({ deviceId }: ScrcpyStreamPlayerProps) {
     let pc: RTCPeerConnection | null = null
     let closed = false
     const pendingSignals: SignalMessage[] = []
+    const pendingRemoteCandidates: RTCIceCandidateInit[] = []
 
     const sendSignal = (message: SignalMessage) => {
       if (closed) return
@@ -63,8 +64,20 @@ export function ScrcpyStreamPlayer({ deviceId }: ScrcpyStreamPlayerProps) {
       pc = new RTCPeerConnection()
       pc.ontrack = attachTrack
       pc.onicecandidate = (event) => {
-        if (!event.candidate) return
+        if (!event.candidate) {
+          sendSignal({ type: "ice" })
+          return
+        }
         sendSignal({ type: "ice", candidate: event.candidate.toJSON() })
+      }
+      pc.oniceconnectionstatechange = () => {
+        console.debug("[WebRTC][client] iceConnectionState:", pc?.iceConnectionState)
+      }
+      pc.onicegatheringstatechange = () => {
+        console.debug("[WebRTC][client] iceGatheringState:", pc?.iceGatheringState)
+      }
+      pc.onconnectionstatechange = () => {
+        console.debug("[WebRTC][client] connectionState:", pc?.connectionState)
       }
     }
 
@@ -78,6 +91,19 @@ export function ScrcpyStreamPlayer({ deviceId }: ScrcpyStreamPlayerProps) {
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "offer_failed")
+      }
+    }
+
+    const flushRemoteCandidates = async () => {
+      if (!pc || !pc.remoteDescription) return
+      while (pendingRemoteCandidates.length > 0) {
+        const candidate = pendingRemoteCandidates.shift()
+        if (!candidate) continue
+        try {
+          await pc.addIceCandidate(candidate)
+        } catch {
+          setError("ice_apply_failed")
+        }
       }
     }
 
@@ -103,11 +129,21 @@ export function ScrcpyStreamPlayer({ deviceId }: ScrcpyStreamPlayerProps) {
         case "answer":
           if (message.sdp) {
             await pc.setRemoteDescription({ type: "answer", sdp: message.sdp })
+            await flushRemoteCandidates()
           }
           break
         case "ice":
-          if (message.candidate) {
+          if (!message.candidate) {
+            if (pc.remoteDescription) {
+              await pc.addIceCandidate(null)
+            }
+            break
+          }
+
+          if (pc.remoteDescription) {
             await pc.addIceCandidate(message.candidate)
+          } else {
+            pendingRemoteCandidates.push(message.candidate)
           }
           break
         case "error":
@@ -132,8 +168,10 @@ export function ScrcpyStreamPlayer({ deviceId }: ScrcpyStreamPlayerProps) {
     }
 
     return () => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: "close" satisfies SignalMessage["type"] }))
+      }
       closed = true
-      sendSignal({ type: "close" })
       if (ws.readyState === WebSocket.OPEN) {
         ws.close()
       }
