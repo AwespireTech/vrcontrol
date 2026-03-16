@@ -21,7 +21,7 @@ export default function EditRoomPage() {
       } catch (error) {
         console.error("Failed to load room:", error)
         alert("載入房間失敗，請稍後再試")
-        navigate("/quest/rooms")
+        navigate("/rooms")
       } finally {
         setLoading(false)
       }
@@ -36,7 +36,7 @@ export default function EditRoomPage() {
     try {
       await roomApi.patch(id, updatedRoom)
       alert("房間已更新")
-      navigate("/quest/rooms")
+      navigate("/rooms")
     } catch (error) {
       console.error("Failed to update room:", error)
       alert("更新失敗，請稍後再試")
@@ -68,19 +68,19 @@ export default function EditRoomPage() {
       actions={
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => navigate("/quest/rooms")}
+            onClick={() => navigate("/rooms")}
             className="ui-btn ui-btn-md ui-btn-muted"
           >
             返回房間列表
           </button>
           <button
-            onClick={() => navigate(`/quest/rooms/${id}/devices`)}
+            onClick={() => navigate(`/rooms/${id}/devices`)}
             className="ui-btn ui-btn-md ui-btn-primary"
           >
             管理設備
           </button>
           <button
-            onClick={() => navigate(`/quest/rooms/${id}/control`)}
+            onClick={() => navigate(`/rooms/${id}/control`)}
             className="ui-btn ui-btn-md ui-btn-accent"
           >
             前往控制
@@ -89,7 +89,7 @@ export default function EditRoomPage() {
       }
     >
       <div className="surface-card p-6">
-        <RoomForm room={room} onSubmit={handleSubmit} onCancel={() => navigate("/quest/rooms")} />
+        <RoomForm room={room} onSubmit={handleSubmit} onCancel={() => navigate("/rooms")} />
       </div>
     </QuestPageShell>
   )

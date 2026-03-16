@@ -9,12 +9,12 @@ type NavItem = {
 }
 
 const buildItems = (): NavItem[] => [
-  { label: "Quest 總覽", to: "/quest", icon: "🧭", exact: true },
-  { label: "設備", to: "/quest/devices", icon: "📱" },
-  { label: "房間", to: "/quest/rooms", icon: "🏠" },
-  { label: "動作", to: "/quest/actions", icon: "⚡" },
-  { label: "監控", to: "/quest/monitoring", icon: "🛰️" },
-  { label: "設定", to: "/quest/settings", icon: "⚙️" },
+  { label: "Quest 總覽", to: "/", icon: "🧭", exact: true },
+  { label: "設備", to: "/devices", icon: "📱" },
+  { label: "房間", to: "/rooms", icon: "🏠" },
+  { label: "動作", to: "/actions", icon: "⚡" },
+  { label: "監控", to: "/monitoring", icon: "🛰️" },
+  { label: "設定", to: "/settings", icon: "⚙️" },
 ]
 
 type QuestSidebarProps = {
@@ -120,7 +120,7 @@ export default function QuestSidebar({
           return (
             <Link
               key={item.label}
-              to={item.to || "/quest"}
+              to={item.to || "/"}
               className={`${sharedClass} overflow-hidden`}
               title={item.label}
             >
@@ -131,19 +131,6 @@ export default function QuestSidebar({
             </Link>
           )
         })}
-      </nav>
-
-      <nav className="px-3 pb-6">
-        <Link
-          to="/"
-          className={`${getItemClass(location.pathname === "/")} overflow-hidden`}
-          title="返回首頁"
-        >
-          <span className="text-lg">🏠</span>
-          <span className={labelClass}>
-            <span className="block whitespace-nowrap leading-none">返回首頁</span>
-          </span>
-        </Link>
       </nav>
 
       <div

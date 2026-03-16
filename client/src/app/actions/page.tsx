@@ -167,7 +167,7 @@ export default function ActionsPage() {
       subtitle={`下次更新 ${countdown} 秒`}
       actions={
         <button
-          onClick={() => navigate("/quest/actions/new")}
+          onClick={() => navigate("/actions/new")}
           className="ui-btn ui-btn-md ui-btn-primary"
         >
           + 建立動作
@@ -231,7 +231,7 @@ export default function ActionsPage() {
                     執行
                   </Button>
                   <button
-                    onClick={() => navigate(`/quest/actions/${action.action_id}`)}
+                    onClick={() => navigate(`/actions/${action.action_id}`)}
                     className="ui-btn ui-btn-xs ui-btn-muted"
                   >
                     編輯

@@ -21,7 +21,7 @@ export default function EditActionPage() {
       } catch (error) {
         console.error("Failed to load action:", error)
         alert("載入動作失敗，請稍後再試")
-        navigate("/quest/actions")
+        navigate("/actions")
       } finally {
         setLoading(false)
       }
@@ -36,7 +36,7 @@ export default function EditActionPage() {
     try {
       await actionApi.patch(id, updatedAction)
       alert("動作已更新")
-      navigate("/quest/actions")
+      navigate("/actions")
     } catch (error) {
       console.error("Failed to update action:", error)
       alert("更新失敗，請稍後再試")
@@ -67,7 +67,7 @@ export default function EditActionPage() {
       maxWidth="sm"
       actions={
         <button
-          onClick={() => navigate("/quest/actions")}
+          onClick={() => navigate("/actions")}
           className="ui-btn ui-btn-md ui-btn-muted"
         >
           返回動作列表
@@ -78,7 +78,7 @@ export default function EditActionPage() {
         <ActionForm
           action={action}
           onSubmit={handleSubmit}
-          onCancel={() => navigate("/quest/actions")}
+          onCancel={() => navigate("/actions")}
         />
       </div>
     </QuestPageShell>

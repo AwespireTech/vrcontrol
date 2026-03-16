@@ -664,7 +664,7 @@ export default function DevicesPage() {
       actions={
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => navigate("/quest/devices/new")}
+            onClick={() => navigate("/devices/new")}
             className="ui-btn ui-btn-md ui-btn-primary"
           >
             + 建立設備
@@ -747,7 +747,7 @@ export default function DevicesPage() {
                 <div className="col-span-2 text-xs text-foreground/70">
                   {device.room_id ? (
                     <button
-                      onClick={() => navigate(`/quest/rooms/${device.room_id}/control`)}
+                      onClick={() => navigate(`/rooms/${device.room_id}/control`)}
                       className="group cursor-pointer text-left"
                     >
                       <div className="font-semibold text-foreground group-hover:underline">
@@ -851,7 +851,7 @@ export default function DevicesPage() {
                     </Button>
                   )}
                   <button
-                    onClick={() => navigate(`/quest/devices/${device.device_id}`)}
+                    onClick={() => navigate(`/devices/${device.device_id}`)}
                     className="ui-btn ui-btn-xs ui-btn-muted"
                   >
                     編輯

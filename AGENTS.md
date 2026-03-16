@@ -16,6 +16,10 @@
 - 前端啟動：`npm run dev`
 - Quest 路由註冊：[server/quest/routes/quest_routes.go](server/quest/routes/quest_routes.go)
 
+## Frontend Routes
+- Quest 首頁頁面：[client/src/app/page.tsx](client/src/app/page.tsx)
+- Quest 子頁面：`client/src/app/{devices,rooms,actions,monitoring,settings}`
+
 ## Key Data Stores
 - Quest 資料儲存目錄：[server/data](server/data)
   - 裝置：[server/data/quest_devices.json](server/data/quest_devices.json)

@@ -10,7 +10,7 @@ export default function NewActionPage() {
   const handleSubmit = async (action: Partial<QuestAction>) => {
     await actionApi.create(action)
     alert("動作已建立")
-    navigate("/quest/actions")
+    navigate("/actions")
   }
 
   return (
@@ -20,7 +20,7 @@ export default function NewActionPage() {
       maxWidth="sm"
       actions={
         <button
-          onClick={() => navigate("/quest/actions")}
+          onClick={() => navigate("/actions")}
           className="ui-btn ui-btn-md ui-btn-muted"
         >
           返回動作列表
@@ -28,7 +28,7 @@ export default function NewActionPage() {
       }
     >
       <div className="surface-card p-6">
-        <ActionForm onSubmit={handleSubmit} onCancel={() => navigate("/quest/actions")} />
+        <ActionForm onSubmit={handleSubmit} onCancel={() => navigate("/actions")} />
       </div>
     </QuestPageShell>
   )

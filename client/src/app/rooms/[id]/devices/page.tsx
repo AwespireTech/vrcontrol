@@ -168,13 +168,13 @@ export default function RoomDevicesPage() {
       actions={
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => navigate("/quest/rooms")}
+            onClick={() => navigate("/rooms")}
             className="ui-btn ui-btn-md ui-btn-muted"
           >
             返回房間列表
           </button>
           <button
-            onClick={() => navigate(`/quest/rooms/${id}/control`)}
+            onClick={() => navigate(`/rooms/${id}/control`)}
             className="ui-btn ui-btn-md ui-btn-accent"
           >
             前往控制

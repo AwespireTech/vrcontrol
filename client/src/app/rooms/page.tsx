@@ -81,7 +81,7 @@ export default function RoomsPage() {
       subtitle={`下次更新 ${countdown} 秒`}
       actions={
         <button
-          onClick={() => navigate("/quest/rooms/new")}
+          onClick={() => navigate("/rooms/new")}
           className="ui-btn ui-btn-md ui-btn-primary"
         >
           + 建立房間
@@ -135,19 +135,19 @@ export default function RoomsPage() {
               <div className="col-span-1 text-sm text-foreground/80">{room.device_ids.length}</div>
               <div className="col-span-3 flex flex-wrap items-start justify-end gap-2">
                 <button
-                  onClick={() => navigate(`/quest/rooms/${room.room_id}/control`)}
+                  onClick={() => navigate(`/rooms/${room.room_id}/control`)}
                   className="ui-btn ui-btn-xs ui-btn-primary"
                 >
                   控制
                 </button>
                 <button
-                  onClick={() => navigate(`/quest/rooms/${room.room_id}/devices`)}
+                  onClick={() => navigate(`/rooms/${room.room_id}/devices`)}
                   className="ui-btn ui-btn-xs ui-btn-muted"
                 >
                   管理設備
                 </button>
                 <button
-                  onClick={() => navigate(`/quest/rooms/${room.room_id}`)}
+                  onClick={() => navigate(`/rooms/${room.room_id}`)}
                   className="ui-btn ui-btn-xs ui-btn-muted"
                 >
                   編輯

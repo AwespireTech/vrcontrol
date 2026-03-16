@@ -19,7 +19,8 @@
 ## 前端頁面與路由
 
 - 路由定義：[client/src/App.tsx](../client/src/App.tsx)
-- Quest 頁面位置：client/src/app/quest
+- Quest 頁面實作位置：client/src/app
+- Quest 管理介面目前直接掛在根路徑 `/`
 
 ## 常見注意事項
 

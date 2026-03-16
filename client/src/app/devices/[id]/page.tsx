@@ -28,7 +28,7 @@ export default function EditDevicePage() {
       } catch (error) {
         console.error("Failed to load device:", error)
         alert("載入設備失敗，請稍後再試")
-        navigate("/quest/devices")
+        navigate("/devices")
       } finally {
         setLoading(false)
       }
@@ -43,7 +43,7 @@ export default function EditDevicePage() {
     try {
       await deviceApi.patch(id, updatedDevice)
       alert("設備已更新")
-      navigate("/quest/devices")
+      navigate("/devices")
     } catch (error) {
       console.error("Failed to update device:", error)
       alert("更新失敗，請稍後再試")
@@ -74,7 +74,7 @@ export default function EditDevicePage() {
       maxWidth="sm"
       actions={
         <button
-          onClick={() => navigate("/quest/devices")}
+          onClick={() => navigate("/devices")}
           className="ui-btn ui-btn-md ui-btn-muted"
         >
           返回設備列表
@@ -95,7 +95,7 @@ export default function EditDevicePage() {
               <span className="text-foreground">{roomName || "未指派"}</span>
               {device.room_id && (
                 <button
-                  onClick={() => navigate(`/quest/rooms/${device.room_id}/devices`)}
+                  onClick={() => navigate(`/rooms/${device.room_id}/devices`)}
                   className="ui-btn ui-btn-xs ui-btn-muted"
                 >
                   管理房間
@@ -107,7 +107,7 @@ export default function EditDevicePage() {
         <DeviceForm
           device={device}
           onSubmit={handleSubmit}
-          onCancel={() => navigate("/quest/devices")}
+          onCancel={() => navigate("/devices")}
         />
       </div>
     </QuestPageShell>

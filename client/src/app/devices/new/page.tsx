@@ -10,7 +10,7 @@ export default function NewDevicePage() {
   const handleSubmit = async (device: Partial<QuestDevice>) => {
     await deviceApi.create(device)
     alert("設備已建立")
-    navigate("/quest/devices")
+    navigate("/devices")
   }
 
   return (
@@ -20,7 +20,7 @@ export default function NewDevicePage() {
       maxWidth="sm"
       actions={
         <button
-          onClick={() => navigate("/quest/devices")}
+          onClick={() => navigate("/devices")}
           className="ui-btn ui-btn-md ui-btn-muted"
         >
           返回設備列表
@@ -28,7 +28,7 @@ export default function NewDevicePage() {
       }
     >
       <div className="surface-card p-6">
-        <DeviceForm onSubmit={handleSubmit} onCancel={() => navigate("/quest/devices")} />
+        <DeviceForm onSubmit={handleSubmit} onCancel={() => navigate("/devices")} />
       </div>
     </QuestPageShell>
   )

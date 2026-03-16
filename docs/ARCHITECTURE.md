@@ -19,7 +19,8 @@
 
 ### 前端
 - App 入口：[client/src/App.tsx](../client/src/App.tsx)
-- Quest 頁面：client/src/app/quest
+- Quest 頁面實作：client/src/app
+- 主要前端入口 URL：`/`（Quest 管理介面）
 - API 封裝：client/src/services/quest-api.ts
 - 型別定義：client/src/services/quest-types.ts
 

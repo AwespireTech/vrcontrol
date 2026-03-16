@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { DEFAULT_POLL_INTERVAL_SECONDS, SERVER } from "@/environment"
 import Button from "@/components/button"
@@ -79,7 +79,7 @@ export default function RoomControlPage() {
     return found?.label || roomId
   }, [roomId, roomList])
 
-  const loadControlData = async () => {
+  const loadControlData = useCallback(async () => {
     try {
       const [questRooms, devices] = await Promise.all([roomApi.getAll(), deviceApi.getAll()])
       const roomOptions = questRooms
@@ -95,18 +95,18 @@ export default function RoomControlPage() {
     } catch (error) {
       console.error("Failed to load control data:", error)
     }
-  }
+  }, [roomId])
 
-  const loadActions = async () => {
+  const loadActions = useCallback(async () => {
     try {
       const actionsData = await actionApi.getAll()
       setActions(actionsData)
     } catch (error) {
       console.error("Failed to load actions:", error)
     }
-  }
+  }, [])
 
-  const refreshDeviceStatuses = async () => {
+  const refreshDeviceStatuses = useCallback(async () => {
     try {
       const [devices, room] = await Promise.all([
         deviceApi.getAll(),
@@ -117,12 +117,12 @@ export default function RoomControlPage() {
     } catch (error) {
       console.error("Failed to refresh device statuses:", error)
     }
-  }
+  }, [roomId])
 
   useEffect(() => {
     loadControlData()
     loadActions()
-  }, [roomId])
+  }, [loadActions, loadControlData])
 
   useEffect(() => {
     if (!roomId) return
@@ -143,7 +143,7 @@ export default function RoomControlPage() {
       clearInterval(interval)
       clearInterval(countdownInterval)
     }
-  }, [roomId])
+  }, [refreshDeviceStatuses, roomId])
 
   useEffect(() => {
     if (!roomId) return
@@ -487,19 +487,19 @@ export default function RoomControlPage() {
                 : "已中斷"}
           </span>
           <button
-            onClick={() => navigate("/quest/rooms")}
+            onClick={() => navigate("/rooms")}
             className="ui-btn ui-btn-md ui-btn-muted"
           >
             返回房間列表
           </button>
           <button
-            onClick={() => navigate(`/quest/rooms/${roomId}`)}
+            onClick={() => navigate(`/rooms/${roomId}`)}
             className="ui-btn ui-btn-md ui-btn-primary"
           >
             編輯房間
           </button>
           <button
-            onClick={() => navigate(`/quest/rooms/${roomId}/devices`)}
+            onClick={() => navigate(`/rooms/${roomId}/devices`)}
             className="ui-btn ui-btn-md ui-btn-accent"
           >
             前往設備
