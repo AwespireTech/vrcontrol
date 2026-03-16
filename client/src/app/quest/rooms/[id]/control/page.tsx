@@ -278,6 +278,10 @@ export default function RoomControlPage() {
     if (deviceActionPending[deviceId]) return
     setDeviceActionPending((prev) => ({ ...prev, [deviceId]: "monitor" }))
     try {
+      const info = await scrcpyApi.getSystemInfo()
+      if (!info.installed) {
+        throw new Error(info.error_message || "Scrcpy 未安裝")
+      }
       await scrcpyApi.start(deviceId)
       alert("已啟動監看視窗")
     } catch (error: unknown) {
@@ -717,6 +721,7 @@ export default function RoomControlPage() {
               })}
             </div>
           </div>
+
         </div>
       </div>
 
