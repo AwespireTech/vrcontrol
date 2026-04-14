@@ -19,15 +19,23 @@ import (
 )
 
 type StreamSession struct {
-	DeviceID  string
-	StartedAt time.Time
-	reader    io.ReadCloser
-	conn      net.Conn
-	serverCmd *exec.Cmd
-	waitCh    <-chan error
-	forward   string
-	serial    string
-	Header    StreamHeader
+	DeviceID    string
+	StartedAt   time.Time
+	reader      io.ReadCloser
+	conn        net.Conn
+	controlConn net.Conn
+	serverCmd   *exec.Cmd
+	waitCh      <-chan error
+	forward     string
+	serial      string
+	Header      StreamHeader
+}
+
+type streamBootstrap struct {
+	forward    string
+	serverCmd  *exec.Cmd
+	waitCh     <-chan error
+	stderrTail *tailBuffer
 }
 
 func (s *StreamSession) Read(p []byte) (int, error) {
@@ -41,6 +49,9 @@ func (s *StreamSession) Stop() {
 	if s.conn != nil {
 		_ = s.conn.Close()
 	}
+	if s.controlConn != nil {
+		_ = s.controlConn.Close()
+	}
 	if s.serverCmd != nil && s.serverCmd.Process != nil {
 		_ = s.serverCmd.Process.Kill()
 	}
@@ -53,6 +64,24 @@ func (s *StreamSession) Stop() {
 	if s.forward != "" && s.serial != "" {
 		_ = runADBCommand(s.serial, "forward", "--remove", s.forward)
 	}
+}
+
+func (s *StreamSession) SendResetVideo() error {
+	if s == nil || s.controlConn == nil {
+		return errors.New("control socket not connected")
+	}
+	if err := s.controlConn.SetWriteDeadline(time.Now().Add(1 * time.Second)); err != nil {
+		return err
+	}
+	defer func() {
+		_ = s.controlConn.SetWriteDeadline(time.Time{})
+	}()
+
+	if _, err := s.controlConn.Write(buildResetVideoMessage()); err != nil {
+		return err
+	}
+	log.Printf("[Stream] RESET_VIDEO sent for device=%s", s.DeviceID)
+	return nil
 }
 
 type StreamManager struct{}
@@ -88,31 +117,105 @@ func (m *StreamManager) StartStream(deviceSerial, deviceID string, config *model
 	}
 	log.Printf("[Stream] pushed scrcpy server to %s", deviceServerPath)
 
+	session, err := m.startStandaloneSession(deviceSerial, deviceID, deviceServerPath, version, config, true)
+	if err == nil {
+		return session, nil
+	}
+	if !isResetVideoBootstrapError(err) {
+		return nil, err
+	}
+
+	log.Printf("[Stream] control-assisted startup failed for device=%s, falling back to plain stream: %v", deviceID, err)
+	return m.startStandaloneSession(deviceSerial, deviceID, deviceServerPath, version, config, false)
+}
+
+func (m *StreamManager) startStandaloneSession(deviceSerial, deviceID, deviceServerPath, version string, config *model.ScrcpyConfig, useControl bool) (*StreamSession, error) {
+	bootstrap, tcpPort, err := startStandaloneBootstrap(deviceSerial, deviceServerPath, version, config, useControl)
+	if err != nil {
+		return nil, err
+	}
+
+	cleanupBootstrap := func() {
+		stopStandaloneBootstrap(deviceSerial, bootstrap)
+	}
+
+	conn, err := waitForTCPConnection(tcpPort, 5*time.Second)
+	if err != nil {
+		cleanupBootstrap()
+		return nil, fmt.Errorf("connect stream socket: %w", err)
+	}
+	log.Printf("[Stream] connected stream socket on %s", bootstrap.forward)
+
+	var controlConn net.Conn
+	if useControl {
+		controlConn, err = waitForTCPConnection(tcpPort, 5*time.Second)
+		if err != nil {
+			_ = conn.Close()
+			cleanupBootstrap()
+			return nil, fmt.Errorf("control_connect_failed: %w", err)
+		}
+		log.Printf("[Stream] connected control socket on %s", bootstrap.forward)
+	}
+
+	probeBytes, err := probeStreamData(conn, 10*time.Second, bootstrap.waitCh, bootstrap.stderrTail)
+	if err != nil {
+		_ = conn.Close()
+		if controlConn != nil {
+			_ = controlConn.Close()
+		}
+		cleanupBootstrap()
+		return nil, err
+	}
+	log.Printf("[Stream] source probe received %d bytes", len(probeBytes))
+
+	streamReader := io.NopCloser(io.MultiReader(bytes.NewReader(probeBytes), conn))
+	session := &StreamSession{
+		DeviceID:    deviceID,
+		StartedAt:   time.Now(),
+		reader:      streamReader,
+		conn:        conn,
+		controlConn: controlConn,
+		serverCmd:   bootstrap.serverCmd,
+		waitCh:      bootstrap.waitCh,
+		forward:     bootstrap.forward,
+		serial:      deviceSerial,
+		Header:      buildStreamHeader(config),
+	}
+
+	if useControl {
+		if err := session.SendResetVideo(); err != nil {
+			session.Stop()
+			return nil, fmt.Errorf("reset_video_failed: %w", err)
+		}
+	}
+
+	return session, nil
+}
+
+func startStandaloneBootstrap(deviceSerial, deviceServerPath, version string, config *model.ScrcpyConfig, useControl bool) (*streamBootstrap, int, error) {
 	tcpPort, err := reserveTCPPort()
 	if err != nil {
-		return nil, fmt.Errorf("reserve local tcp port: %w", err)
+		return nil, 0, fmt.Errorf("reserve local tcp port: %w", err)
 	}
 
 	forward := fmt.Sprintf("tcp:%d", tcpPort)
 	if err := runADBCommand(deviceSerial, "forward", forward, "localabstract:scrcpy"); err != nil {
-		return nil, fmt.Errorf("adb forward: %w", err)
+		return nil, 0, fmt.Errorf("adb forward: %w", err)
 	}
 	log.Printf("[Stream] adb forward created %s -> localabstract:scrcpy", forward)
 
-	serverArgs := buildStandaloneServerArgs(deviceSerial, deviceServerPath, version, config)
-
+	serverArgs := buildStandaloneServerArgs(deviceSerial, deviceServerPath, version, config, useControl)
 	log.Printf("[Stream] starting scrcpy standalone server with args: %s", strings.Join(serverArgs, " "))
 
 	serverCmd := exec.Command("adb", serverArgs...)
-
 	stderrTail := newTailBuffer(16 * 1024)
 	serverCmd.Stdout = io.Discard
 	serverCmd.Stderr = stderrTail
 	if err := serverCmd.Start(); err != nil {
 		_ = runADBCommand(deviceSerial, "forward", "--remove", forward)
-		return nil, fmt.Errorf("start scrcpy standalone server: %w", err)
+		return nil, 0, fmt.Errorf("start scrcpy standalone server: %w", err)
 	}
-	log.Printf("[Stream] scrcpy standalone server started pid=%d", serverCmd.Process.Pid)
+	log.Printf("[Stream] scrcpy standalone server started pid=%d control=%t", serverCmd.Process.Pid, useControl)
 
 	waitCh := make(chan error, 1)
 	go func() {
@@ -128,51 +231,33 @@ func (m *StreamManager) StartStream(deviceSerial, deviceID string, config *model
 
 	time.Sleep(1 * time.Second)
 
-	conn, err := waitForTCPConnection(tcpPort, 5*time.Second)
-	if err != nil {
-		if serverCmd.Process != nil {
-			_ = serverCmd.Process.Kill()
-		}
-		_ = runADBCommand(deviceSerial, "forward", "--remove", forward)
-		return nil, fmt.Errorf("connect stream socket: %w", err)
-	}
-	log.Printf("[Stream] connected stream socket on %s", forward)
-
-	probeBytes, err := probeStreamData(conn, 10*time.Second, waitCh, stderrTail)
-	if err != nil {
-		_ = conn.Close()
-		if serverCmd.Process != nil {
-			_ = serverCmd.Process.Kill()
-		}
-		select {
-		case <-waitCh:
-		case <-time.After(500 * time.Millisecond):
-		}
-		_ = runADBCommand(deviceSerial, "forward", "--remove", forward)
-		return nil, err
-	}
-	log.Printf("[Stream] source probe received %d bytes", len(probeBytes))
-
-	streamReader := io.NopCloser(io.MultiReader(bytes.NewReader(probeBytes), conn))
-
-	header := buildStreamHeader(config)
-
-	session := &StreamSession{
-		DeviceID:  deviceID,
-		StartedAt: time.Now(),
-		reader:    streamReader,
-		conn:      conn,
-		serverCmd: serverCmd,
-		waitCh:    waitCh,
-		forward:   forward,
-		serial:    deviceSerial,
-		Header:    header,
-	}
-
-	return session, nil
+	return &streamBootstrap{
+		forward:    forward,
+		serverCmd:  serverCmd,
+		waitCh:     waitCh,
+		stderrTail: stderrTail,
+	}, tcpPort, nil
 }
 
-func buildStandaloneServerArgs(deviceSerial, deviceServerPath, version string, config *model.ScrcpyConfig) []string {
+func stopStandaloneBootstrap(deviceSerial string, bootstrap *streamBootstrap) {
+	if bootstrap == nil {
+		return
+	}
+	if bootstrap.serverCmd != nil && bootstrap.serverCmd.Process != nil {
+		_ = bootstrap.serverCmd.Process.Kill()
+	}
+	if bootstrap.waitCh != nil {
+		select {
+		case <-bootstrap.waitCh:
+		case <-time.After(500 * time.Millisecond):
+		}
+	}
+	if bootstrap.forward != "" {
+		_ = runADBCommand(deviceSerial, "forward", "--remove", bootstrap.forward)
+	}
+}
+
+func buildStandaloneServerArgs(deviceSerial, deviceServerPath, version string, config *model.ScrcpyConfig, useControl bool) []string {
 	args := []string{
 		"-s", deviceSerial,
 		"shell",
@@ -183,12 +268,16 @@ func buildStandaloneServerArgs(deviceSerial, deviceServerPath, version string, c
 		version,
 		"tunnel_forward=true",
 		"audio=false",
-		"control=false",
 		"cleanup=false",
 		"raw_stream=true",
 	}
+	if useControl {
+		args = append(args, "control=true")
+	} else {
+		args = append(args, "control=false")
+	}
 
-	log.Printf("[Stream] building scrcpy server args with config: %+v", config)
+	log.Printf("[Stream] building scrcpy server args with config: %+v control=%t", config, useControl)
 
 	if config != nil {
 		if config.Bitrate != "" {
@@ -199,6 +288,9 @@ func buildStandaloneServerArgs(deviceSerial, deviceServerPath, version string, c
 		}
 		if config.MaxFPS > 0 {
 			args = append(args, "max_fps="+strconv.Itoa(config.MaxFPS))
+		}
+		if strings.TrimSpace(config.VideoCodecOptions) != "" {
+			args = append(args, "video_codec_options="+config.VideoCodecOptions)
 		}
 	}
 
@@ -372,6 +464,14 @@ func classifyProbeFailure(code string, stderrTail *tailBuffer) error {
 		return errors.New(code)
 	}
 	return fmt.Errorf("%s: %s", code, tail)
+}
+
+func isResetVideoBootstrapError(err error) bool {
+	if err == nil {
+		return false
+	}
+	message := err.Error()
+	return strings.Contains(message, "control_connect_failed") || strings.Contains(message, "reset_video_failed")
 }
 
 type tailBuffer struct {

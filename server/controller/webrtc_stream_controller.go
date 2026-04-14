@@ -133,8 +133,7 @@ func (c *WebRTCStreamController) Stream(ctx *gin.Context) {
 			pc.OnConnectionStateChange(func(state pion.PeerConnectionState) {
 				switch state {
 				case pion.PeerConnectionStateFailed,
-					pion.PeerConnectionStateClosed,
-					pion.PeerConnectionStateDisconnected:
+					pion.PeerConnectionStateClosed:
 					cleanup()
 				}
 			})
@@ -142,8 +141,7 @@ func (c *WebRTCStreamController) Stream(ctx *gin.Context) {
 			pc.OnICEConnectionStateChange(func(state pion.ICEConnectionState) {
 				switch state {
 				case pion.ICEConnectionStateFailed,
-					pion.ICEConnectionStateClosed,
-					pion.ICEConnectionStateDisconnected:
+					pion.ICEConnectionStateClosed:
 					cleanup()
 				}
 			})
@@ -258,7 +256,7 @@ func classifyStreamError(err error) string {
 
 type webrtcSession struct {
 	session             *scrcpy.StreamSession
-	track               *pion.TrackLocalStaticRTP
+	track               *pion.TrackLocalStaticSample
 	sender              *pion.RTPSender
 	localCandidateCount *atomic.Int32
 }
@@ -272,14 +270,15 @@ func (s *webrtcSession) Stop() {
 
 func newPeerConnection(deviceID string, session *webrtcSession, sendSignal func(signalMessage)) (*pion.PeerConnection, error) {
 	mediaEngine := &pion.MediaEngine{}
+	h264Capability := pion.RTPCodecCapability{
+		MimeType:     pion.MimeTypeH264,
+		ClockRate:    90000,
+		SDPFmtpLine:  "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f",
+		RTCPFeedback: nil,
+	}
 	if err := mediaEngine.RegisterCodec(pion.RTPCodecParameters{
-		RTPCodecCapability: pion.RTPCodecCapability{
-			MimeType:     pion.MimeTypeH264,
-			ClockRate:    90000,
-			SDPFmtpLine:  "level-asymmetry-allowed=1;packetization-mode=1;profile-level-id=42e01f",
-			RTCPFeedback: nil,
-		},
-		PayloadType: 96,
+		RTPCodecCapability: h264Capability,
+		PayloadType:        96,
 	}, pion.RTPCodecTypeVideo); err != nil {
 		return nil, err
 	}
@@ -321,7 +320,7 @@ func newPeerConnection(deviceID string, session *webrtcSession, sendSignal func(
 		log.Printf("[WebRTC][server] PeerConnection state for device=%s: %s", deviceID, state.String())
 	})
 
-	track, err := pion.NewTrackLocalStaticRTP(
+	sampleTrack, err := pion.NewTrackLocalStaticSample(
 		pion.RTPCodecCapability{MimeType: pion.MimeTypeH264, ClockRate: 90000},
 		"video",
 		deviceID,
@@ -330,12 +329,12 @@ func newPeerConnection(deviceID string, session *webrtcSession, sendSignal func(
 		return nil, err
 	}
 
-	sender, err := pc.AddTrack(track)
+	sender, err := pc.AddTrack(sampleTrack)
 	if err != nil {
 		return nil, err
 	}
 
-	session.track = track
+	session.track = sampleTrack
 	session.sender = sender
 	session.localCandidateCount = localCandidateCount
 	return pc, nil

@@ -2,54 +2,52 @@ package webrtc
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/binary"
 	"fmt"
 	"io"
 	"log"
 	"net"
 	"time"
 
-	"github.com/pion/rtp"
-	"github.com/pion/rtp/codecs"
 	pion "github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v3/pkg/media"
 )
 
 const (
-	h264PayloadType = 96
-	h264ClockRate   = 90000
 	maxAnnexBBuffer = 2 * 1024 * 1024
-	rtpMTU          = 1200
 	readPollTimeout = 500 * time.Millisecond
 )
 
-func StreamH264(ctx context.Context, reader io.Reader, track *pion.TrackLocalStaticRTP, fps int) error {
+func StreamH264(ctx context.Context, reader io.Reader, track *pion.TrackLocalStaticSample, fps int) error {
 	if fps <= 0 {
 		fps = 30
 	}
-
-	ssrc := randomUint32()
-	packetizer := rtp.NewPacketizer(
-		rtpMTU,
-		h264PayloadType,
-		ssrc,
-		&codecs.H264Payloader{},
-		rtp.NewRandomSequencer(),
-		h264ClockRate,
-	)
-
-	timestamp := uint32(0)
-	timestampStep := uint32(h264ClockRate / fps)
+	frameDuration := time.Second / time.Duration(fps)
+	streamStartedAt := time.Now()
 
 	buffer := make([]byte, 0, maxAnnexBBuffer)
+	accessUnitNALUs := make([][]byte, 0, 8)
+	accessUnitHasVCL := false
 	chunk := make([]byte, 4096)
 	firstPacketAt := time.Time{}
 	firstPacketDeadline := time.Now().Add(8 * time.Second)
 	firstDataAt := time.Time{}
+	firstIDRAt := time.Time{}
 	lastNoStartCodeWarn := time.Time{}
-	packetsSent := 0
+	lastKeyframeWaitWarn := time.Time{}
+	framesSent := 0
+	var latestSPS []byte
+	var latestPPS []byte
+	hasSentKeyframe := false
 	statsTicker := time.NewTicker(1 * time.Second)
 	defer statsTicker.Stop()
+	defer func() {
+		if len(accessUnitNALUs) == 0 {
+			return
+		}
+		if _, _, flushErr := flushAccessUnit(track, accessUnitNALUs, latestSPS, latestPPS, frameDuration, hasSentKeyframe); flushErr == nil {
+			return
+		}
+	}()
 
 	deadlineReader, hasReadDeadline := reader.(interface{ SetReadDeadline(time.Time) error })
 
@@ -59,9 +57,9 @@ func StreamH264(ctx context.Context, reader io.Reader, track *pion.TrackLocalSta
 			return ctx.Err()
 		case <-statsTicker.C:
 			if !firstPacketAt.IsZero() {
-				log.Printf("[WebRTC][stream] packets/s=%d", packetsSent)
+				log.Printf("[WebRTC][stream] frames/s=%d", framesSent)
 			}
-			packetsSent = 0
+			framesSent = 0
 		default:
 		}
 
@@ -80,6 +78,7 @@ func StreamH264(ctx context.Context, reader io.Reader, track *pion.TrackLocalSta
 		if n > 0 {
 			if firstDataAt.IsZero() {
 				firstDataAt = time.Now()
+				log.Printf("[WebRTC][stream] first source bytes after=%s", firstDataAt.Sub(streamStartedAt).Truncate(10*time.Millisecond))
 			}
 			buffer = append(buffer, chunk[:n]...)
 		}
@@ -101,6 +100,18 @@ func StreamH264(ctx context.Context, reader io.Reader, track *pion.TrackLocalSta
 			}
 			if !firstDataAt.IsZero() && time.Since(firstDataAt) >= 3*time.Second && len(buffer) >= 256*1024 {
 				return fmt.Errorf("invalid_h264_annexb_stream")
+			}
+		}
+
+		if !firstDataAt.IsZero() && !hasSentKeyframe && time.Since(firstDataAt) >= 2*time.Second {
+			if lastKeyframeWaitWarn.IsZero() || time.Since(lastKeyframeWaitWarn) >= 2*time.Second {
+				log.Printf(
+					"[WebRTC][stream] waiting for first keyframe source_age=%s stream_age=%s buffered=%d",
+					time.Since(firstDataAt).Truncate(10*time.Millisecond),
+					time.Since(streamStartedAt).Truncate(10*time.Millisecond),
+					len(buffer),
+				)
+				lastKeyframeWaitWarn = time.Now()
 			}
 		}
 
@@ -127,28 +138,229 @@ func StreamH264(ctx context.Context, reader io.Reader, track *pion.TrackLocalSta
 
 			nalu := buffer[start+startCodeSize : next]
 			if len(nalu) > 0 {
-				packets := packetizer.Packetize(nalu, timestamp)
-				for _, pkt := range packets {
-					if writeErr := track.WriteRTP(pkt); writeErr != nil {
-						return writeErr
-					}
-					packetsSent += 1
-					if firstPacketAt.IsZero() {
-						firstPacketAt = time.Now()
-						log.Printf("[WebRTC][stream] first RTP packet sent")
+				nalType := nalu[0] & 0x1f
+				if nalType == 5 && firstIDRAt.IsZero() {
+					firstIDRAt = time.Now()
+					if firstDataAt.IsZero() {
+						log.Printf("[WebRTC][stream] first IDR detected after=%s", firstIDRAt.Sub(streamStartedAt).Truncate(10*time.Millisecond))
+					} else {
+						log.Printf(
+							"[WebRTC][stream] first IDR detected stream_after=%s source_after=%s",
+							firstIDRAt.Sub(streamStartedAt).Truncate(10*time.Millisecond),
+							firstIDRAt.Sub(firstDataAt).Truncate(10*time.Millisecond),
+						)
 					}
 				}
 
-				nalType := nalu[0] & 0x1f
-				if nalType != 7 && nalType != 8 {
-					timestamp += timestampStep
+				switch nalType {
+				case 7:
+					latestSPS = append(latestSPS[:0], nalu...)
+				case 8:
+					latestPPS = append(latestPPS[:0], nalu...)
 				}
+
+				if nalType == 9 {
+					if len(accessUnitNALUs) > 0 {
+						written, sentKeyframe, writeErr := flushAccessUnit(track, accessUnitNALUs, latestSPS, latestPPS, frameDuration, hasSentKeyframe)
+						if writeErr != nil {
+							return writeErr
+						}
+						framesSent += written
+						if !firstPacketAt.IsZero() || written == 0 {
+						} else {
+							firstPacketAt = time.Now()
+							log.Printf(
+								"[WebRTC][stream] first sample sent stream_after=%s source_after=%s",
+								firstPacketAt.Sub(streamStartedAt).Truncate(10*time.Millisecond),
+								firstPacketAt.Sub(firstDataAt).Truncate(10*time.Millisecond),
+							)
+						}
+						if sentKeyframe {
+							if !hasSentKeyframe {
+								keyframeAt := time.Now()
+								log.Printf(
+									"[WebRTC][stream] first keyframe sample sent stream_after=%s source_after=%s",
+									keyframeAt.Sub(streamStartedAt).Truncate(10*time.Millisecond),
+									keyframeAt.Sub(firstDataAt).Truncate(10*time.Millisecond),
+								)
+							}
+							hasSentKeyframe = true
+						}
+					}
+					accessUnitNALUs = accessUnitNALUs[:0]
+					accessUnitHasVCL = false
+					buffer = buffer[next:]
+					continue
+				}
+
+				if isVCLNALUType(nalType) {
+					newPicture := isNewPictureNALU(nalu)
+					if accessUnitHasVCL && newPicture {
+						written, sentKeyframe, writeErr := flushAccessUnit(track, accessUnitNALUs, latestSPS, latestPPS, frameDuration, hasSentKeyframe)
+						if writeErr != nil {
+							return writeErr
+						}
+						framesSent += written
+						if !firstPacketAt.IsZero() || written == 0 {
+						} else {
+							firstPacketAt = time.Now()
+							log.Printf(
+								"[WebRTC][stream] first sample sent stream_after=%s source_after=%s",
+								firstPacketAt.Sub(streamStartedAt).Truncate(10*time.Millisecond),
+								firstPacketAt.Sub(firstDataAt).Truncate(10*time.Millisecond),
+							)
+						}
+						if sentKeyframe {
+							if !hasSentKeyframe {
+								keyframeAt := time.Now()
+								log.Printf(
+									"[WebRTC][stream] first keyframe sample sent stream_after=%s source_after=%s",
+									keyframeAt.Sub(streamStartedAt).Truncate(10*time.Millisecond),
+									keyframeAt.Sub(firstDataAt).Truncate(10*time.Millisecond),
+								)
+							}
+							hasSentKeyframe = true
+						}
+						accessUnitNALUs = accessUnitNALUs[:0]
+					}
+					accessUnitHasVCL = true
+				}
+
+				accessUnitNALUs = append(accessUnitNALUs, append([]byte(nil), nalu...))
 			}
 
 			buffer = buffer[next:]
 		}
 
 	}
+}
+
+func flushAccessUnit(track *pion.TrackLocalStaticSample, nalus [][]byte, latestSPS, latestPPS []byte, duration time.Duration, hasSentKeyframe bool) (int, bool, error) {
+	if len(nalus) == 0 {
+		return 0, hasSentKeyframe, nil
+	}
+
+	containsIDR := false
+	containsSPS := false
+	containsPPS := false
+	for _, nalu := range nalus {
+		if len(nalu) == 0 {
+			continue
+		}
+		switch nalu[0] & 0x1f {
+		case 5:
+			containsIDR = true
+		case 7:
+			containsSPS = true
+		case 8:
+			containsPPS = true
+		}
+	}
+
+	if !hasSentKeyframe && !containsIDR {
+		return 0, false, nil
+	}
+
+	accessUnit := make([]byte, 0, 4096)
+	appendNALU := func(nalu []byte) {
+		accessUnit = append(accessUnit, 0, 0, 0, 1)
+		accessUnit = append(accessUnit, nalu...)
+	}
+
+	if containsIDR {
+		if !containsSPS && len(latestSPS) > 0 {
+			appendNALU(latestSPS)
+		}
+		if !containsPPS && len(latestPPS) > 0 {
+			appendNALU(latestPPS)
+		}
+	}
+
+	for _, nalu := range nalus {
+		if len(nalu) == 0 {
+			continue
+		}
+		appendNALU(nalu)
+	}
+
+	if len(accessUnit) == 0 {
+		return 0, hasSentKeyframe, nil
+	}
+
+	if writeErr := track.WriteSample(media.Sample{Data: accessUnit, Duration: duration}); writeErr != nil {
+		return 0, hasSentKeyframe, writeErr
+	}
+
+	return 1, hasSentKeyframe || containsIDR, nil
+}
+
+func isVCLNALUType(nalType byte) bool {
+	return nalType == 1 || nalType == 2 || nalType == 5
+}
+
+func isNewPictureNALU(nalu []byte) bool {
+	if len(nalu) < 2 {
+		return false
+	}
+	firstMB, ok := readUE(removeEmulationBytes(nalu[1:]), 0)
+	if !ok {
+		return false
+	}
+	return firstMB == 0
+}
+
+func removeEmulationBytes(data []byte) []byte {
+	result := make([]byte, 0, len(data))
+	zeroCount := 0
+	for _, b := range data {
+		if zeroCount == 2 && b == 0x03 {
+			zeroCount = 0
+			continue
+		}
+		result = append(result, b)
+		if b == 0 {
+			zeroCount += 1
+		} else {
+			zeroCount = 0
+		}
+	}
+	return result
+}
+
+func readUE(data []byte, bitOffset int) (uint, bool) {
+	zeroBits := 0
+	for {
+		bit, ok := readBit(data, bitOffset)
+		if !ok {
+			return 0, false
+		}
+		bitOffset += 1
+		if bit == 1 {
+			break
+		}
+		zeroBits += 1
+	}
+
+	suffix := uint(0)
+	for i := 0; i < zeroBits; i++ {
+		bit, ok := readBit(data, bitOffset)
+		if !ok {
+			return 0, false
+		}
+		bitOffset += 1
+		suffix = (suffix << 1) | uint(bit)
+	}
+
+	return uint((1<<zeroBits)-1) + suffix, true
+}
+
+func readBit(data []byte, bitOffset int) (byte, bool) {
+	byteIndex := bitOffset / 8
+	if byteIndex >= len(data) {
+		return 0, false
+	}
+	shift := 7 - (bitOffset % 8)
+	return (data[byteIndex] >> shift) & 0x01, true
 }
 
 func findStartCode(data []byte, start int) int {
@@ -171,12 +383,4 @@ func trimAnnexBBuffer(buffer []byte) []byte {
 		return buffer[start:]
 	}
 	return buffer[len(buffer)-maxAnnexBBuffer:]
-}
-
-func randomUint32() uint32 {
-	var b [4]byte
-	if _, err := rand.Read(b[:]); err == nil {
-		return binary.LittleEndian.Uint32(b[:])
-	}
-	return uint32(time.Now().UnixNano())
 }

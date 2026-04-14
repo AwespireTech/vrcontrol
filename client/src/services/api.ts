@@ -17,10 +17,32 @@ import {
   type ScrcpyBatchStartResponse,
   type UserPreference,
   type BatchStatusResponse,
+  type WebRTCStreamErrorCode,
 } from "./api-types"
+import { SERVER } from "@/environment"
 
 const CONTROL_BASE = `${API_BASE}/control`
 const SIMPLE_BASE = `${API_BASE}/simple`
+
+const webrtcErrorMessages: Record<WebRTCStreamErrorCode, string> = {
+  invalid_signal: "即時畫面連線資料無效。",
+  source_server_exited_with_error: "串流來源異常結束。",
+  source_server_exited: "串流來源已結束。",
+  source_backend_not_ready: "串流後端尚未準備完成。",
+  source_dummy_byte_error: "串流初始化失敗。",
+  source_probe_eof: "串流初始化時提前結束。",
+  source_probe_failed: "無法探測有效的畫面串流。",
+  source_connected_but_no_data: "已連上來源，但沒有收到畫面資料。",
+  invalid_h264_annexb_stream: "收到的 H264 串流格式無效。",
+  no_h264_packets: "未收到可播放的 H264 畫面封包。",
+}
+
+function normalizeServerUrl() {
+  if (typeof window !== "undefined") {
+    return new URL(SERVER, window.location.href)
+  }
+  return new URL(SERVER)
+}
 
 // ============ 設備 API ============
 
@@ -592,5 +614,21 @@ export const preferenceApi = {
     const data: ApiResponse<UserPreference> = await res.json()
     if (!data.success) throw new Error(data.error || "Failed to update preference")
     return data.data!
+  },
+}
+
+export const webrtcApi = {
+  getSignalUrl: (deviceId: string): string => {
+    const baseUrl = normalizeServerUrl()
+    baseUrl.protocol = baseUrl.protocol === "https:" ? "wss:" : "ws:"
+    baseUrl.pathname = `/api/ws/webrtc/${encodeURIComponent(deviceId)}`
+    baseUrl.search = ""
+    baseUrl.hash = ""
+    return baseUrl.toString()
+  },
+
+  getErrorMessage: (error?: string): string => {
+    if (!error) return "即時畫面連線失敗。"
+    return webrtcErrorMessages[error as WebRTCStreamErrorCode] || error
   },
 }

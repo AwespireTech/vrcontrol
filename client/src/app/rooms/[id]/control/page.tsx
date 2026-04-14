@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { DEFAULT_POLL_INTERVAL_SECONDS, SERVER } from "@/environment"
+import { DEFAULT_POLL_INTERVAL_SECONDS, LIVE_VIEW_MAX_STREAMS, SERVER } from "@/environment"
 import Button from "@/components/button"
 import PlayerInfo from "@/components/player-info"
+import LiveStreamPlayer from "@/components/console/live-stream-player"
 import { actionApi, controlApi, deviceApi, roomApi, scrcpyApi, simpleApi } from "@/services/api"
 import { DEVICE_STATUS, type Action, type Device } from "@/services/api-types"
 import { getDisplayName } from "@/lib/utils/device"
@@ -42,11 +43,12 @@ export default function RoomControlPage() {
   const [actions, setActions] = useState<Action[]>([])
   const [selectedActionId, setSelectedActionId] = useState<string>("")
   const [batchModalOpen, setBatchModalOpen] = useState(false)
-  const [batchMode, setBatchMode] = useState<"action" | "monitor">("action")
+  const [batchMode, setBatchMode] = useState<"action" | "monitor" | "live">("action")
   const [batchSelectedDeviceIds, setBatchSelectedDeviceIds] = useState<string[]>([])
   const [executePending, setExecutePending] = useState(false)
   const [batchMonitorPending, setBatchMonitorPending] = useState(false)
   const [targetMonitorIndex, setTargetMonitorIndex] = useState(0)
+  const [liveWallDeviceIds, setLiveWallDeviceIds] = useState<string[]>([])
 
   const playerByDeviceId = useMemo(() => {
     return new Map(playerData.map((player) => [player.device_id, player]))
@@ -297,6 +299,37 @@ export default function RoomControlPage() {
     }
   }
 
+  const handleOpenLiveStream = (deviceId: string) => {
+    const device = deviceMap.get(deviceId)
+    if (!device) {
+      alert("找不到設備資料，請重新整理後再試")
+      return
+    }
+
+    if (device.status !== DEVICE_STATUS.ONLINE) {
+      alert("設備需處於在線狀態才能開啟即時畫面")
+      return
+    }
+
+    let reachedLimit = false
+    setLiveWallDeviceIds((prev) => {
+      if (prev.includes(deviceId)) return prev
+      if (prev.length >= LIVE_VIEW_MAX_STREAMS) {
+        reachedLimit = true
+        return prev
+      }
+      return [...prev, deviceId]
+    })
+
+    if (reachedLimit) {
+      alert(`即時畫面初版最多同時開啟 ${LIVE_VIEW_MAX_STREAMS} 台設備`)
+    }
+  }
+
+  const handleCloseLiveStream = (deviceId: string) => {
+    setLiveWallDeviceIds((prev) => prev.filter((id) => id !== deviceId))
+  }
+
   const getAdbStatusText = (status?: Device["status"]) => {
     switch (status) {
       case DEVICE_STATUS.ONLINE:
@@ -390,6 +423,33 @@ export default function RoomControlPage() {
         alert("執行失敗，請稍後再試")
       } finally {
         setExecutePending(false)
+      }
+      return
+    }
+
+    if (batchMode === "live") {
+      const liveTargets = modalDeviceIds.filter((id) => batchSelectedDeviceIds.includes(id))
+      if (liveTargets.length === 0) return
+
+      let droppedCount = 0
+      setLiveWallDeviceIds((prev) => {
+        const next = [...prev]
+        for (const deviceId of liveTargets) {
+          if (next.includes(deviceId)) continue
+          if (next.length >= LIVE_VIEW_MAX_STREAMS) {
+            droppedCount += 1
+            continue
+          }
+          next.push(deviceId)
+        }
+        return next
+      })
+
+      setBatchModalOpen(false)
+      setBatchSelectedDeviceIds([])
+
+      if (droppedCount > 0) {
+        alert(`即時畫面初版最多同時開啟 ${LIVE_VIEW_MAX_STREAMS} 台設備，已有 ${droppedCount} 台未加入直播牆`)
       }
       return
     }
@@ -607,12 +667,51 @@ export default function RoomControlPage() {
                 >
                   選擇設備並批次監看
                 </Button>
+                <Button
+                  onClick={() => {
+                    setBatchMode("live")
+                    setBatchSelectedDeviceIds([])
+                    setBatchModalOpen(true)
+                  }}
+                  className="ui-btn-sm ui-btn-outline"
+                >
+                  選擇設備並開啟即時畫面
+                </Button>
                 <span className="text-xs text-foreground/50">
                   只可選擇在線設備
                 </span>
               </div>
             </div>
           </div>
+
+          {liveWallDeviceIds.length > 0 ? (
+            <div className="surface-card p-6">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-bold text-foreground">即時畫面牆</h2>
+                  <p className="text-sm text-foreground/60">
+                    初版最多同時開啟 {LIVE_VIEW_MAX_STREAMS} 台，與既有 Scrcpy 監看並存。
+                  </p>
+                </div>
+                <span className="ui-badge ui-badge-primary">{liveWallDeviceIds.length} / {LIVE_VIEW_MAX_STREAMS}</span>
+              </div>
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                {liveWallDeviceIds.map((deviceId) => {
+                  const device = deviceMap.get(deviceId)
+                  return (
+                    <LiveStreamPlayer
+                      key={deviceId}
+                      deviceId={deviceId}
+                      title={device ? getDisplayName(device) : deviceId}
+                      subtitle={device ? `${device.ip}:${device.port}` : deviceId}
+                      compact
+                      onClose={() => handleCloseLiveStream(deviceId)}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+          ) : null}
 
           <div className="surface-card p-6">
             <div className="mb-4 flex items-center justify-between">
@@ -691,6 +790,13 @@ export default function RoomControlPage() {
                             >
                               監看
                             </Button>
+                            <Button
+                              onClick={() => handleOpenLiveStream(deviceId)}
+                              className="ui-btn-xs ui-btn-outline"
+                              disabled={isDevicePending}
+                            >
+                              即時畫面
+                            </Button>
                           </>
                         )}
                       </div>
@@ -730,9 +836,11 @@ export default function RoomControlPage() {
         title={
           batchMode === "action"
             ? `執行動作: ${selectedAction?.name || ""}`
-            : "批次監看設備"
+            : batchMode === "monitor"
+              ? "批次監看設備"
+              : "批次開啟即時畫面"
         }
-        confirmText={batchMode === "action" ? "執行" : "監看"}
+        confirmText={batchMode === "action" ? "執行" : batchMode === "monitor" ? "監看" : "開啟"}
         targets={modalDeviceIds.map((deviceId) => {
           const device = deviceMap.get(deviceId)
           return {
