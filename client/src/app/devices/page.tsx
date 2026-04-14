@@ -14,6 +14,7 @@ import {
   UserPreference,
 } from "@/services/api-types"
 import PageShell from "@/components/console/page-shell"
+import LiveStreamStage from "@/components/console/live-stream-stage"
 import LiveStreamPlayer from "@/components/console/live-stream-player"
 import Button from "@/components/button"
 import {
@@ -22,6 +23,15 @@ import {
   DEFAULT_POLL_INTERVAL_SECONDS,
   LIVE_VIEW_MAX_STREAMS,
 } from "@/environment"
+import {
+  bringLiveStreamWindowToFront,
+  closeLiveStreamWindow,
+  moveLiveStreamWindow,
+  openOrFocusLiveStreamWindow,
+  resizeLiveStreamWindow,
+  toggleLiveStreamWindowMinimized,
+  type LiveStreamWindowState,
+} from "@/lib/utils/live-stream-windows"
 
 type StatusErrorType = "idle" | "ok" | "timeout" | "adb-error"
 
@@ -46,7 +56,7 @@ export default function DevicesPage() {
   const [usbActionPending, setUSBActionPending] = useState<Record<string, boolean>>({})
   const [scrcpyStopPending, setScrcpyStopPending] = useState<Record<string, boolean>>({})
   const [refreshScrcpyPending, setRefreshScrcpyPending] = useState(false)
-  const [liveWallDeviceIds, setLiveWallDeviceIds] = useState<string[]>([])
+  const [liveWindows, setLiveWindows] = useState<LiveStreamWindowState[]>([])
 
   // Scrcpy 相關狀態
   const [scrcpySystemInfo, setScrcpySystemInfo] = useState<ScrcpySystemInfo | null>(null)
@@ -58,18 +68,12 @@ export default function DevicesPage() {
 
   // 輪詢控制
   const statusIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const livePanelRef = useRef<HTMLDivElement | null>(null)
 
   // 避免 useCallback 依賴 devices 導致輪詢 interval 反覆重設
   const devicesRef = useRef<Device[]>([])
   useEffect(() => {
     devicesRef.current = devices
   }, [devices])
-
-  useEffect(() => {
-    if (liveWallDeviceIds.length !== 1 || !livePanelRef.current) return
-    livePanelRef.current.scrollIntoView({ behavior: "smooth", block: "start" })
-  }, [liveWallDeviceIds])
 
   const loadDevices = useCallback(async () => {
     try {
@@ -643,13 +647,19 @@ export default function DevicesPage() {
     }
 
     let reachedLimit = false
-    setLiveWallDeviceIds((prev) => {
-      if (prev.includes(deviceId)) return prev
-      if (prev.length >= LIVE_VIEW_MAX_STREAMS) {
-        reachedLimit = true
-        return prev
-      }
-      return [...prev, deviceId]
+    setLiveWindows((prev) => {
+      const result = openOrFocusLiveStreamWindow(
+        prev,
+        {
+          deviceId: device.device_id,
+          title: getDisplayName(device),
+          subtitle: `${device.ip}:${device.port}`,
+        },
+        { width: window.innerWidth, height: window.innerHeight },
+        LIVE_VIEW_MAX_STREAMS,
+      )
+      reachedLimit = result.reachedLimit
+      return result.windows
     })
 
     if (reachedLimit) {
@@ -658,7 +668,33 @@ export default function DevicesPage() {
   }
 
   const handleCloseLiveStream = (deviceId: string) => {
-    setLiveWallDeviceIds((prev) => prev.filter((id) => id !== deviceId))
+    setLiveWindows((prev) => closeLiveStreamWindow(prev, deviceId))
+  }
+
+  const handleFocusLiveStream = (deviceId: string) => {
+    setLiveWindows((prev) => bringLiveStreamWindowToFront(prev, deviceId))
+  }
+
+  const handleMoveLiveStream = (
+    deviceId: string,
+    nextX: number,
+    nextY: number,
+    bounds: { width: number; height: number },
+  ) => {
+    setLiveWindows((prev) => moveLiveStreamWindow(prev, deviceId, nextX, nextY, bounds))
+  }
+
+  const handleResizeLiveStream = (
+    deviceId: string,
+    nextWidth: number,
+    nextHeight: number,
+    bounds: { width: number; height: number },
+  ) => {
+    setLiveWindows((prev) => resizeLiveStreamWindow(prev, deviceId, nextWidth, nextHeight, bounds))
+  }
+
+  const handleToggleMinimizedLiveStream = (deviceId: string) => {
+    setLiveWindows((prev) => toggleLiveStreamWindowMinimized(prev, deviceId))
   }
 
   const handleStopScrcpy = async (deviceId: string) => {
@@ -921,36 +957,32 @@ export default function DevicesPage() {
         </div>
       )}
 
-      {liveWallDeviceIds.length > 0 ? (
-        <div ref={livePanelRef} className="surface-card p-6">
+      {liveWindows.length > 0 ? (
+        <div className="surface-card p-4">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h2 className="text-xl font-bold text-foreground">即時畫面牆</h2>
+              <h2 className="text-xl font-bold text-foreground">即時畫面視窗</h2>
               <p className="text-sm text-foreground/60">
-                初版最多同時開啟 {LIVE_VIEW_MAX_STREAMS} 台，與既有 Scrcpy 監看並存。
+                桌面寬度下可拖曳、自由排列。窄螢幕時會自動回退為堆疊顯示。
               </p>
             </div>
             <span className="ui-badge ui-badge-primary">
-              {liveWallDeviceIds.length} / {LIVE_VIEW_MAX_STREAMS}
+              {liveWindows.length} / {LIVE_VIEW_MAX_STREAMS}
             </span>
           </div>
-          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-            {liveWallDeviceIds.map((deviceId) => {
-              const device = devices.find((entry) => entry.device_id === deviceId)
-              return (
-                <LiveStreamPlayer
-                  key={deviceId}
-                  deviceId={deviceId}
-                  title={device ? getDisplayName(device) : deviceId}
-                  subtitle={device ? `${device.ip}:${device.port}` : deviceId}
-                  compact
-                  onClose={() => handleCloseLiveStream(deviceId)}
-                />
-              )
-            })}
-          </div>
+          <div className="text-xs text-foreground/55">拖曳視窗標頭即可改變位置，重複開啟同一台設備會自動置前。</div>
         </div>
       ) : null}
+
+      <LiveStreamStage
+        windows={liveWindows}
+        onClose={handleCloseLiveStream}
+        onCloseAll={() => setLiveWindows([])}
+        onFocus={handleFocusLiveStream}
+        onMove={handleMoveLiveStream}
+        onResize={handleResizeLiveStream}
+        onToggleMinimized={handleToggleMinimizedLiveStream}
+      />
 
       {usbDevices.length > 0 && (
         <div className="surface-card p-6">

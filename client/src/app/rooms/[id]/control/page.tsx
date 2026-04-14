@@ -3,13 +3,23 @@ import { useNavigate, useParams } from "react-router-dom"
 import { DEFAULT_POLL_INTERVAL_SECONDS, LIVE_VIEW_MAX_STREAMS, SERVER } from "@/environment"
 import Button from "@/components/button"
 import PlayerInfo from "@/components/player-info"
-import LiveStreamPlayer from "@/components/console/live-stream-player"
+import LiveStreamStage from "@/components/console/live-stream-stage"
 import { actionApi, controlApi, deviceApi, roomApi, scrcpyApi, simpleApi } from "@/services/api"
 import { DEVICE_STATUS, type Action, type Device } from "@/services/api-types"
 import { getDisplayName } from "@/lib/utils/device"
 import type { PlayerData, RoomInfoData } from "@/interfaces/room.interface"
 import PageShell from "@/components/console/page-shell"
 import DeviceSelectionModal from "@/components/console/device-selection-modal"
+import {
+  bringLiveStreamWindowToFront,
+  closeLiveStreamWindow,
+  moveLiveStreamWindow,
+  openManyLiveStreamWindows,
+  openOrFocusLiveStreamWindow,
+  resizeLiveStreamWindow,
+  toggleLiveStreamWindowMinimized,
+  type LiveStreamWindowState,
+} from "@/lib/utils/live-stream-windows"
 
 const TotalChapters = 11
 
@@ -48,7 +58,7 @@ export default function RoomControlPage() {
   const [executePending, setExecutePending] = useState(false)
   const [batchMonitorPending, setBatchMonitorPending] = useState(false)
   const [targetMonitorIndex, setTargetMonitorIndex] = useState(0)
-  const [liveWallDeviceIds, setLiveWallDeviceIds] = useState<string[]>([])
+  const [liveWindows, setLiveWindows] = useState<LiveStreamWindowState[]>([])
 
   const playerByDeviceId = useMemo(() => {
     return new Map(playerData.map((player) => [player.device_id, player]))
@@ -312,13 +322,19 @@ export default function RoomControlPage() {
     }
 
     let reachedLimit = false
-    setLiveWallDeviceIds((prev) => {
-      if (prev.includes(deviceId)) return prev
-      if (prev.length >= LIVE_VIEW_MAX_STREAMS) {
-        reachedLimit = true
-        return prev
-      }
-      return [...prev, deviceId]
+    setLiveWindows((prev) => {
+      const result = openOrFocusLiveStreamWindow(
+        prev,
+        {
+          deviceId,
+          title: getDisplayName(device),
+          subtitle: `${device.ip}:${device.port}`,
+        },
+        { width: window.innerWidth, height: window.innerHeight },
+        LIVE_VIEW_MAX_STREAMS,
+      )
+      reachedLimit = result.reachedLimit
+      return result.windows
     })
 
     if (reachedLimit) {
@@ -327,7 +343,33 @@ export default function RoomControlPage() {
   }
 
   const handleCloseLiveStream = (deviceId: string) => {
-    setLiveWallDeviceIds((prev) => prev.filter((id) => id !== deviceId))
+    setLiveWindows((prev) => closeLiveStreamWindow(prev, deviceId))
+  }
+
+  const handleFocusLiveStream = (deviceId: string) => {
+    setLiveWindows((prev) => bringLiveStreamWindowToFront(prev, deviceId))
+  }
+
+  const handleMoveLiveStream = (
+    deviceId: string,
+    nextX: number,
+    nextY: number,
+    bounds: { width: number; height: number },
+  ) => {
+    setLiveWindows((prev) => moveLiveStreamWindow(prev, deviceId, nextX, nextY, bounds))
+  }
+
+  const handleResizeLiveStream = (
+    deviceId: string,
+    nextWidth: number,
+    nextHeight: number,
+    bounds: { width: number; height: number },
+  ) => {
+    setLiveWindows((prev) => resizeLiveStreamWindow(prev, deviceId, nextWidth, nextHeight, bounds))
+  }
+
+  const handleToggleMinimizedLiveStream = (deviceId: string) => {
+    setLiveWindows((prev) => toggleLiveStreamWindowMinimized(prev, deviceId))
   }
 
   const getAdbStatusText = (status?: Device["status"]) => {
@@ -428,21 +470,28 @@ export default function RoomControlPage() {
     }
 
     if (batchMode === "live") {
-      const liveTargets = modalDeviceIds.filter((id) => batchSelectedDeviceIds.includes(id))
+      const liveTargets = modalDeviceIds
+        .filter((id) => batchSelectedDeviceIds.includes(id))
+        .map((deviceId) => {
+          const device = deviceMap.get(deviceId)
+          return {
+            deviceId,
+            title: device ? getDisplayName(device) : deviceId,
+            subtitle: device ? `${device.ip}:${device.port}` : deviceId,
+          }
+        })
       if (liveTargets.length === 0) return
 
       let droppedCount = 0
-      setLiveWallDeviceIds((prev) => {
-        const next = [...prev]
-        for (const deviceId of liveTargets) {
-          if (next.includes(deviceId)) continue
-          if (next.length >= LIVE_VIEW_MAX_STREAMS) {
-            droppedCount += 1
-            continue
-          }
-          next.push(deviceId)
-        }
-        return next
+      setLiveWindows((prev) => {
+        const result = openManyLiveStreamWindows(
+          prev,
+          liveTargets,
+          { width: window.innerWidth, height: window.innerHeight },
+          LIVE_VIEW_MAX_STREAMS,
+        )
+        droppedCount = result.droppedCount
+        return result.windows
       })
 
       setBatchModalOpen(false)
@@ -684,34 +733,30 @@ export default function RoomControlPage() {
             </div>
           </div>
 
-          {liveWallDeviceIds.length > 0 ? (
-            <div className="surface-card p-6">
+          {liveWindows.length > 0 ? (
+            <div className="surface-card p-4">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h2 className="text-xl font-bold text-foreground">即時畫面牆</h2>
+                  <h2 className="text-xl font-bold text-foreground">即時畫面視窗</h2>
                   <p className="text-sm text-foreground/60">
-                    初版最多同時開啟 {LIVE_VIEW_MAX_STREAMS} 台，與既有 Scrcpy 監看並存。
+                    批次開啟時會依序錯位展開，桌面寬度下可自由拖曳與排列。
                   </p>
                 </div>
-                <span className="ui-badge ui-badge-primary">{liveWallDeviceIds.length} / {LIVE_VIEW_MAX_STREAMS}</span>
+                <span className="ui-badge ui-badge-primary">{liveWindows.length} / {LIVE_VIEW_MAX_STREAMS}</span>
               </div>
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-                {liveWallDeviceIds.map((deviceId) => {
-                  const device = deviceMap.get(deviceId)
-                  return (
-                    <LiveStreamPlayer
-                      key={deviceId}
-                      deviceId={deviceId}
-                      title={device ? getDisplayName(device) : deviceId}
-                      subtitle={device ? `${device.ip}:${device.port}` : deviceId}
-                      compact
-                      onClose={() => handleCloseLiveStream(deviceId)}
-                    />
-                  )
-                })}
-              </div>
+              <div className="text-xs text-foreground/55">拖曳視窗標頭可重新排列；重複點擊已開啟設備會自動置前。</div>
             </div>
           ) : null}
+
+          <LiveStreamStage
+            windows={liveWindows}
+            onClose={handleCloseLiveStream}
+            onCloseAll={() => setLiveWindows([])}
+            onFocus={handleFocusLiveStream}
+            onMove={handleMoveLiveStream}
+            onResize={handleResizeLiveStream}
+            onToggleMinimized={handleToggleMinimizedLiveStream}
+          />
 
           <div className="surface-card p-6">
             <div className="mb-4 flex items-center justify-between">
