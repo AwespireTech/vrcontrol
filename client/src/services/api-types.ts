@@ -174,11 +174,47 @@ export interface MonitoringStatus {
   running: boolean
 }
 
+export type WebRTCSignalMessageType = "offer" | "answer" | "ice" | "close" | "error"
+
+export type WebRTCStreamStatus =
+  | "idle"
+  | "connecting"
+  | "live"
+  | "stalled"
+  | "error"
+  | "closed"
+
+export type WebRTCStreamErrorCode =
+  | "invalid_signal"
+  | "source_server_exited_with_error"
+  | "source_server_exited"
+  | "source_backend_not_ready"
+  | "source_dummy_byte_error"
+  | "source_probe_eof"
+  | "source_probe_failed"
+  | "source_connected_but_no_data"
+  | "invalid_h264_annexb_stream"
+  | "no_h264_packets"
+
+export interface WebRTCSignalMessage {
+  type: WebRTCSignalMessageType
+  sdp?: string
+  candidate?: RTCIceCandidateInit
+  error?: WebRTCStreamErrorCode | string
+}
+
+export interface LiveStreamTarget {
+  device_id: string
+  title: string
+  subtitle?: string
+}
+
 // Scrcpy 配置
 export interface ScrcpyConfig {
   bitrate: string // 視訊位元率 (e.g., "8M", "16M")
   max_size: number // 最大螢幕寬度
   max_fps: number // 最大幀率
+  video_codec_options: string // 額外 video codec options，主要用於 WebRTC 即時畫面
   window_width?: number // 視窗寬度
   window_height?: number // 視窗高度
   window_x?: number // 視窗 X 位置

@@ -35,6 +35,7 @@
 - **新增/變更 API 端點**
 	- 更新：[docs/API.md](API.md)
 	- 如有新參數或格式調整，更新：[docs/ACTION_PARAMETERS.md](ACTION_PARAMETERS.md)
+	- 若新增 WebSocket / WebRTC signaling 契約，也要補上 message 格式、錯誤碼與關閉流程
 
 - **新增/變更動作類型或 params 結構**
 	- 更新：[docs/ACTION_PARAMETERS.md](ACTION_PARAMETERS.md)
@@ -43,6 +44,13 @@
 - **新增/變更資料儲存結構（JSON 欄位）**
 	- 更新：[docs/ARCHITECTURE.md](ARCHITECTURE.md) 的資料儲存段落
 	- 如影響 API 契約，更新：[docs/API.md](API.md)
+	- 若欄位會同時影響 scrcpy 外部監看與 WebRTC live view，需明確寫出邊界；例如 `video_codec_options` 目前只影響 live view 的 standalone stream 路徑
+
+- **新增/變更 WebRTC live view / 播放器行為**
+	- 更新：[docs/API.md](API.md) 的 `/api/ws/webrtc/:deviceId` signaling 契約與錯誤碼
+	- 更新：[docs/ARCHITECTURE.md](ARCHITECTURE.md) 的 live view 資料流與 scrcpy standalone/control channel 邊界
+	- 若 UI 行為或入口改變，更新：[README.md](../README.md) 或 [server/README.md](../server/README.md) 的功能概覽與使用說明
+	- 若新增 popup / 外部視窗模式，需額外補上 takeover、release、closing、source-unavailable 等前端生命週期邊界，避免誤寫成後端 signaling 契約
 
 - **新增/變更系統依賴（ADB/scrcpy 等）**
 	- 更新：[README.md](../README.md) 與 [server/README.md](../server/README.md)
@@ -50,3 +58,7 @@
 - **新增/變更啟動流程或入口**
 	- 更新：[AGENTS.md](../AGENTS.md) 的 Entry Points
 	- 更新：[README.md](../README.md)
+
+- **新增/變更前端獨立路由頁（例如 popup / standalone view）**
+	- 更新：[docs/ARCHITECTURE.md](ARCHITECTURE.md) 的前端模組與資料流段落
+	- 若新頁面不經過主 layout，需在文件中明確寫出它的用途與與主頁的同步方式

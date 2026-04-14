@@ -14,12 +14,29 @@ import {
   UserPreference,
 } from "@/services/api-types"
 import PageShell from "@/components/console/page-shell"
+import LiveStreamStage from "@/components/console/live-stream-stage"
+import type { LiveStreamLayout } from "@/components/console/live-stream-stage"
 import Button from "@/components/button"
 import {
   DEFAULT_BATCH_SIZE,
   DEFAULT_MAX_CONCURRENCY,
   DEFAULT_POLL_INTERVAL_SECONDS,
+  LIVE_VIEW_MAX_STREAMS,
 } from "@/environment"
+import LiveStreamTakeoverPlaceholder from "@/components/console/live-stream-takeover-placeholder"
+import {
+  createLiveStreamPopupChannel,
+  LIVE_STREAM_POPUP_BLOCKED_MESSAGE,
+  openLiveStreamPopupWindow,
+  postLiveStreamPopupMessage,
+  subscribeLiveStreamPopupChannel,
+  type LiveStreamPopupState,
+} from "@/lib/utils/live-stream-popup"
+import {
+  closeLiveStreamWindow,
+  openOrFocusLiveStreamWindow,
+  type LiveStreamWindowState,
+} from "@/lib/utils/live-stream-windows"
 
 type StatusErrorType = "idle" | "ok" | "timeout" | "adb-error"
 
@@ -44,6 +61,10 @@ export default function DevicesPage() {
   const [usbActionPending, setUSBActionPending] = useState<Record<string, boolean>>({})
   const [scrcpyStopPending, setScrcpyStopPending] = useState<Record<string, boolean>>({})
   const [refreshScrcpyPending, setRefreshScrcpyPending] = useState(false)
+  const [liveWindows, setLiveWindows] = useState<LiveStreamWindowState[]>([])
+  const [liveStreamLayout, setLiveStreamLayout] = useState<LiveStreamLayout>("stack")
+  const [popupTakeoverActive, setPopupTakeoverActive] = useState(false)
+  const popupChannelRef = useRef<BroadcastChannel | null>(null)
 
   // Scrcpy 相關狀態
   const [scrcpySystemInfo, setScrcpySystemInfo] = useState<ScrcpySystemInfo | null>(null)
@@ -61,6 +82,83 @@ export default function DevicesPage() {
   useEffect(() => {
     devicesRef.current = devices
   }, [devices])
+
+  const buildLiveStreamPopupState = useCallback((): LiveStreamPopupState => {
+    return {
+      source: "devices",
+      layout: liveStreamLayout,
+      streams: liveWindows.map((entry) => ({
+        deviceId: entry.deviceId,
+        title: entry.title,
+        subtitle: entry.subtitle,
+      })),
+      timestamp: Date.now(),
+    }
+  }, [liveStreamLayout, liveWindows])
+
+  useEffect(() => {
+    const channel = createLiveStreamPopupChannel()
+    popupChannelRef.current = channel
+
+    const unsubscribe = subscribeLiveStreamPopupChannel(channel, (message) => {
+      if (message.type === "popup-ready") {
+        if (message.source && message.source !== "devices") {
+          return
+        }
+
+        postLiveStreamPopupMessage(channel, {
+          type: "init",
+          payload: buildLiveStreamPopupState(),
+        })
+        return
+      }
+
+      if (message.type === "takeover-requested") {
+        if (message.source && message.source !== "devices") {
+          return
+        }
+
+        setPopupTakeoverActive(true)
+        return
+      }
+
+      if (message.type === "popup-closing") {
+        if (message.source && message.source !== "devices") {
+          return
+        }
+
+        setPopupTakeoverActive(false)
+      }
+    })
+
+    return () => {
+      unsubscribe()
+      channel?.close()
+    }
+  }, [buildLiveStreamPopupState])
+
+  useEffect(() => {
+    postLiveStreamPopupMessage(popupChannelRef.current, {
+      type: "state-update",
+      payload: buildLiveStreamPopupState(),
+    })
+  }, [buildLiveStreamPopupState])
+
+  useEffect(() => {
+    const handlePageHide = () => {
+      postLiveStreamPopupMessage(popupChannelRef.current, {
+        type: "source-unavailable",
+        source: "devices",
+        timestamp: Date.now(),
+      })
+    }
+
+    window.addEventListener("pagehide", handlePageHide)
+
+    return () => {
+      window.removeEventListener("pagehide", handlePageHide)
+    }
+  }, [])
 
   const loadDevices = useCallback(async () => {
     try {
@@ -621,6 +719,63 @@ export default function DevicesPage() {
     }
   }
 
+  const handleOpenLiveStream = (deviceId: string) => {
+    const device = devices.find((entry) => entry.device_id === deviceId)
+    if (!device) {
+      alert("找不到設備資料，請重新整理後再試")
+      return
+    }
+
+    if (device.status !== DEVICE_STATUS.ONLINE) {
+      alert("設備需處於在線狀態才能開啟即時畫面")
+      return
+    }
+
+    let reachedLimit = false
+    setLiveWindows((prev) => {
+      const result = openOrFocusLiveStreamWindow(
+        prev,
+        {
+          deviceId: device.device_id,
+          title: getDisplayName(device),
+          subtitle: `${device.ip}:${device.port}`,
+        },
+        { width: window.innerWidth, height: window.innerHeight },
+        LIVE_VIEW_MAX_STREAMS,
+      )
+      reachedLimit = result.reachedLimit
+      return result.windows
+    })
+
+    if (reachedLimit) {
+      alert(`即時畫面初版最多同時開啟 ${LIVE_VIEW_MAX_STREAMS} 台設備`)
+    }
+  }
+
+  const handleCloseLiveStream = (deviceId: string) => {
+    setLiveWindows((prev) => closeLiveStreamWindow(prev, deviceId))
+  }
+
+  const handleOpenLiveStreamPopup = () => {
+    const popup = openLiveStreamPopupWindow({
+      source: "devices",
+      layout: liveStreamLayout,
+    })
+
+    if (!popup) {
+      alert(LIVE_STREAM_POPUP_BLOCKED_MESSAGE)
+    }
+  }
+
+  const handleReturnLiveStreamInline = () => {
+    setPopupTakeoverActive(false)
+    postLiveStreamPopupMessage(popupChannelRef.current, {
+      type: "takeover-released",
+      source: "devices",
+      timestamp: Date.now(),
+    })
+  }
+
   const handleStopScrcpy = async (deviceId: string) => {
     if (scrcpyStopPending[deviceId]) return
     setScrcpyStopPending((prev) => ({ ...prev, [deviceId]: true }))
@@ -850,6 +1005,16 @@ export default function DevicesPage() {
                       監看
                     </Button>
                   )}
+                  {isOnline && (
+                    <Button
+                      onClick={() => handleOpenLiveStream(device.device_id)}
+                      disabled={isDevicePending}
+                      className="ui-btn-xs ui-btn-outline"
+                      title="在頁面中開啟即時畫面"
+                    >
+                      即時畫面
+                    </Button>
+                  )}
                   <button
                     onClick={() => navigate(`/devices/${device.device_id}`)}
                     className="ui-btn ui-btn-xs ui-btn-muted"
@@ -870,6 +1035,75 @@ export default function DevicesPage() {
           })}
         </div>
       )}
+
+      <div className="surface-card p-4 md:p-6">
+        <div className="live-stream-section__header">
+          <div>
+            <h2 className="text-xl font-bold text-foreground">即時串流</h2>
+            <p className="text-sm text-foreground/60">
+              目前採頁面內顯示，可在堆疊與網格版型間切換，方便比對多台設備畫面。
+            </p>
+          </div>
+          <div className="live-stream-section__toolbar">
+            <span className="ui-badge ui-badge-primary">
+              {liveWindows.length} / {LIVE_VIEW_MAX_STREAMS}
+            </span>
+            <div className="live-stream-layout-toggle" role="group" aria-label="即時串流排版">
+              <button
+                type="button"
+                onClick={() => setLiveStreamLayout("stack")}
+                className={`ui-btn ui-btn-xs ${
+                  liveStreamLayout === "stack" ? "ui-btn-primary" : "ui-btn-muted"
+                }`}
+              >
+                堆疊
+              </button>
+              <button
+                type="button"
+                onClick={() => setLiveStreamLayout("grid")}
+                className={`ui-btn ui-btn-xs ${
+                  liveStreamLayout === "grid" ? "ui-btn-primary" : "ui-btn-muted"
+                }`}
+              >
+                網格
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={handleOpenLiveStreamPopup}
+              className="ui-btn ui-btn-xs ui-btn-outline"
+            >
+              在新視窗開啟
+            </button>
+            <button
+              type="button"
+              onClick={() => setLiveWindows([])}
+              className="ui-btn ui-btn-xs ui-btn-muted"
+              disabled={liveWindows.length === 0}
+            >
+              全部關閉
+            </button>
+          </div>
+        </div>
+
+        {popupTakeoverActive ? (
+          <LiveStreamTakeoverPlaceholder
+            description="外部視窗已接管設備管理頁的即時串流。你仍可在本頁開啟或關閉設備，變更會同步到外部視窗。"
+            onFocusPopup={handleOpenLiveStreamPopup}
+            onReturnInline={handleReturnLiveStreamInline}
+          />
+        ) : liveWindows.length > 0 ? (
+          <LiveStreamStage
+            windows={liveWindows}
+            layout={liveStreamLayout}
+            onClose={handleCloseLiveStream}
+          />
+        ) : (
+          <div className="live-stream-empty-state">
+            從設備列點擊「即時畫面」後，串流會顯示在這裡。
+          </div>
+        )}
+      </div>
 
       {usbDevices.length > 0 && (
         <div className="surface-card p-6">

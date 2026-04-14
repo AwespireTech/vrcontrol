@@ -232,6 +232,23 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
         <h3 className="text-lg font-semibold text-foreground">進階設定</h3>
 
         <div>
+          <label className="mb-1 block text-sm font-medium text-foreground">
+            Video codec options (選填)
+          </label>
+          <input
+            type="text"
+            value={config.video_codec_options}
+            onChange={(e) => handleChange("video_codec_options", e.target.value)}
+            disabled={disabled}
+            className="ui-input w-full px-3 py-2"
+            placeholder="例如 i-frame-interval:int=1"
+          />
+          <p className="mt-1 text-xs text-foreground/50">
+            主要影響 WebRTC 即時畫面的首幀等待時間，不會改變既有外部 Scrcpy 監看視窗。錯誤值可能導致即時畫面來源啟動失敗。
+          </p>
+        </div>
+
+        <div>
           <label className="mb-1 block text-sm font-medium text-foreground">渲染驅動 (選填)</label>
           <input
             type="text"

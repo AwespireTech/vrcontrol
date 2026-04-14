@@ -1,14 +1,31 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { DEFAULT_POLL_INTERVAL_SECONDS, SERVER } from "@/environment"
+import { DEFAULT_POLL_INTERVAL_SECONDS, LIVE_VIEW_MAX_STREAMS, SERVER } from "@/environment"
 import Button from "@/components/button"
 import PlayerInfo from "@/components/player-info"
+import LiveStreamStage from "@/components/console/live-stream-stage"
+import LiveStreamTakeoverPlaceholder from "@/components/console/live-stream-takeover-placeholder"
+import type { LiveStreamLayout } from "@/components/console/live-stream-stage"
 import { actionApi, controlApi, deviceApi, roomApi, scrcpyApi, simpleApi } from "@/services/api"
 import { DEVICE_STATUS, type Action, type Device } from "@/services/api-types"
 import { getDisplayName } from "@/lib/utils/device"
 import type { PlayerData, RoomInfoData } from "@/interfaces/room.interface"
 import PageShell from "@/components/console/page-shell"
 import DeviceSelectionModal from "@/components/console/device-selection-modal"
+import {
+  createLiveStreamPopupChannel,
+  LIVE_STREAM_POPUP_BLOCKED_MESSAGE,
+  openLiveStreamPopupWindow,
+  postLiveStreamPopupMessage,
+  subscribeLiveStreamPopupChannel,
+  type LiveStreamPopupState,
+} from "@/lib/utils/live-stream-popup"
+import {
+  closeLiveStreamWindow,
+  openManyLiveStreamWindows,
+  openOrFocusLiveStreamWindow,
+  type LiveStreamWindowState,
+} from "@/lib/utils/live-stream-windows"
 
 const TotalChapters = 11
 
@@ -42,11 +59,29 @@ export default function RoomControlPage() {
   const [actions, setActions] = useState<Action[]>([])
   const [selectedActionId, setSelectedActionId] = useState<string>("")
   const [batchModalOpen, setBatchModalOpen] = useState(false)
-  const [batchMode, setBatchMode] = useState<"action" | "monitor">("action")
+  const [batchMode, setBatchMode] = useState<"action" | "monitor" | "live">("action")
   const [batchSelectedDeviceIds, setBatchSelectedDeviceIds] = useState<string[]>([])
   const [executePending, setExecutePending] = useState(false)
   const [batchMonitorPending, setBatchMonitorPending] = useState(false)
   const [targetMonitorIndex, setTargetMonitorIndex] = useState(0)
+  const [liveWindows, setLiveWindows] = useState<LiveStreamWindowState[]>([])
+  const [liveStreamLayout, setLiveStreamLayout] = useState<LiveStreamLayout>("grid")
+  const [popupTakeoverActive, setPopupTakeoverActive] = useState(false)
+  const popupChannelRef = useRef<BroadcastChannel | null>(null)
+
+  const buildLiveStreamPopupState = useCallback((): LiveStreamPopupState => {
+    return {
+      source: "rooms",
+      roomId,
+      layout: liveStreamLayout,
+      streams: liveWindows.map((entry) => ({
+        deviceId: entry.deviceId,
+        title: entry.title,
+        subtitle: entry.subtitle,
+      })),
+      timestamp: Date.now(),
+    }
+  }, [liveStreamLayout, liveWindows, roomId])
 
   const playerByDeviceId = useMemo(() => {
     return new Map(playerData.map((player) => [player.device_id, player]))
@@ -174,6 +209,83 @@ export default function RoomControlPage() {
   }, [roomId, host, wsProtocol])
 
   useEffect(() => {
+    const channel = createLiveStreamPopupChannel()
+    popupChannelRef.current = channel
+
+    const unsubscribe = subscribeLiveStreamPopupChannel(channel, (message) => {
+      if (message.type === "popup-ready") {
+        if (message.source && message.source !== "rooms") {
+          return
+        }
+
+        if (message.roomId && message.roomId !== roomId) {
+          return
+        }
+
+        postLiveStreamPopupMessage(channel, {
+          type: "init",
+          payload: buildLiveStreamPopupState(),
+        })
+        return
+      }
+
+      if (message.type === "takeover-requested") {
+        if (message.source && message.source !== "rooms") {
+          return
+        }
+
+        if (message.roomId && message.roomId !== roomId) {
+          return
+        }
+
+        setPopupTakeoverActive(true)
+        return
+      }
+
+      if (message.type === "popup-closing") {
+        if (message.source && message.source !== "rooms") {
+          return
+        }
+
+        if (message.roomId && message.roomId !== roomId) {
+          return
+        }
+
+        setPopupTakeoverActive(false)
+      }
+    })
+
+    return () => {
+      unsubscribe()
+      channel?.close()
+    }
+  }, [buildLiveStreamPopupState, roomId])
+
+  useEffect(() => {
+    postLiveStreamPopupMessage(popupChannelRef.current, {
+      type: "state-update",
+      payload: buildLiveStreamPopupState(),
+    })
+  }, [buildLiveStreamPopupState])
+
+  useEffect(() => {
+    const handlePageHide = () => {
+      postLiveStreamPopupMessage(popupChannelRef.current, {
+        type: "source-unavailable",
+        source: "rooms",
+        roomId,
+        timestamp: Date.now(),
+      })
+    }
+
+    window.addEventListener("pagehide", handlePageHide)
+
+    return () => {
+      window.removeEventListener("pagehide", handlePageHide)
+    }
+  }, [roomId])
+
+  useEffect(() => {
     if (moveState !== "") {
       const timer = setTimeout(() => {
         setMoveState("")
@@ -297,6 +409,65 @@ export default function RoomControlPage() {
     }
   }
 
+  const handleOpenLiveStream = (deviceId: string) => {
+    const device = deviceMap.get(deviceId)
+    if (!device) {
+      alert("找不到設備資料，請重新整理後再試")
+      return
+    }
+
+    if (device.status !== DEVICE_STATUS.ONLINE) {
+      alert("設備需處於在線狀態才能開啟即時畫面")
+      return
+    }
+
+    let reachedLimit = false
+    setLiveWindows((prev) => {
+      const result = openOrFocusLiveStreamWindow(
+        prev,
+        {
+          deviceId,
+          title: getDisplayName(device),
+          subtitle: `${device.ip}:${device.port}`,
+        },
+        { width: window.innerWidth, height: window.innerHeight },
+        LIVE_VIEW_MAX_STREAMS,
+      )
+      reachedLimit = result.reachedLimit
+      return result.windows
+    })
+
+    if (reachedLimit) {
+      alert(`即時畫面初版最多同時開啟 ${LIVE_VIEW_MAX_STREAMS} 台設備`)
+    }
+  }
+
+  const handleCloseLiveStream = (deviceId: string) => {
+    setLiveWindows((prev) => closeLiveStreamWindow(prev, deviceId))
+  }
+
+  const handleOpenLiveStreamPopup = () => {
+    const popup = openLiveStreamPopupWindow({
+      source: "rooms",
+      roomId,
+      layout: liveStreamLayout,
+    })
+
+    if (!popup) {
+      alert(LIVE_STREAM_POPUP_BLOCKED_MESSAGE)
+    }
+  }
+
+  const handleReturnLiveStreamInline = () => {
+    setPopupTakeoverActive(false)
+    postLiveStreamPopupMessage(popupChannelRef.current, {
+      type: "takeover-released",
+      source: "rooms",
+      roomId,
+      timestamp: Date.now(),
+    })
+  }
+
   const getAdbStatusText = (status?: Device["status"]) => {
     switch (status) {
       case DEVICE_STATUS.ONLINE:
@@ -390,6 +561,40 @@ export default function RoomControlPage() {
         alert("執行失敗，請稍後再試")
       } finally {
         setExecutePending(false)
+      }
+      return
+    }
+
+    if (batchMode === "live") {
+      const liveTargets = modalDeviceIds
+        .filter((id) => batchSelectedDeviceIds.includes(id))
+        .map((deviceId) => {
+          const device = deviceMap.get(deviceId)
+          return {
+            deviceId,
+            title: device ? getDisplayName(device) : deviceId,
+            subtitle: device ? `${device.ip}:${device.port}` : deviceId,
+          }
+        })
+      if (liveTargets.length === 0) return
+
+      let droppedCount = 0
+      setLiveWindows((prev) => {
+        const result = openManyLiveStreamWindows(
+          prev,
+          liveTargets,
+          { width: window.innerWidth, height: window.innerHeight },
+          LIVE_VIEW_MAX_STREAMS,
+        )
+        droppedCount = result.droppedCount
+        return result.windows
+      })
+
+      setBatchModalOpen(false)
+      setBatchSelectedDeviceIds([])
+
+      if (droppedCount > 0) {
+        alert(`即時畫面初版最多同時開啟 ${LIVE_VIEW_MAX_STREAMS} 台設備，已有 ${droppedCount} 台未加入直播牆`)
       }
       return
     }
@@ -607,11 +812,88 @@ export default function RoomControlPage() {
                 >
                   選擇設備並批次監看
                 </Button>
+                <Button
+                  onClick={() => {
+                    setBatchMode("live")
+                    setBatchSelectedDeviceIds([])
+                    setBatchModalOpen(true)
+                  }}
+                  className="ui-btn-sm ui-btn-outline"
+                >
+                  選擇設備並開啟即時畫面
+                </Button>
                 <span className="text-xs text-foreground/50">
                   只可選擇在線設備
                 </span>
               </div>
             </div>
+          </div>
+
+          <div className="surface-card p-4 md:p-6">
+            <div className="live-stream-section__header">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">即時串流</h2>
+                <p className="text-sm text-foreground/60">
+                  批次開啟後會集中顯示在這個區段，可依需求切換堆疊或網格檢視。
+                </p>
+              </div>
+              <div className="live-stream-section__toolbar">
+                <span className="ui-badge ui-badge-primary">{liveWindows.length} / {LIVE_VIEW_MAX_STREAMS}</span>
+                <div className="live-stream-layout-toggle" role="group" aria-label="即時串流排版">
+                  <button
+                    type="button"
+                    onClick={() => setLiveStreamLayout("stack")}
+                    className={`ui-btn ui-btn-xs ${
+                      liveStreamLayout === "stack" ? "ui-btn-primary" : "ui-btn-muted"
+                    }`}
+                  >
+                    堆疊
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLiveStreamLayout("grid")}
+                    className={`ui-btn ui-btn-xs ${
+                      liveStreamLayout === "grid" ? "ui-btn-primary" : "ui-btn-muted"
+                    }`}
+                  >
+                    網格
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleOpenLiveStreamPopup}
+                  className="ui-btn ui-btn-xs ui-btn-outline"
+                >
+                  在新視窗開啟
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLiveWindows([])}
+                  className="ui-btn ui-btn-xs ui-btn-muted"
+                  disabled={liveWindows.length === 0}
+                >
+                  全部關閉
+                </button>
+              </div>
+            </div>
+
+            {popupTakeoverActive ? (
+              <LiveStreamTakeoverPlaceholder
+                description="外部視窗已接管這個房間的即時串流顯示。你仍可在本頁調整清單與版型，變更會同步送到外部視窗。"
+                onFocusPopup={handleOpenLiveStreamPopup}
+                onReturnInline={handleReturnLiveStreamInline}
+              />
+            ) : liveWindows.length > 0 ? (
+              <LiveStreamStage
+                windows={liveWindows}
+                layout={liveStreamLayout}
+                onClose={handleCloseLiveStream}
+              />
+            ) : (
+              <div className="live-stream-empty-state">
+                從設備列或批次操作開啟「即時畫面」後，串流會集中顯示在這裡。
+              </div>
+            )}
           </div>
 
           <div className="surface-card p-6">
@@ -691,6 +973,13 @@ export default function RoomControlPage() {
                             >
                               監看
                             </Button>
+                            <Button
+                              onClick={() => handleOpenLiveStream(deviceId)}
+                              className="ui-btn-xs ui-btn-outline"
+                              disabled={isDevicePending}
+                            >
+                              即時畫面
+                            </Button>
                           </>
                         )}
                       </div>
@@ -730,9 +1019,11 @@ export default function RoomControlPage() {
         title={
           batchMode === "action"
             ? `執行動作: ${selectedAction?.name || ""}`
-            : "批次監看設備"
+            : batchMode === "monitor"
+              ? "批次監看設備"
+              : "批次開啟即時畫面"
         }
-        confirmText={batchMode === "action" ? "執行" : "監看"}
+        confirmText={batchMode === "action" ? "執行" : batchMode === "monitor" ? "監看" : "開啟"}
         targets={modalDeviceIds.map((deviceId) => {
           const device = deviceMap.get(deviceId)
           return {
