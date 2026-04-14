@@ -90,6 +90,8 @@
 - `GET /api/ws/webrtc/:deviceId` 提供頁內即時畫面的 WebRTC signaling 通道。
 - 這條路徑會啟動 scrcpy standalone server，並把 H264 視訊經由 WebRTC video track 送到瀏覽器。
 - 既有 `POST /api/scrcpy/start/:id` 仍是外部 scrcpy 視窗監看用途，兩者並存，不互相取代。
+- 前端新增的 live-stream popup 模式不會新增任何後端 API 或 WebSocket 端點；popup 與主頁仍共用同一組 `/api/ws/webrtc/:deviceId` signaling 路徑。
+- popup 與主頁之間的 takeover / release / closing / source-unavailable 同步屬於前端瀏覽器內部通訊，使用 BroadcastChannel 協調，並非後端 signaling 契約的一部分。
 
 ### 連線方式
 - 瀏覽器端應使用 WebSocket 連線至 `/api/ws/webrtc/:deviceId`。

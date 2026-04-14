@@ -57,12 +57,26 @@
 6. `server/webrtc/streamer.go` 讀取 scrcpy raw H264 Annex-B stream，重組 access unit，並透過 Pion sample track 寫入 WebRTC video。
 7. 瀏覽器端收到 track 後，由 `client/src/components/console/live-stream-player.tsx` 顯示畫面，並回報首幀與解碼診斷資訊。
 
+### Live View Popup Takeover
+1. 使用者在設備頁或房間控制頁的 live-stream section 點擊「在新視窗開啟」。
+2. 前端透過 `window.open` 開啟 `/live-stream-popup`，popup 頁面載入後用 BroadcastChannel 對主頁送出 `popup-ready`。
+3. 主頁收到 `popup-ready` 後送出 `init`，後續在清單或 layout 變動時送出 `state-update`。
+4. popup 套用第一次 `init` 後送出 `takeover-requested`，主頁才切換到 takeover placeholder，停止在主頁 DOM 中渲染播放器。
+5. takeover 期間主頁仍維護 stream 清單與版型，popup 為唯一播放器承載者。
+6. 使用者在主頁點「回到本頁顯示」時，主頁切回 inline stage，並送出 `takeover-released`。
+7. 若 popup 關閉，會送出 `popup-closing`，主頁自動解除 takeover 並恢復頁內顯示。
+8. 若主頁關閉或重新整理，會送出 `source-unavailable`，popup 顯示來源頁面已中斷同步的提示，但不自動關閉視窗。
+
 ## Live View 主要模組
 
 ### 前端
-- [client/src/app/devices/page.tsx](../client/src/app/devices/page.tsx)：設備頁的 live wall 與單台開啟入口。
-- [client/src/app/rooms/[id]/control/page.tsx](../client/src/app/rooms/[id]/control/page.tsx)：房間控制頁的 live wall 與批次開啟入口。
+- [client/src/app/devices/page.tsx](../client/src/app/devices/page.tsx)：設備頁的 live-stream section、外部視窗接管狀態與單台開啟入口。
+- [client/src/app/rooms/[id]/control/page.tsx](../client/src/app/rooms/%5Bid%5D/control/page.tsx)：房間控制頁的 live-stream section、批次開啟入口與 popup takeover 流程。
+- [client/src/app/live-stream-popup/page.tsx](../client/src/app/live-stream-popup/page.tsx)：外部 live-stream 視窗頁面，承接 popup 顯示與同步狀態提示。
 - [client/src/components/console/live-stream-player.tsx](../client/src/components/console/live-stream-player.tsx)：共用播放器，負責 signaling、peer lifecycle、首幀等待提示與診斷面板。
+- [client/src/components/console/live-stream-stage.tsx](../client/src/components/console/live-stream-stage.tsx)：共用 inline stack / grid 排版容器，供主頁與 popup 共用。
+- [client/src/components/console/live-stream-takeover-placeholder.tsx](../client/src/components/console/live-stream-takeover-placeholder.tsx)：主頁在 popup 接管期間顯示的 placeholder 與回到本頁顯示控制。
+- [client/src/lib/utils/live-stream-popup.ts](../client/src/lib/utils/live-stream-popup.ts)：popup `window.open` helper、BroadcastChannel 訊息型別與跨視窗同步工具。
 - [client/src/services/api.ts](../client/src/services/api.ts)：`webrtcApi.getSignalUrl()` 與錯誤碼對應。
 
 ### 後端
@@ -100,3 +114,5 @@
 - Scrcpy 依賴作業系統已安裝並可從 PATH 呼叫
 - WebRTC live view 目前僅傳視訊，不含音訊。
 - WebRTC live view 的首畫面仍依賴來源 keyframe；目前已透過 control channel + `RESET_VIDEO` 優化啟播，但不同設備編碼器表現可能不同。
+- live-stream popup 模式目前只支援單一 popup 視窗，不支援多 popup 管理。
+- popup 與主頁之間的同步依賴瀏覽器 BroadcastChannel；若瀏覽器不支援，popup 只會保留骨架頁面與提示，不會收到即時串流資料。

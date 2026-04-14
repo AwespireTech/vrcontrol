@@ -50,6 +50,7 @@
 	- 更新：[docs/API.md](API.md) 的 `/api/ws/webrtc/:deviceId` signaling 契約與錯誤碼
 	- 更新：[docs/ARCHITECTURE.md](ARCHITECTURE.md) 的 live view 資料流與 scrcpy standalone/control channel 邊界
 	- 若 UI 行為或入口改變，更新：[README.md](../README.md) 或 [server/README.md](../server/README.md) 的功能概覽與使用說明
+	- 若新增 popup / 外部視窗模式，需額外補上 takeover、release、closing、source-unavailable 等前端生命週期邊界，避免誤寫成後端 signaling 契約
 
 - **新增/變更系統依賴（ADB/scrcpy 等）**
 	- 更新：[README.md](../README.md) 與 [server/README.md](../server/README.md)
@@ -57,3 +58,7 @@
 - **新增/變更啟動流程或入口**
 	- 更新：[AGENTS.md](../AGENTS.md) 的 Entry Points
 	- 更新：[README.md](../README.md)
+
+- **新增/變更前端獨立路由頁（例如 popup / standalone view）**
+	- 更新：[docs/ARCHITECTURE.md](ARCHITECTURE.md) 的前端模組與資料流段落
+	- 若新頁面不經過主 layout，需在文件中明確寫出它的用途與與主頁的同步方式

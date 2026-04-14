@@ -87,6 +87,8 @@ Vite 會將以下路徑代理到後端：
 
 - 設備頁與房間控制頁目前都提供「即時畫面」入口。
 - 頁內即時畫面使用 WebRTC 播放，舊的 scrcpy 監看按鈕仍保留作為並行方案與 fallback。
+- 即時畫面 section 可開到獨立瀏覽器視窗顯示。外部視窗模式會由 popup 接管播放器顯示，主頁則保留清單與版型控制，避免主頁與 popup 同時建立同一批 WebRTC 連線。
+- 當外部視窗關閉時，主頁會自動恢復頁內顯示；若主頁先關閉或重新整理，popup 會顯示來源頁面已中斷同步的提示。
 - 後端 signaling 端點為 `/api/ws/webrtc/:deviceId`。
 - 若畫面啟播較慢，可在設定頁的 scrcpy config 中使用 `video_codec_options` 做診斷或 fallback；預設建議保持空值。
 
