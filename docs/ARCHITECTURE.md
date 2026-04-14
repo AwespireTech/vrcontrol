@@ -48,6 +48,14 @@
 - [server/data/actions.json](../server/data/actions.json)
 - [server/data/scrcpy_config.json](../server/data/scrcpy_config.json)
 - [server/data/preferences.json](../server/data/preferences.json)
+- `server/data/lantern/<room_id>_<room_hash>.json`：房間單局的 lantern 事件歷史資料
+
+## Room Runtime
+
+- Socket room 的執行時狀態由 [server/sockets/room.go](../server/sockets/room.go) 維護。
+- 當房間從無玩家進入到有玩家時，會產生新的 `room_hash`，代表一局新的房間 session。
+- lantern 事件會先暫存在記憶體，等房間玩家數回到 0 時寫入 `server/data/lantern`。
+- 控制端可先從 room update 取得 `room_hash`，再用 control API 查詢該局 lantern 歷史資料。
 
 ## 已知限制
 
