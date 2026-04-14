@@ -7,7 +7,7 @@ export type LiveStreamLayout = "stack" | "grid"
 type LiveStreamStageProps = {
   windows: LiveStreamWindowState[]
   layout: LiveStreamLayout
-  onClose: (deviceId: string) => void
+  onClose?: (deviceId: string) => void
 }
 
 export default function LiveStreamStage({
@@ -41,7 +41,7 @@ export default function LiveStreamStage({
             title={windowState.title}
             subtitle={windowState.subtitle}
             compact={layout === "grid"}
-            onClose={() => onClose(windowState.deviceId)}
+            onClose={onClose ? () => onClose(windowState.deviceId) : undefined}
           />
         </div>
       ))}

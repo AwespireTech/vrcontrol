@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { DEFAULT_POLL_INTERVAL_SECONDS, LIVE_VIEW_MAX_STREAMS, SERVER } from "@/environment"
 import Button from "@/components/button"
@@ -11,7 +11,13 @@ import { getDisplayName } from "@/lib/utils/device"
 import type { PlayerData, RoomInfoData } from "@/interfaces/room.interface"
 import PageShell from "@/components/console/page-shell"
 import DeviceSelectionModal from "@/components/console/device-selection-modal"
-import { openLiveStreamPopupWindow } from "@/lib/utils/live-stream-popup"
+import {
+  createLiveStreamPopupChannel,
+  openLiveStreamPopupWindow,
+  postLiveStreamPopupMessage,
+  subscribeLiveStreamPopupChannel,
+  type LiveStreamPopupState,
+} from "@/lib/utils/live-stream-popup"
 import {
   closeLiveStreamWindow,
   openManyLiveStreamWindows,
@@ -58,6 +64,21 @@ export default function RoomControlPage() {
   const [targetMonitorIndex, setTargetMonitorIndex] = useState(0)
   const [liveWindows, setLiveWindows] = useState<LiveStreamWindowState[]>([])
   const [liveStreamLayout, setLiveStreamLayout] = useState<LiveStreamLayout>("grid")
+  const popupChannelRef = useRef<BroadcastChannel | null>(null)
+
+  const buildLiveStreamPopupState = useCallback((): LiveStreamPopupState => {
+    return {
+      source: "rooms",
+      roomId,
+      layout: liveStreamLayout,
+      streams: liveWindows.map((entry) => ({
+        deviceId: entry.deviceId,
+        title: entry.title,
+        subtitle: entry.subtitle,
+      })),
+      timestamp: Date.now(),
+    }
+  }, [liveStreamLayout, liveWindows, roomId])
 
   const playerByDeviceId = useMemo(() => {
     return new Map(playerData.map((player) => [player.device_id, player]))
@@ -183,6 +204,42 @@ export default function RoomControlPage() {
       ws.close()
     }
   }, [roomId, host, wsProtocol])
+
+  useEffect(() => {
+    const channel = createLiveStreamPopupChannel()
+    popupChannelRef.current = channel
+
+    const unsubscribe = subscribeLiveStreamPopupChannel(channel, (message) => {
+      if (message.type !== "popup-ready") {
+        return
+      }
+
+      if (message.source && message.source !== "rooms") {
+        return
+      }
+
+      if (message.roomId && message.roomId !== roomId) {
+        return
+      }
+
+      postLiveStreamPopupMessage(channel, {
+        type: "init",
+        payload: buildLiveStreamPopupState(),
+      })
+    })
+
+    return () => {
+      unsubscribe()
+      channel?.close()
+    }
+  }, [buildLiveStreamPopupState, roomId])
+
+  useEffect(() => {
+    postLiveStreamPopupMessage(popupChannelRef.current, {
+      type: "state-update",
+      payload: buildLiveStreamPopupState(),
+    })
+  }, [buildLiveStreamPopupState])
 
   useEffect(() => {
     if (moveState !== "") {
