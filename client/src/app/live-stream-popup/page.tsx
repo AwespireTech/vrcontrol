@@ -34,6 +34,7 @@ export default function LiveStreamPopupPage() {
   const [syncStatus, setSyncStatus] = useState<PopupSyncStatus>("connecting")
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
   const [takeoverReleased, setTakeoverReleased] = useState(false)
+  const [sourceUnavailable, setSourceUnavailable] = useState(false)
   const channelRef = useRef<BroadcastChannel | null>(null)
 
   const sourceLabel = useMemo(() => {
@@ -72,7 +73,22 @@ export default function LiveStreamPopupPage() {
 
         setStreams([])
         setTakeoverReleased(true)
+        setSourceUnavailable(false)
         setSyncStatus("waiting-data")
+        setLastUpdatedAt(message.timestamp)
+        return
+      }
+
+      if (message.type === "source-unavailable") {
+        if (routeSource && message.source && routeSource !== message.source) {
+          return
+        }
+
+        if (routeRoomId && message.roomId && routeRoomId !== message.roomId) {
+          return
+        }
+
+        setSourceUnavailable(true)
         setLastUpdatedAt(message.timestamp)
         return
       }
@@ -94,6 +110,7 @@ export default function LiveStreamPopupPage() {
       setLayout(nextState.layout)
       setStreams(nextState.streams)
       setTakeoverReleased(false)
+      setSourceUnavailable(false)
       setLastUpdatedAt(nextState.timestamp)
       setSyncStatus("ready")
 
@@ -115,7 +132,24 @@ export default function LiveStreamPopupPage() {
     })
     setSyncStatus(channel ? "waiting-data" : "connecting")
 
+    const handlePageHide = () => {
+      postLiveStreamPopupMessage(channel, {
+        type: "popup-closing",
+        source:
+          searchParams.get("source") === "devices"
+            ? "devices"
+            : searchParams.get("source") === "rooms"
+              ? "rooms"
+              : undefined,
+        roomId: searchParams.get("roomId") || undefined,
+        timestamp: Date.now(),
+      })
+    }
+
+    window.addEventListener("pagehide", handlePageHide)
+
     return () => {
+      window.removeEventListener("pagehide", handlePageHide)
       unsubscribe()
       channel?.close()
     }
@@ -179,7 +213,9 @@ export default function LiveStreamPopupPage() {
           </div>
 
           <div className="live-stream-popup-notice">
-            {takeoverReleased
+            {sourceUnavailable
+              ? "來源頁面已中斷同步。此視窗目前保留開啟，但內容可能不是最新狀態。"
+              : takeoverReleased
               ? "主頁已重新接管即時串流顯示。此視窗目前保留開啟，但不再承載播放器。"
               : syncStatus === "ready"
               ? `已收到主頁同步資料${lastUpdatedAt ? `，最後更新於 ${new Date(lastUpdatedAt).toLocaleTimeString()}` : ""}。`
@@ -192,6 +228,8 @@ export default function LiveStreamPopupPage() {
             <div className="live-stream-empty-state">
               {syncStatus === "connecting"
                 ? "目前瀏覽器不支援跨視窗同步通道，請改回主頁查看即時串流。"
+                : sourceUnavailable
+                  ? "來源頁面已中斷同步。若要恢復最新畫面，請回到主頁重新開啟外部視窗。"
                 : syncStatus === "waiting-data"
                   ? "目前尚未接收即時串流資料，請回到主頁開啟或調整直播清單。"
                   : "主頁已連線，但目前沒有要顯示的即時串流。"}

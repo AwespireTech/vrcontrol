@@ -26,6 +26,7 @@ import {
 import LiveStreamTakeoverPlaceholder from "@/components/console/live-stream-takeover-placeholder"
 import {
   createLiveStreamPopupChannel,
+  LIVE_STREAM_POPUP_BLOCKED_MESSAGE,
   openLiveStreamPopupWindow,
   postLiveStreamPopupMessage,
   subscribeLiveStreamPopupChannel,
@@ -118,6 +119,15 @@ export default function DevicesPage() {
         }
 
         setPopupTakeoverActive(true)
+        return
+      }
+
+      if (message.type === "popup-closing") {
+        if (message.source && message.source !== "devices") {
+          return
+        }
+
+        setPopupTakeoverActive(false)
       }
     })
 
@@ -133,6 +143,22 @@ export default function DevicesPage() {
       payload: buildLiveStreamPopupState(),
     })
   }, [buildLiveStreamPopupState])
+
+  useEffect(() => {
+    const handlePageHide = () => {
+      postLiveStreamPopupMessage(popupChannelRef.current, {
+        type: "source-unavailable",
+        source: "devices",
+        timestamp: Date.now(),
+      })
+    }
+
+    window.addEventListener("pagehide", handlePageHide)
+
+    return () => {
+      window.removeEventListener("pagehide", handlePageHide)
+    }
+  }, [])
 
   const loadDevices = useCallback(async () => {
     try {
@@ -737,7 +763,7 @@ export default function DevicesPage() {
     })
 
     if (!popup) {
-      alert("無法開啟新視窗，請確認瀏覽器已允許此網站彈出視窗")
+      alert(LIVE_STREAM_POPUP_BLOCKED_MESSAGE)
     }
   }
 

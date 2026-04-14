@@ -9,6 +9,8 @@ import type { LiveStreamLayout } from "@/components/console/live-stream-stage"
 export const LIVE_STREAM_POPUP_PATH = "/live-stream-popup"
 export const LIVE_STREAM_POPUP_WINDOW_NAME = "vrcontrol-live-stream-popup"
 export const LIVE_STREAM_POPUP_CHANNEL_NAME = "vrcontrol-live-stream-popup-channel"
+export const LIVE_STREAM_POPUP_BLOCKED_MESSAGE =
+  "無法開啟新視窗，請確認瀏覽器已允許此網站彈出視窗"
 
 export type LiveStreamPopupSource = "rooms" | "devices"
 
@@ -45,6 +47,12 @@ export type LiveStreamPopupMessage =
     }
   | {
       type: "takeover-requested" | "takeover-released"
+      source?: LiveStreamPopupSource
+      roomId?: string
+      timestamp: number
+    }
+  | {
+      type: "popup-closing" | "source-unavailable"
       source?: LiveStreamPopupSource
       roomId?: string
       timestamp: number
