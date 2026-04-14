@@ -3,8 +3,10 @@ package sockets
 import (
 	"encoding/json"
 	"log"
+	"strconv"
 	"time"
 
+	"vrcontrol/server/consts"
 	"vrcontrol/server/model"
 	"vrcontrol/server/utils"
 )
@@ -25,6 +27,7 @@ type Movement struct {
 }
 type Room struct {
 	RoomID           string
+	RoomHash         string
 	PlayerBroadcast  chan []byte
 	PlayerRegister   chan *Player
 	PlayerUnregister chan *Player
@@ -60,6 +63,7 @@ type ControlSignal struct {
 func NewRoom(roomID string) *Room {
 	room := &Room{
 		RoomID:           roomID,
+		RoomHash:         "",
 		PlayerBroadcast:  make(chan []byte, 1024),
 		PlayerRegister:   make(chan *Player),
 		PlayerUnregister: make(chan *Player),
@@ -74,12 +78,14 @@ func NewRoom(roomID string) *Room {
 func (r *Room) Run() {
 	updater := false
 	updaterChannel := make(chan struct{})
+	lanternData := make(map[string][]*model.LanternEventMessage)
 	defer close(updaterChannel)
 	for {
 		select {
 		case player := <-r.PlayerRegister:
 			if !updater {
 				updater = true
+				r.RoomHash = strconv.FormatInt(time.Now().Unix(), 10)
 				go r.UpdateInfo(updaterChannel)
 				log.Println("Updater Started")
 			}
@@ -113,6 +119,7 @@ func (r *Room) Run() {
 				log.Println("Player Unregistered: ", player.DeiviceID)
 				close(player.InChannel)
 				if len(r.Players) == 0 {
+					r.flushLanternData(lanternData)
 					updater = false
 					updaterChannel <- struct{}{}
 					log.Println("Updater Stopped")
@@ -124,6 +131,7 @@ func (r *Room) Run() {
 				player.Room = nil
 				log.Println("Player Detached: ", player.DeiviceID)
 				if len(r.Players) == 0 {
+					r.flushLanternData(lanternData)
 					updater = false
 					updaterChannel <- struct{}{}
 					log.Println("Updater Stopped")
@@ -201,6 +209,7 @@ func (r *Room) Run() {
 						}
 					}
 				}
+				lanternData[senderIDKey] = append(lanternData[senderIDKey], eventMessage.Latern)
 			case model.MessagesTypeQA:
 				// Broadcast the QA event to all players
 				eventMessage := model.EventMessage{
@@ -275,6 +284,7 @@ func (r *Room) Run() {
 							log.Println("Error Marshalling Event Message: ", err)
 							continue
 						}
+						player.ReadyToMove = false
 						// Send the message to all players
 						select {
 						case player.InChannel <- message:
@@ -345,6 +355,15 @@ func (r *Room) Run() {
 			}
 		}
 	}
+}
+
+func (r *Room) flushLanternData(lanternData map[string][]*model.LanternEventMessage) {
+	if r.RoomHash == "" {
+		return
+	}
+	consts.SaveAssignedLanternData(r.RoomID, r.RoomHash, lanternData)
+	r.RoomHash = ""
+	clear(lanternData)
 }
 func (r *Room) UpdateInfo(stop chan struct{}) {
 	ticker := time.NewTicker(time.Second / time.Duration(TickRate))

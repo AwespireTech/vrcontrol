@@ -21,6 +21,7 @@ type Control struct {
 
 type RoomUpdate struct {
 	RoomID      string         `json:"room_id"`
+	RoomHash    string         `json:"room_hash"`
 	Players     []PlayerStatus `json:"players"`
 	PlayerCount int            `json:"player_count"`
 }

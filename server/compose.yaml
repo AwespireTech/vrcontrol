@@ -9,3 +9,4 @@ services:
       - MAX_PLAYERS=10
     volumes:
       - ./sequence:/app/sequence
+      - ./data:/app/data

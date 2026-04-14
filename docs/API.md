@@ -70,6 +70,7 @@
 - `POST /api/control/assignseq/:roomId/:clientId/:seq`
 - `GET /api/control/assignseq/:roomId/:clientId/:seq`
 - `GET /api/control/roomlist`
+- `GET /api/control/lantern/:roomId/:roomHash`
 
 ### 簡化控制
 - `GET /api/simple/forcemove/:roomId/:clientId/:dest`
@@ -78,6 +79,12 @@
 ### WebSocket
 - `GET /api/ws/client/:clientId`
 - `GET /api/ws/control/:roomId`
+
+#### 房間控制更新格式
+- `GET /api/ws/control/:roomId` 會持續推送房間狀態 JSON。
+- 回傳內容包含 `room_id`、`room_hash`、`player_count`、`players`。
+- `room_hash` 會在房間從 0 位玩家進入到有玩家的那一刻產生；當房間再次清空後，下次新局會更新成新的 hash。
+- `GET /api/control/lantern/:roomId/:roomHash` 可讀取該局累積的 lantern 事件資料。
 
 ## 已移除舊端點
 - 舊 `/control/*`、`/simple/*`、`/ws/*` 端點已下線，不保留相容 alias。
