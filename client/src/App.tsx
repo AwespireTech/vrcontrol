@@ -8,6 +8,7 @@ import NewRoomPage from "./app/rooms/new/page"
 import EditRoomPage from "./app/rooms/[id]/page"
 import RoomDevicesPage from "./app/rooms/[id]/devices/page"
 import RoomControlPage from "./app/rooms/[id]/control/page"
+import LiveStreamPopupPage from "./app/live-stream-popup/page"
 import ActionsPage from "./app/actions/page"
 import NewActionPage from "./app/actions/new/page"
 import EditActionPage from "./app/actions/[id]/page"
@@ -21,6 +22,7 @@ function App() {
     <BrowserRouter>
       <div className="min-h-screen bg-background text-foreground">
         <Routes>
+          <Route path="/live-stream-popup" element={<LiveStreamPopupPage />} />
           <Route path="/" element={<AppLayout />}>
             <Route index element={<DashboardPage />} />
             <Route path="devices" element={<DevicesPage />} />

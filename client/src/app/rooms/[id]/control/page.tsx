@@ -11,6 +11,7 @@ import { getDisplayName } from "@/lib/utils/device"
 import type { PlayerData, RoomInfoData } from "@/interfaces/room.interface"
 import PageShell from "@/components/console/page-shell"
 import DeviceSelectionModal from "@/components/console/device-selection-modal"
+import { openLiveStreamPopupWindow } from "@/lib/utils/live-stream-popup"
 import {
   closeLiveStreamWindow,
   openManyLiveStreamWindows,
@@ -342,6 +343,18 @@ export default function RoomControlPage() {
 
   const handleCloseLiveStream = (deviceId: string) => {
     setLiveWindows((prev) => closeLiveStreamWindow(prev, deviceId))
+  }
+
+  const handleOpenLiveStreamPopup = () => {
+    const popup = openLiveStreamPopupWindow({
+      source: "rooms",
+      roomId,
+      layout: liveStreamLayout,
+    })
+
+    if (!popup) {
+      alert("無法開啟新視窗，請確認瀏覽器已允許此網站彈出視窗")
+    }
   }
 
   const getAdbStatusText = (status?: Device["status"]) => {
@@ -735,6 +748,13 @@ export default function RoomControlPage() {
                     網格
                   </button>
                 </div>
+                <button
+                  type="button"
+                  onClick={handleOpenLiveStreamPopup}
+                  className="ui-btn ui-btn-xs ui-btn-outline"
+                >
+                  在新視窗開啟
+                </button>
                 <button
                   type="button"
                   onClick={() => setLiveWindows([])}
