@@ -15,7 +15,7 @@ import {
 } from "@/services/api-types"
 import PageShell from "@/components/console/page-shell"
 import LiveStreamStage from "@/components/console/live-stream-stage"
-import LiveStreamPlayer from "@/components/console/live-stream-player"
+import type { LiveStreamLayout } from "@/components/console/live-stream-stage"
 import Button from "@/components/button"
 import {
   DEFAULT_BATCH_SIZE,
@@ -24,12 +24,8 @@ import {
   LIVE_VIEW_MAX_STREAMS,
 } from "@/environment"
 import {
-  bringLiveStreamWindowToFront,
   closeLiveStreamWindow,
-  moveLiveStreamWindow,
   openOrFocusLiveStreamWindow,
-  resizeLiveStreamWindow,
-  toggleLiveStreamWindowMinimized,
   type LiveStreamWindowState,
 } from "@/lib/utils/live-stream-windows"
 
@@ -57,6 +53,7 @@ export default function DevicesPage() {
   const [scrcpyStopPending, setScrcpyStopPending] = useState<Record<string, boolean>>({})
   const [refreshScrcpyPending, setRefreshScrcpyPending] = useState(false)
   const [liveWindows, setLiveWindows] = useState<LiveStreamWindowState[]>([])
+  const [liveStreamLayout, setLiveStreamLayout] = useState<LiveStreamLayout>("stack")
 
   // Scrcpy 相關狀態
   const [scrcpySystemInfo, setScrcpySystemInfo] = useState<ScrcpySystemInfo | null>(null)
@@ -671,32 +668,6 @@ export default function DevicesPage() {
     setLiveWindows((prev) => closeLiveStreamWindow(prev, deviceId))
   }
 
-  const handleFocusLiveStream = (deviceId: string) => {
-    setLiveWindows((prev) => bringLiveStreamWindowToFront(prev, deviceId))
-  }
-
-  const handleMoveLiveStream = (
-    deviceId: string,
-    nextX: number,
-    nextY: number,
-    bounds: { width: number; height: number },
-  ) => {
-    setLiveWindows((prev) => moveLiveStreamWindow(prev, deviceId, nextX, nextY, bounds))
-  }
-
-  const handleResizeLiveStream = (
-    deviceId: string,
-    nextWidth: number,
-    nextHeight: number,
-    bounds: { width: number; height: number },
-  ) => {
-    setLiveWindows((prev) => resizeLiveStreamWindow(prev, deviceId, nextWidth, nextHeight, bounds))
-  }
-
-  const handleToggleMinimizedLiveStream = (deviceId: string) => {
-    setLiveWindows((prev) => toggleLiveStreamWindowMinimized(prev, deviceId))
-  }
-
   const handleStopScrcpy = async (deviceId: string) => {
     if (scrcpyStopPending[deviceId]) return
     setScrcpyStopPending((prev) => ({ ...prev, [deviceId]: true }))
@@ -957,32 +928,61 @@ export default function DevicesPage() {
         </div>
       )}
 
-      {liveWindows.length > 0 ? (
-        <div className="surface-card p-4">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-bold text-foreground">即時畫面視窗</h2>
-              <p className="text-sm text-foreground/60">
-                桌面寬度下可拖曳、自由排列。窄螢幕時會自動回退為堆疊顯示。
-              </p>
-            </div>
+      <div className="surface-card p-4 md:p-6">
+        <div className="live-stream-section__header">
+          <div>
+            <h2 className="text-xl font-bold text-foreground">即時串流</h2>
+            <p className="text-sm text-foreground/60">
+              目前採頁面內顯示，可在堆疊與網格版型間切換，方便比對多台設備畫面。
+            </p>
+          </div>
+          <div className="live-stream-section__toolbar">
             <span className="ui-badge ui-badge-primary">
               {liveWindows.length} / {LIVE_VIEW_MAX_STREAMS}
             </span>
+            <div className="live-stream-layout-toggle" role="group" aria-label="即時串流排版">
+              <button
+                type="button"
+                onClick={() => setLiveStreamLayout("stack")}
+                className={`ui-btn ui-btn-xs ${
+                  liveStreamLayout === "stack" ? "ui-btn-primary" : "ui-btn-muted"
+                }`}
+              >
+                堆疊
+              </button>
+              <button
+                type="button"
+                onClick={() => setLiveStreamLayout("grid")}
+                className={`ui-btn ui-btn-xs ${
+                  liveStreamLayout === "grid" ? "ui-btn-primary" : "ui-btn-muted"
+                }`}
+              >
+                網格
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLiveWindows([])}
+              className="ui-btn ui-btn-xs ui-btn-muted"
+              disabled={liveWindows.length === 0}
+            >
+              全部關閉
+            </button>
           </div>
-          <div className="text-xs text-foreground/55">拖曳視窗標頭即可改變位置，重複開啟同一台設備會自動置前。</div>
         </div>
-      ) : null}
 
-      <LiveStreamStage
-        windows={liveWindows}
-        onClose={handleCloseLiveStream}
-        onCloseAll={() => setLiveWindows([])}
-        onFocus={handleFocusLiveStream}
-        onMove={handleMoveLiveStream}
-        onResize={handleResizeLiveStream}
-        onToggleMinimized={handleToggleMinimizedLiveStream}
-      />
+        {liveWindows.length > 0 ? (
+          <LiveStreamStage
+            windows={liveWindows}
+            layout={liveStreamLayout}
+            onClose={handleCloseLiveStream}
+          />
+        ) : (
+          <div className="live-stream-empty-state">
+            從設備列點擊「即時畫面」後，串流會顯示在這裡。
+          </div>
+        )}
+      </div>
 
       {usbDevices.length > 0 && (
         <div className="surface-card p-6">

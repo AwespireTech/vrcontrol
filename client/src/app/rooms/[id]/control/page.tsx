@@ -4,6 +4,7 @@ import { DEFAULT_POLL_INTERVAL_SECONDS, LIVE_VIEW_MAX_STREAMS, SERVER } from "@/
 import Button from "@/components/button"
 import PlayerInfo from "@/components/player-info"
 import LiveStreamStage from "@/components/console/live-stream-stage"
+import type { LiveStreamLayout } from "@/components/console/live-stream-stage"
 import { actionApi, controlApi, deviceApi, roomApi, scrcpyApi, simpleApi } from "@/services/api"
 import { DEVICE_STATUS, type Action, type Device } from "@/services/api-types"
 import { getDisplayName } from "@/lib/utils/device"
@@ -11,13 +12,9 @@ import type { PlayerData, RoomInfoData } from "@/interfaces/room.interface"
 import PageShell from "@/components/console/page-shell"
 import DeviceSelectionModal from "@/components/console/device-selection-modal"
 import {
-  bringLiveStreamWindowToFront,
   closeLiveStreamWindow,
-  moveLiveStreamWindow,
   openManyLiveStreamWindows,
   openOrFocusLiveStreamWindow,
-  resizeLiveStreamWindow,
-  toggleLiveStreamWindowMinimized,
   type LiveStreamWindowState,
 } from "@/lib/utils/live-stream-windows"
 
@@ -59,6 +56,7 @@ export default function RoomControlPage() {
   const [batchMonitorPending, setBatchMonitorPending] = useState(false)
   const [targetMonitorIndex, setTargetMonitorIndex] = useState(0)
   const [liveWindows, setLiveWindows] = useState<LiveStreamWindowState[]>([])
+  const [liveStreamLayout, setLiveStreamLayout] = useState<LiveStreamLayout>("grid")
 
   const playerByDeviceId = useMemo(() => {
     return new Map(playerData.map((player) => [player.device_id, player]))
@@ -344,32 +342,6 @@ export default function RoomControlPage() {
 
   const handleCloseLiveStream = (deviceId: string) => {
     setLiveWindows((prev) => closeLiveStreamWindow(prev, deviceId))
-  }
-
-  const handleFocusLiveStream = (deviceId: string) => {
-    setLiveWindows((prev) => bringLiveStreamWindowToFront(prev, deviceId))
-  }
-
-  const handleMoveLiveStream = (
-    deviceId: string,
-    nextX: number,
-    nextY: number,
-    bounds: { width: number; height: number },
-  ) => {
-    setLiveWindows((prev) => moveLiveStreamWindow(prev, deviceId, nextX, nextY, bounds))
-  }
-
-  const handleResizeLiveStream = (
-    deviceId: string,
-    nextWidth: number,
-    nextHeight: number,
-    bounds: { width: number; height: number },
-  ) => {
-    setLiveWindows((prev) => resizeLiveStreamWindow(prev, deviceId, nextWidth, nextHeight, bounds))
-  }
-
-  const handleToggleMinimizedLiveStream = (deviceId: string) => {
-    setLiveWindows((prev) => toggleLiveStreamWindowMinimized(prev, deviceId))
   }
 
   const getAdbStatusText = (status?: Device["status"]) => {
@@ -733,30 +705,59 @@ export default function RoomControlPage() {
             </div>
           </div>
 
-          {liveWindows.length > 0 ? (
-            <div className="surface-card p-4">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-xl font-bold text-foreground">即時畫面視窗</h2>
-                  <p className="text-sm text-foreground/60">
-                    批次開啟時會依序錯位展開，桌面寬度下可自由拖曳與排列。
-                  </p>
-                </div>
-                <span className="ui-badge ui-badge-primary">{liveWindows.length} / {LIVE_VIEW_MAX_STREAMS}</span>
+          <div className="surface-card p-4 md:p-6">
+            <div className="live-stream-section__header">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">即時串流</h2>
+                <p className="text-sm text-foreground/60">
+                  批次開啟後會集中顯示在這個區段，可依需求切換堆疊或網格檢視。
+                </p>
               </div>
-              <div className="text-xs text-foreground/55">拖曳視窗標頭可重新排列；重複點擊已開啟設備會自動置前。</div>
+              <div className="live-stream-section__toolbar">
+                <span className="ui-badge ui-badge-primary">{liveWindows.length} / {LIVE_VIEW_MAX_STREAMS}</span>
+                <div className="live-stream-layout-toggle" role="group" aria-label="即時串流排版">
+                  <button
+                    type="button"
+                    onClick={() => setLiveStreamLayout("stack")}
+                    className={`ui-btn ui-btn-xs ${
+                      liveStreamLayout === "stack" ? "ui-btn-primary" : "ui-btn-muted"
+                    }`}
+                  >
+                    堆疊
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLiveStreamLayout("grid")}
+                    className={`ui-btn ui-btn-xs ${
+                      liveStreamLayout === "grid" ? "ui-btn-primary" : "ui-btn-muted"
+                    }`}
+                  >
+                    網格
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setLiveWindows([])}
+                  className="ui-btn ui-btn-xs ui-btn-muted"
+                  disabled={liveWindows.length === 0}
+                >
+                  全部關閉
+                </button>
+              </div>
             </div>
-          ) : null}
 
-          <LiveStreamStage
-            windows={liveWindows}
-            onClose={handleCloseLiveStream}
-            onCloseAll={() => setLiveWindows([])}
-            onFocus={handleFocusLiveStream}
-            onMove={handleMoveLiveStream}
-            onResize={handleResizeLiveStream}
-            onToggleMinimized={handleToggleMinimizedLiveStream}
-          />
+            {liveWindows.length > 0 ? (
+              <LiveStreamStage
+                windows={liveWindows}
+                layout={liveStreamLayout}
+                onClose={handleCloseLiveStream}
+              />
+            ) : (
+              <div className="live-stream-empty-state">
+                從設備列或批次操作開啟「即時畫面」後，串流會集中顯示在這裡。
+              </div>
+            )}
+          </div>
 
           <div className="surface-card p-6">
             <div className="mb-4 flex items-center justify-between">
