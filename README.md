@@ -2,6 +2,10 @@
 
 整合 Go 後端與 Vite + React 前端的 VR 控制系統，包含設備管理、房間管理、動作控制與監控機制。
 
+目前螢幕觀看有兩種模式：
+- 外部 scrcpy 監看視窗
+- 頁內 WebRTC 即時畫面（live view）
+
 ## 來源與致謝
 
 本專案基於以下開源項目整合與調整：
@@ -50,6 +54,8 @@ vrcontrol/
 
 > 若 `scrcpy` 未安裝，僅會影響螢幕鏡像相關功能，其餘 API 仍可運作。
 
+> WebRTC live view 同樣依賴 scrcpy 作為視訊來源，因此若 `scrcpy` 未安裝，頁內即時畫面也無法使用。
+
 ### 後端啟動 (Go)
 
 ```bash
@@ -76,6 +82,13 @@ Vite 會將以下路徑代理到後端：
 - `/api/*` → `http://localhost:8080`
 
 目前前端 API 與 WebSocket 都統一經由 `/api/*` 命名空間對接後端。
+
+## 即時畫面（WebRTC Live View）
+
+- 設備頁與房間控制頁目前都提供「即時畫面」入口。
+- 頁內即時畫面使用 WebRTC 播放，舊的 scrcpy 監看按鈕仍保留作為並行方案與 fallback。
+- 後端 signaling 端點為 `/api/ws/webrtc/:deviceId`。
+- 若畫面啟播較慢，可在設定頁的 scrcpy config 中使用 `video_codec_options` 做診斷或 fallback；預設建議保持空值。
 
 ## Docker（選用）
 
