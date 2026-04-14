@@ -33,6 +33,7 @@ export default function LiveStreamPopupPage() {
   const [streams, setStreams] = useState<LiveStreamPopupState["streams"]>([])
   const [syncStatus, setSyncStatus] = useState<PopupSyncStatus>("connecting")
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
+  const [takeoverReleased, setTakeoverReleased] = useState(false)
   const channelRef = useRef<BroadcastChannel | null>(null)
 
   const sourceLabel = useMemo(() => {
@@ -57,13 +58,30 @@ export default function LiveStreamPopupPage() {
     channelRef.current = channel
 
     const unsubscribe = subscribeLiveStreamPopupChannel(channel, (message) => {
+      const routeSource = searchParams.get("source")
+      const routeRoomId = searchParams.get("roomId")
+
+      if (message.type === "takeover-released") {
+        if (routeSource && message.source && routeSource !== message.source) {
+          return
+        }
+
+        if (routeRoomId && message.roomId && routeRoomId !== message.roomId) {
+          return
+        }
+
+        setStreams([])
+        setTakeoverReleased(true)
+        setSyncStatus("waiting-data")
+        setLastUpdatedAt(message.timestamp)
+        return
+      }
+
       if (message.type !== "init" && message.type !== "state-update") {
         return
       }
 
       const nextState = message.payload
-      const routeSource = searchParams.get("source")
-      const routeRoomId = searchParams.get("roomId")
 
       if (routeSource && nextState.source && routeSource !== nextState.source) {
         return
@@ -75,8 +93,18 @@ export default function LiveStreamPopupPage() {
 
       setLayout(nextState.layout)
       setStreams(nextState.streams)
+      setTakeoverReleased(false)
       setLastUpdatedAt(nextState.timestamp)
       setSyncStatus("ready")
+
+      if (message.type === "init") {
+        postLiveStreamPopupMessage(channel, {
+          type: "takeover-requested",
+          source: nextState.source,
+          roomId: nextState.roomId,
+          timestamp: Date.now(),
+        })
+      }
     })
 
     postLiveStreamPopupMessage(channel, {
@@ -151,7 +179,9 @@ export default function LiveStreamPopupPage() {
           </div>
 
           <div className="live-stream-popup-notice">
-            {syncStatus === "ready"
+            {takeoverReleased
+              ? "主頁已重新接管即時串流顯示。此視窗目前保留開啟，但不再承載播放器。"
+              : syncStatus === "ready"
               ? `已收到主頁同步資料${lastUpdatedAt ? `，最後更新於 ${new Date(lastUpdatedAt).toLocaleTimeString()}` : ""}。`
               : "新視窗已連上同步通道，等待主頁送出即時串流清單。"}
           </div>

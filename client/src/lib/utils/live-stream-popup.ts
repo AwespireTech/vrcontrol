@@ -43,6 +43,12 @@ export type LiveStreamPopupMessage =
       type: "init" | "state-update"
       payload: LiveStreamPopupState
     }
+  | {
+      type: "takeover-requested" | "takeover-released"
+      source?: LiveStreamPopupSource
+      roomId?: string
+      timestamp: number
+    }
 
 function buildPopupFeatures() {
   return [

@@ -4,6 +4,7 @@ import { DEFAULT_POLL_INTERVAL_SECONDS, LIVE_VIEW_MAX_STREAMS, SERVER } from "@/
 import Button from "@/components/button"
 import PlayerInfo from "@/components/player-info"
 import LiveStreamStage from "@/components/console/live-stream-stage"
+import LiveStreamTakeoverPlaceholder from "@/components/console/live-stream-takeover-placeholder"
 import type { LiveStreamLayout } from "@/components/console/live-stream-stage"
 import { actionApi, controlApi, deviceApi, roomApi, scrcpyApi, simpleApi } from "@/services/api"
 import { DEVICE_STATUS, type Action, type Device } from "@/services/api-types"
@@ -64,6 +65,7 @@ export default function RoomControlPage() {
   const [targetMonitorIndex, setTargetMonitorIndex] = useState(0)
   const [liveWindows, setLiveWindows] = useState<LiveStreamWindowState[]>([])
   const [liveStreamLayout, setLiveStreamLayout] = useState<LiveStreamLayout>("grid")
+  const [popupTakeoverActive, setPopupTakeoverActive] = useState(false)
   const popupChannelRef = useRef<BroadcastChannel | null>(null)
 
   const buildLiveStreamPopupState = useCallback((): LiveStreamPopupState => {
@@ -210,22 +212,33 @@ export default function RoomControlPage() {
     popupChannelRef.current = channel
 
     const unsubscribe = subscribeLiveStreamPopupChannel(channel, (message) => {
-      if (message.type !== "popup-ready") {
+      if (message.type === "popup-ready") {
+        if (message.source && message.source !== "rooms") {
+          return
+        }
+
+        if (message.roomId && message.roomId !== roomId) {
+          return
+        }
+
+        postLiveStreamPopupMessage(channel, {
+          type: "init",
+          payload: buildLiveStreamPopupState(),
+        })
         return
       }
 
-      if (message.source && message.source !== "rooms") {
-        return
-      }
+      if (message.type === "takeover-requested") {
+        if (message.source && message.source !== "rooms") {
+          return
+        }
 
-      if (message.roomId && message.roomId !== roomId) {
-        return
-      }
+        if (message.roomId && message.roomId !== roomId) {
+          return
+        }
 
-      postLiveStreamPopupMessage(channel, {
-        type: "init",
-        payload: buildLiveStreamPopupState(),
-      })
+        setPopupTakeoverActive(true)
+      }
     })
 
     return () => {
@@ -412,6 +425,16 @@ export default function RoomControlPage() {
     if (!popup) {
       alert("無法開啟新視窗，請確認瀏覽器已允許此網站彈出視窗")
     }
+  }
+
+  const handleReturnLiveStreamInline = () => {
+    setPopupTakeoverActive(false)
+    postLiveStreamPopupMessage(popupChannelRef.current, {
+      type: "takeover-released",
+      source: "rooms",
+      roomId,
+      timestamp: Date.now(),
+    })
   }
 
   const getAdbStatusText = (status?: Device["status"]) => {
@@ -823,7 +846,13 @@ export default function RoomControlPage() {
               </div>
             </div>
 
-            {liveWindows.length > 0 ? (
+            {popupTakeoverActive ? (
+              <LiveStreamTakeoverPlaceholder
+                description="外部視窗已接管這個房間的即時串流顯示。你仍可在本頁調整清單與版型，變更會同步送到外部視窗。"
+                onFocusPopup={handleOpenLiveStreamPopup}
+                onReturnInline={handleReturnLiveStreamInline}
+              />
+            ) : liveWindows.length > 0 ? (
               <LiveStreamStage
                 windows={liveWindows}
                 layout={liveStreamLayout}
