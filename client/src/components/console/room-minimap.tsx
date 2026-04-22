@@ -36,6 +36,9 @@ export default function RoomMinimap({
 }: RoomMinimapProps) {
   const gridColumns = Math.max(1, Math.round(config.width))
   const gridRows = Math.max(1, Math.round(config.depth))
+  const readyCount = markers.filter((marker) => marker.readyToMove && !marker.isStale).length
+  const staleCount = markers.filter((marker) => marker.isStale).length
+  const outOfBoundsCount = markers.filter((marker) => marker.position.isOutOfBounds).length
 
   return (
     <section className="surface-panel overflow-hidden p-5">
@@ -44,8 +47,17 @@ export default function RoomMinimap({
           <h3 className="text-base font-semibold text-foreground">{title}</h3>
           <p className="mt-1 text-xs text-foreground/55">{subtitle}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="ui-badge ui-badge-muted text-[11px]">{markers.length} 位玩家</span>
+          {readyCount > 0 && (
+            <span className="ui-badge ui-badge-success text-[11px]">{readyCount} Ready</span>
+          )}
+          {staleCount > 0 && (
+            <span className="ui-badge ui-badge-warning text-[11px]">{staleCount} Stale</span>
+          )}
+          {outOfBoundsCount > 0 && (
+            <span className="ui-badge ui-badge-danger text-[11px]">{outOfBoundsCount} Out</span>
+          )}
           <span className="ui-badge ui-badge-primary text-[11px]">
             Origin ({config.origin.x}, {config.origin.z})
           </span>
@@ -163,6 +175,16 @@ export default function RoomMinimap({
                         className={`${markerColorClass} ${marker.position.isOutOfBounds ? "opacity-70" : ""}`}
                         strokeWidth="1.25"
                       />
+                      {marker.position.isOutOfBounds && (
+                        <circle
+                          cx={x}
+                          cy={y}
+                          r="4.4"
+                          className="fill-transparent stroke-danger/80"
+                          strokeWidth="0.9"
+                          strokeDasharray="1.2 1.2"
+                        />
+                      )}
                       {config.display.showPlayerLabels && (
                         <text
                           x={x}
@@ -197,6 +219,10 @@ export default function RoomMinimap({
                 <span className="h-2.5 w-2.5 rounded-full bg-muted" />
                 <span>資料過舊</span>
               </div>
+              <div className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-full border border-dashed border-danger" />
+                <span>位置超出 6 x 6 邊界</span>
+              </div>
               <div className="text-foreground/50">方向箭頭使用 head_forward 的 x/z 投影。</div>
             </div>
           </div>
@@ -208,7 +234,11 @@ export default function RoomMinimap({
                 <div className="text-foreground/50">等待房間 WebSocket 回傳玩家資料。</div>
               ) : (
                 markers.map((marker) => (
-                  <div key={marker.deviceId} className="flex items-start justify-between gap-3">
+                  <div
+                    key={marker.deviceId}
+                    className="rounded-xl border border-border/50 bg-background/20 px-3 py-2"
+                  >
+                    <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <div className="font-semibold text-foreground">{formatMarkerLabel(marker)}</div>
                       <div className="truncate font-mono text-[11px] text-foreground/45">
@@ -219,7 +249,20 @@ export default function RoomMinimap({
                       <div>
                         {marker.position.worldX.toFixed(2)}, {marker.position.worldZ.toFixed(2)}
                       </div>
-                      <div>{marker.isStale ? "stale" : marker.readyToMove ? "ready" : "tracking"}</div>
+                        <div>{marker.isStale ? "stale" : marker.readyToMove ? "ready" : "tracking"}</div>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                      {marker.isStale ? (
+                        <span className="ui-badge ui-badge-warning">stale</span>
+                      ) : marker.readyToMove ? (
+                        <span className="ui-badge ui-badge-success">ready</span>
+                      ) : (
+                        <span className="ui-badge ui-badge-primary">tracking</span>
+                      )}
+                      {marker.position.isOutOfBounds && (
+                        <span className="ui-badge ui-badge-danger">out of bounds</span>
+                      )}
                     </div>
                   </div>
                 ))

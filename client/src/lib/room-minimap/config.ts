@@ -37,8 +37,9 @@ const DEFAULT_ROOM_MINIMAP_CONFIG: RoomMinimapConfig = {
   },
 }
 
-export function getRoomMinimapConfig(_roomId: string): RoomMinimapConfig {
+export function getRoomMinimapConfig(roomId: string): RoomMinimapConfig {
   // Keep the current source fixed so the UI has a stable contract.
   // This function is the future replacement point for room parameters or API data.
+  void roomId
   return DEFAULT_ROOM_MINIMAP_CONFIG
 }
