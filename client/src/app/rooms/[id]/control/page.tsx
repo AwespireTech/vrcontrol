@@ -4,8 +4,11 @@ import { DEFAULT_POLL_INTERVAL_SECONDS, LIVE_VIEW_MAX_STREAMS, SERVER } from "@/
 import Button from "@/components/button"
 import PlayerInfo from "@/components/player-info"
 import LiveStreamStage from "@/components/console/live-stream-stage"
+import RoomMinimap from "@/components/console/room-minimap"
 import LiveStreamTakeoverPlaceholder from "@/components/console/live-stream-takeover-placeholder"
 import type { LiveStreamLayout } from "@/components/console/live-stream-stage"
+import { useRoomMinimapConfig } from "@/hooks/useRoomMinimapConfig"
+import { buildRoomMinimapMarkers } from "@/lib/room-minimap/mappers"
 import { actionApi, controlApi, deviceApi, roomApi, scrcpyApi, simpleApi } from "@/services/api"
 import { DEVICE_STATUS, type Action, type Device } from "@/services/api-types"
 import { getDisplayName } from "@/lib/utils/device"
@@ -36,6 +39,7 @@ export default function RoomControlPage() {
 
   const wsProtocol = SERVER.startsWith("https") ? "wss" : "ws"
   const host = SERVER.replace(/^https?:\/\//, "")
+  const minimapConfig = useRoomMinimapConfig(roomId)
 
   const [playerData, setPlayerData] = useState<PlayerData[]>([])
   const [deviceMap, setDeviceMap] = useState<Map<string, Device>>(new Map())
@@ -86,6 +90,10 @@ export default function RoomControlPage() {
   const playerByDeviceId = useMemo(() => {
     return new Map(playerData.map((player) => [player.device_id, player]))
   }, [playerData])
+
+  const minimapMarkers = useMemo(() => {
+    return buildRoomMinimapMarkers(playerData, minimapConfig)
+  }, [minimapConfig, playerData])
 
   const displayDeviceIds = useMemo(() => {
     const ids = new Set<string>()
@@ -827,6 +835,14 @@ export default function RoomControlPage() {
                 </span>
               </div>
             </div>
+          </div>
+
+          <div className="surface-card p-4 md:p-6">
+            <RoomMinimap
+              config={minimapConfig}
+              markers={minimapMarkers}
+              subtitle="使用 head_position / head_forward 的 xz 平面投影"
+            />
           </div>
 
           <div className="surface-card p-4 md:p-6">
