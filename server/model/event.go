@@ -19,18 +19,24 @@ type EventMessage struct {
 	QA          *QAEventMessage      `json:"qa,omitempty"`
 	Sequence    *int                 `json:"sequence,omitempty"`
 }
+
 type MoveCommandMessage struct {
 	Force            bool `json:"force"`
 	DestinationStage int  `json:"chapter"`
 }
+
 type LanternEventMessage struct {
 	LanternID int        `json:"lantern_id"`
+	LineID    int        `json:"lid"`
 	Postions  []Vector3f `json:"postions"`
 }
+
 type ShotEventMessage struct {
+	SType     int      `json:"type"`
 	Position  Vector3f `json:"position"`
 	Direction Vector3f `json:"direction"`
 }
+
 type QAEventMessage struct {
 	QuestionID int  `json:"question_id"`
 	StateID    int  `json:"state_id"`

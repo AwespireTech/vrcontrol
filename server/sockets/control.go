@@ -7,9 +7,10 @@ import (
 	"maps"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"vrcontrol/server/model"
 	"vrcontrol/server/utilities"
+
+	"github.com/gorilla/websocket"
 )
 
 type Controller struct {
@@ -24,13 +25,15 @@ func (r *Room) GetRoomUpdate() model.RoomUpdate {
 		log.Println("GetRoomUpdate called on nil room")
 		return model.RoomUpdate{
 			RoomID:      "",
+			RoomHash:    "",
 			PlayerCount: 0,
 			Players:     []model.PlayerStatus{},
 		}
 	}
-	if r.Players == nil || len(r.Players) == 0 {
+	if len(r.Players) == 0 {
 		return model.RoomUpdate{
 			RoomID:      r.RoomID,
+			RoomHash:    r.RoomHash,
 			PlayerCount: 0,
 			Players:     []model.PlayerStatus{},
 		}
@@ -38,6 +41,7 @@ func (r *Room) GetRoomUpdate() model.RoomUpdate {
 
 	return model.RoomUpdate{
 		RoomID:      r.RoomID,
+		RoomHash:    r.RoomHash,
 		PlayerCount: len(r.Players),
 		Players: utilities.Fold2(maps.All(r.Players), make([]model.PlayerStatus, 0, len(r.Players)), func(_l []model.PlayerStatus, p *Player, inuse bool) []model.PlayerStatus {
 			if !inuse {
@@ -54,6 +58,7 @@ func (r *Room) GetRoomUpdate() model.RoomUpdate {
 				Sequence:          p.Sequence,
 				Stage:             p.Stage,
 				ReadyToMove:       p.ReadyToMove,
+				Message:           p.Message,
 				HeadPosition:      p.HeadPosition,
 				HeadForward:       p.HeadForward,
 				LeftHandPosition:  p.LeftHandPosition,
@@ -97,7 +102,7 @@ func (c *Controller) read() {
 		}
 		message = bytes.TrimSpace(bytes.Replace(message, Newline, Space, -1))
 		c.InChannel <- message
-		log.Printf("Controller room %s: Received message: %s", c.Room.RoomID, message)
+		// log.Printf("Controller room %s: Received message: %s", c.Room.RoomID, message)
 	}
 }
 func (c *Controller) write() {

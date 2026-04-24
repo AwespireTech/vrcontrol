@@ -3,10 +3,12 @@ package sockets
 import (
 	"encoding/json"
 	"log"
+	"strconv"
 	"time"
 
 	"vrcontrol/server/consts"
 	"vrcontrol/server/model"
+	"vrcontrol/server/utils"
 )
 
 type MessageType string
@@ -25,9 +27,11 @@ type Movement struct {
 }
 type Room struct {
 	RoomID           string
+	RoomHash         string
 	PlayerBroadcast  chan []byte
 	PlayerRegister   chan *Player
 	PlayerUnregister chan *Player
+	PlayerDetach     chan *Player
 	MoveControl      chan Movement
 	Signals          chan ControlSignal
 	Players          map[*Player]bool
@@ -35,19 +39,19 @@ type Room struct {
 }
 type RoomMessage struct {
 	MessageType         MessageType          `json:"message_type"`
-	PlayerPositionInfos []PlayerPositionInfo `json:"player_position_info"`
-	PlayerCount         int                  `json:"player_count"`
+	PlayerPositionInfos []PlayerPositionInfo `json:"pinf"`
+	PlayerCount         int                  `json:"pcnt"`
 }
 type PlayerPositionInfo struct {
 	DeviceID          string         `json:"device_id"`
-	HeadPosition      model.Vector3f `json:"head_position"`
-	HeadForward       model.Vector3f `json:"head_forward,omitempty"`
-	LeftHandPosition  model.Vector3f `json:"left_hand_position"`
-	LeftHandForward   model.Vector3f `json:"left_hand_forward,omitempty"`
-	RightHandPosition model.Vector3f `json:"right_hand_position"`
-	RightHandForward  model.Vector3f `json:"right_hand_forward,omitempty"`
-	LeftHandAvail     bool           `json:"left_hand_available"`
-	RightHandAvail    bool           `json:"right_hand_available"`
+	HeadPosition      model.Vector3f `json:"hpt"`
+	HeadForward       model.Vector3f `json:"hfw,omitempty"`
+	LeftHandPosition  model.Vector3f `json:"lhp"`
+	LeftHandForward   model.Vector3f `json:"lhf,omitempty"`
+	RightHandPosition model.Vector3f `json:"rhp"`
+	RightHandForward  model.Vector3f `json:"rhf,omitempty"`
+	LeftHandAvail     bool           `json:"lha"`
+	RightHandAvail    bool           `json:"rha"`
 }
 
 type ControlSignal struct {
@@ -59,25 +63,29 @@ type ControlSignal struct {
 func NewRoom(roomID string) *Room {
 	room := &Room{
 		RoomID:           roomID,
+		RoomHash:         "",
 		PlayerBroadcast:  make(chan []byte, 1024),
 		PlayerRegister:   make(chan *Player),
 		PlayerUnregister: make(chan *Player),
+		PlayerDetach:     make(chan *Player),
 		Players:          make(map[*Player]bool),
 		MoveControl:      make(chan Movement),
 		Signals:          make(chan ControlSignal),
 	}
-	room.AssignedSequence = consts.LoadAssignedSequence(roomID)
+	room.AssignedSequence = make(map[string]int)
 	return room
 }
 func (r *Room) Run() {
 	updater := false
 	updaterChannel := make(chan struct{})
+	lanternData := make(map[string][]*model.LanternEventMessage)
 	defer close(updaterChannel)
 	for {
 		select {
 		case player := <-r.PlayerRegister:
 			if !updater {
 				updater = true
+				r.RoomHash = strconv.FormatInt(time.Now().Unix(), 10)
 				go r.UpdateInfo(updaterChannel)
 				log.Println("Updater Started")
 			}
@@ -111,6 +119,19 @@ func (r *Room) Run() {
 				log.Println("Player Unregistered: ", player.DeiviceID)
 				close(player.InChannel)
 				if len(r.Players) == 0 {
+					r.flushLanternData(lanternData)
+					updater = false
+					updaterChannel <- struct{}{}
+					log.Println("Updater Stopped")
+				}
+			}
+		case player := <-r.PlayerDetach:
+			if _, ok := r.Players[player]; ok {
+				delete(r.Players, player)
+				player.Room = nil
+				log.Println("Player Detached: ", player.DeiviceID)
+				if len(r.Players) == 0 {
+					r.flushLanternData(lanternData)
 					updater = false
 					updaterChannel <- struct{}{}
 					log.Println("Updater Stopped")
@@ -134,9 +155,11 @@ func (r *Room) Run() {
 				log.Panicln("ReadyToMove should be handled in Player")
 			case model.MessageTypeShotEvent:
 				// Broadcast the shot event to all players
+				senderIDKey := utils.NormalizeDeviceIDKey(playerMessage.ShotEvent.DeviceID)
 				eventMessage := model.EventMessage{
 					EventType: model.EventTypeShotEvent,
 					ShotEvent: &model.ShotEventMessage{
+						SType:     playerMessage.ShotEvent.SType,
 						Position:  playerMessage.ShotEvent.Position,
 						Direction: playerMessage.ShotEvent.Direction,
 					},
@@ -147,7 +170,7 @@ func (r *Room) Run() {
 					continue
 				}
 				for player := range r.Players {
-					if player == nil || player.DeiviceID == playerMessage.ShotEvent.DeviceID {
+					if player == nil || player.DeiviceID == senderIDKey {
 						continue
 					} else {
 						select {
@@ -160,10 +183,12 @@ func (r *Room) Run() {
 				}
 			case model.MessageTypeLantern:
 				// Broadcast the lantern event to all players
+				senderIDKey := utils.NormalizeDeviceIDKey(playerMessage.Latern.DeviceID)
 				eventMessage := model.EventMessage{
 					EventType: model.EventTypeLatern,
 					Latern: &model.LanternEventMessage{
 						LanternID: playerMessage.Latern.LanternID,
+						LineID:    playerMessage.Latern.LineID,
 						Postions:  playerMessage.Latern.Postions,
 					},
 				}
@@ -173,7 +198,7 @@ func (r *Room) Run() {
 					continue
 				}
 				for player := range r.Players {
-					if player == nil || player.DeiviceID == playerMessage.Latern.DeviceID {
+					if player == nil || player.DeiviceID == senderIDKey {
 						continue
 					} else {
 						select {
@@ -184,6 +209,7 @@ func (r *Room) Run() {
 						}
 					}
 				}
+				lanternData[senderIDKey] = append(lanternData[senderIDKey], eventMessage.Latern)
 			case model.MessagesTypeQA:
 				// Broadcast the QA event to all players
 				eventMessage := model.EventMessage{
@@ -258,6 +284,7 @@ func (r *Room) Run() {
 							log.Println("Error Marshalling Event Message: ", err)
 							continue
 						}
+						player.ReadyToMove = false
 						// Send the message to all players
 						select {
 						case player.InChannel <- message:
@@ -301,7 +328,8 @@ func (r *Room) Run() {
 					continue
 				}
 				// Update the assigned sequence for the player
-				if seq, ok := r.AssignedSequence[signal.Target.DeiviceID]; ok {
+				normalizedID := utils.NormalizeDeviceIDKey(signal.Target.DeiviceID)
+				if seq, ok := r.AssignedSequence[normalizedID]; ok {
 					signal.Target.Sequence = seq
 					log.Println("ControlSignalTypeSeqUpdate: Player found in AssignedSequence, Sequence: ", seq)
 				} else {
@@ -328,22 +356,35 @@ func (r *Room) Run() {
 		}
 	}
 }
+
+func (r *Room) flushLanternData(lanternData map[string][]*model.LanternEventMessage) {
+	if r.RoomHash == "" {
+		return
+	}
+	consts.SaveAssignedLanternData(r.RoomID, r.RoomHash, lanternData)
+	r.RoomHash = ""
+	clear(lanternData)
+}
 func (r *Room) UpdateInfo(stop chan struct{}) {
 	ticker := time.NewTicker(time.Second / time.Duration(TickRate))
 	defer ticker.Stop()
-	for range ticker.C {
+	for {
 		select {
 		case <-stop:
 			return
-		default:
+		case <-ticker.C:
 			if len(r.Players) == 0 {
 				continue
 			}
 			//Send Player Position Info to all players
 			playerPostionInfos := make([]PlayerPositionInfo, 0, len(r.Players))
 			for player := range r.Players {
+				deviceIDForWire := player.RawDeviceID
+				if deviceIDForWire == "" {
+					deviceIDForWire = player.DeiviceID
+				}
 				playerPostionInfos = append(playerPostionInfos, PlayerPositionInfo{
-					DeviceID:          player.DeiviceID,
+					DeviceID:          deviceIDForWire,
 					HeadPosition:      player.HeadPosition,
 					HeadForward:       player.HeadForward,
 					LeftHandPosition:  player.LeftHandPosition,
@@ -372,13 +413,13 @@ func (r *Room) UpdateInfo(stop chan struct{}) {
 					r.PlayerUnregister <- player
 				}
 			}
-
 		}
 	}
 }
 func (r *Room) GetPlayerByDeviceID(deviceID string) *Player {
+	normalizedID := utils.NormalizeDeviceIDKey(deviceID)
 	for player := range r.Players {
-		if player.DeiviceID == deviceID {
+		if utils.NormalizeDeviceIDKey(player.DeiviceID) == normalizedID {
 			return player
 		}
 	}

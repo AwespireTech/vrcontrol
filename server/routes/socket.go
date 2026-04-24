@@ -1,11 +1,13 @@
 package routes
 
 import (
-	"github.com/gin-gonic/gin"
 	"vrcontrol/server/controller"
+
+	"github.com/gin-gonic/gin"
 )
 
-func SetClientWsRoutes(router *gin.RouterGroup) {
+// SetSocketRoutes defines websocket endpoints.
+func SetSocketRoutes(router *gin.RouterGroup) {
 	router.GET("/client/:clientId", controller.ConnectToRoomSocket)
 	router.GET("/control/:roomId", controller.ConnectToRoomControlSocket)
 }

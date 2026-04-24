@@ -1,7 +1,9 @@
 package consts
 
 import (
+	"log"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -11,7 +13,7 @@ var (
 	WriteWait = 2 * time.Second
 
 	// Time allowed to read the next pong message from the peer.
-	PongWait = 5 * time.Second
+	PongWait = 8 * time.Second
 
 	// Send pings to peer with this period. Must be less than pongWait.
 	PingPeriod = (PongWait * 9) / 10
@@ -21,7 +23,7 @@ var (
 
 	BufferSize = MaxMessageSize * 32
 
-	//Tick Per Second
+	// Ticks per second.
 	TickRate = 1
 )
 
@@ -49,8 +51,14 @@ func init() {
 	}
 	_tickRate := os.Getenv("SOCKET_TICK_RATE")
 	if _tickRate != "" {
-		if rate, err := time.ParseDuration(_tickRate); err == nil {
-			TickRate = int(rate.Seconds())
+		if rate, err := strconv.Atoi(_tickRate); err == nil {
+			if rate > 0 {
+				TickRate = rate
+			} else {
+				log.Printf("invalid SOCKET_TICK_RATE %q: must be > 0; using default %d", _tickRate, TickRate)
+			}
+		} else {
+			log.Printf("invalid SOCKET_TICK_RATE %q: %v; using default %d", _tickRate, err, TickRate)
 		}
 	}
 }

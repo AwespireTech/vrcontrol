@@ -3,10 +3,11 @@ package main
 import (
 	"log"
 
+	apiroutes "vrcontrol/server/routes"
+	"vrcontrol/server/utilities"
+
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	"vrcontrol/server/routes"
-	"vrcontrol/server/utilities"
 )
 
 func main() {
@@ -26,11 +27,8 @@ func createRouter() *gin.Engine {
 	router.Use(gin.Recovery())
 	router.Use(utilities.CORSall)
 
-	ws := router.Group("/ws")
-	routes.SetClientWsRoutes(ws)
-	simple := router.Group("/simple")
-	routes.SetSimpleControlRoutes(simple)
-	control := router.Group("/control")
-	routes.SetControlRoute(control)
+	// API 路由
+	apiroutes.SetupRoutes(router, "./data")
+
 	return router
 }
