@@ -49,8 +49,21 @@ const DEVICE_CARD_INTERACTIVE_SELECTOR = [
   '[role="link"]',
 ].join(", ")
 
-function shouldIgnoreDeviceCardSelectionTarget(target: EventTarget | null) {
-  return target instanceof HTMLElement && !!target.closest(DEVICE_CARD_INTERACTIVE_SELECTOR)
+function shouldIgnoreDeviceCardSelectionEvent(
+  target: EventTarget | null,
+  currentTarget: HTMLElement,
+) {
+  if (!(target instanceof Node)) {
+    return false
+  }
+
+  const targetElement = target instanceof HTMLElement ? target : target.parentElement
+  if (!targetElement) {
+    return false
+  }
+
+  const interactiveTarget = targetElement.closest(DEVICE_CARD_INTERACTIVE_SELECTOR)
+  return !!interactiveTarget && interactiveTarget !== currentTarget
 }
 
 export default function RoomControlPage() {
@@ -970,7 +983,7 @@ export default function RoomControlPage() {
                     data-device-id={deviceId}
                     aria-selected={isSelectedDevice}
                     onClick={(event) => {
-                      if (shouldIgnoreDeviceCardSelectionTarget(event.target)) {
+                      if (shouldIgnoreDeviceCardSelectionEvent(event.target, event.currentTarget)) {
                         return
                       }
 
@@ -981,7 +994,7 @@ export default function RoomControlPage() {
                         return
                       }
 
-                      if (shouldIgnoreDeviceCardSelectionTarget(event.target)) {
+                      if (shouldIgnoreDeviceCardSelectionEvent(event.target, event.currentTarget)) {
                         return
                       }
 

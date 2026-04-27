@@ -13,8 +13,21 @@ const LIVE_STREAM_INTERACTIVE_SELECTOR = [
   '[role="link"]',
 ].join(", ")
 
-function shouldIgnoreLiveStreamSelectionTarget(target: EventTarget | null) {
-  return target instanceof HTMLElement && !!target.closest(LIVE_STREAM_INTERACTIVE_SELECTOR)
+function shouldIgnoreLiveStreamSelectionEvent(
+  target: EventTarget | null,
+  currentTarget: HTMLElement,
+) {
+  if (!(target instanceof Node)) {
+    return false
+  }
+
+  const targetElement = target instanceof HTMLElement ? target : target.parentElement
+  if (!targetElement) {
+    return false
+  }
+
+  const interactiveTarget = targetElement.closest(LIVE_STREAM_INTERACTIVE_SELECTOR)
+  return !!interactiveTarget && interactiveTarget !== currentTarget
 }
 
 type LiveStreamStageProps = {
@@ -58,7 +71,7 @@ export default function LiveStreamStage({
           onClick={
             onSelectDevice
               ? (event) => {
-                  if (shouldIgnoreLiveStreamSelectionTarget(event.target)) {
+                  if (shouldIgnoreLiveStreamSelectionEvent(event.target, event.currentTarget)) {
                     return
                   }
 
@@ -73,7 +86,7 @@ export default function LiveStreamStage({
                     return
                   }
 
-                  if (shouldIgnoreLiveStreamSelectionTarget(event.target)) {
+                  if (shouldIgnoreLiveStreamSelectionEvent(event.target, event.currentTarget)) {
                     return
                   }
 
