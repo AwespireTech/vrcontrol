@@ -274,10 +274,10 @@ export default function RoomMinimap({
                     type="button"
                     aria-pressed={selectedDeviceId === marker.deviceId}
                     onClick={() => onSelectDevice?.(marker.deviceId)}
-                    className={`w-full rounded-xl border px-3 py-2 text-left transition ${
+                    className={`selection-surface w-full rounded-xl px-3 py-2 text-left ${
                       selectedDeviceId === marker.deviceId
-                        ? "border-primary bg-primary/10 shadow-[0_0_0_1px_rgba(96,165,250,0.35)]"
-                        : "border-border/50 bg-background/20 hover:border-primary/40"
+                        ? "selection-surface-selected"
+                        : "selection-surface-interactive"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">

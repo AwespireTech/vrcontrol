@@ -38,12 +38,12 @@ export default function LiveStreamStage({
           key={windowState.deviceId}
           data-device-id={windowState.deviceId}
           aria-selected={selectedDeviceId === windowState.deviceId}
-          className={`${
+          className={`selection-surface ${
             layout === "grid" ? "live-stream-inline-grid__item" : "live-stream-inline-stack__item"
           } ${
             selectedDeviceId === windowState.deviceId
-              ? "rounded-[1.25rem] border border-primary/80 bg-primary/10 p-1 shadow-[0_0_0_1px_rgba(96,165,250,0.32),0_16px_42px_-28px_rgba(96,165,250,0.95)]"
-              : ""
+              ? "selection-surface-selected rounded-[1.25rem] p-1"
+              : "rounded-[1.25rem] p-1"
           }`}
         >
           <LiveStreamPlayer

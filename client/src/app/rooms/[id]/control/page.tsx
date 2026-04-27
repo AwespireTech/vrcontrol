@@ -913,9 +913,9 @@ export default function RoomControlPage() {
                     key={deviceId}
                     data-device-id={deviceId}
                     aria-selected={isSelectedDevice}
-                    className={`surface-panel p-4 transition ${
+                    className={`surface-panel selection-surface p-4 ${
                       isSelectedDevice
-                        ? "border-primary bg-primary/10 shadow-[0_0_0_1px_rgba(96,165,250,0.32),0_18px_38px_-28px_rgba(96,165,250,0.85)]"
+                        ? "selection-surface-selected"
                         : ""
                     }`}
                   >
