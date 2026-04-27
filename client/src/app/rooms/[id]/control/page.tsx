@@ -904,9 +904,19 @@ export default function RoomControlPage() {
                   isAdbOnline && device?.temperature !== undefined && device?.temperature !== null
                     ? `${device.temperature}°C`
                     : "—"
+                const isSelectedDevice = selectedDeviceId === deviceId
 
                 return (
-                  <div key={deviceId} className="surface-panel p-4">
+                  <div
+                    key={deviceId}
+                    data-device-id={deviceId}
+                    aria-selected={isSelectedDevice}
+                    className={`surface-panel p-4 transition ${
+                      isSelectedDevice
+                        ? "border-primary bg-primary/10 shadow-[0_0_0_1px_rgba(96,165,250,0.32),0_18px_38px_-28px_rgba(96,165,250,0.85)]"
+                        : ""
+                    }`}
+                  >
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="space-y-1">
                         <div className="text-sm font-semibold text-foreground">{alias}</div>
