@@ -39,6 +39,19 @@ import {
 } from "@/lib/utils/live-stream-windows"
 
 const TotalChapters = 11
+const DEVICE_CARD_INTERACTIVE_SELECTOR = [
+  "button",
+  "input",
+  "select",
+  "textarea",
+  "a",
+  '[role="button"]',
+  '[role="link"]',
+].join(", ")
+
+function shouldIgnoreDeviceCardSelectionTarget(target: EventTarget | null) {
+  return target instanceof HTMLElement && !!target.closest(DEVICE_CARD_INTERACTIVE_SELECTOR)
+}
 
 export default function RoomControlPage() {
   const navigate = useNavigate()
@@ -921,9 +934,30 @@ export default function RoomControlPage() {
                 return (
                   <div
                     key={deviceId}
+                    role="button"
+                    tabIndex={0}
                     data-device-id={deviceId}
                     aria-selected={isSelectedDevice}
-                    className={`surface-panel selection-surface p-4 ${
+                    onClick={(event) => {
+                      if (shouldIgnoreDeviceCardSelectionTarget(event.target)) {
+                        return
+                      }
+
+                      handleToggleSelectedDevice(deviceId)
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter" && event.key !== " ") {
+                        return
+                      }
+
+                      if (shouldIgnoreDeviceCardSelectionTarget(event.target)) {
+                        return
+                      }
+
+                      event.preventDefault()
+                      handleToggleSelectedDevice(deviceId)
+                    }}
+                    className={`surface-panel selection-surface selection-surface-interactive cursor-pointer p-4 ${
                       isSelectedDevice
                         ? "selection-surface-selected"
                         : ""
