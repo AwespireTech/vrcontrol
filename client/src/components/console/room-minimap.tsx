@@ -1,22 +1,18 @@
 import type { RoomMinimapConfig } from "@/lib/room-minimap/config"
-import type { RoomMinimapMarker } from "@/lib/room-minimap/mappers"
+import type { RoomMinimapDisplayMarker } from "@/lib/room-minimap/display"
 
 type RoomMinimapProps = {
   config: RoomMinimapConfig
-  markers: RoomMinimapMarker[]
+  markers: RoomMinimapDisplayMarker[]
   title?: string
   subtitle?: string
 }
 
-function formatMarkerLabel(marker: RoomMinimapMarker) {
-  if (marker.sequence > 0) {
-    return `P${marker.sequence}`
-  }
-
-  return marker.deviceId.slice(-4).toUpperCase()
+function formatMarkerLabel(marker: RoomMinimapDisplayMarker) {
+  return marker.shortLabel
 }
 
-function getMarkerColorClass(marker: RoomMinimapMarker) {
+function getMarkerColorClass(marker: RoomMinimapDisplayMarker) {
   if (marker.isStale) {
     return "fill-muted stroke-border/70"
   }
