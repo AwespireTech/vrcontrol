@@ -31,6 +31,7 @@ export default function LiveStreamPopupPage() {
   const initialLayout = searchParams.get("layout") === "stack" ? "stack" : "grid"
   const [layout, setLayout] = useState<LiveStreamLayout>(initialLayout)
   const [streams, setStreams] = useState<LiveStreamPopupState["streams"]>([])
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
   const [syncStatus, setSyncStatus] = useState<PopupSyncStatus>("connecting")
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
   const [takeoverReleased, setTakeoverReleased] = useState(false)
@@ -108,6 +109,7 @@ export default function LiveStreamPopupPage() {
       }
 
       setLayout(nextState.layout)
+      setSelectedDeviceId(nextState.selectedDeviceId ?? null)
       setStreams(nextState.streams)
       setTakeoverReleased(false)
       setSourceUnavailable(false)
@@ -223,7 +225,11 @@ export default function LiveStreamPopupPage() {
           </div>
 
           {streams.length > 0 ? (
-            <LiveStreamStage windows={liveWindows} layout={layout} />
+            <LiveStreamStage
+              windows={liveWindows}
+              layout={layout}
+              selectedDeviceId={selectedDeviceId}
+            />
           ) : (
             <div className="live-stream-empty-state">
               {syncStatus === "connecting"

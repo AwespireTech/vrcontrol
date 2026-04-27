@@ -30,6 +30,7 @@ export type LiveStreamPopupState = {
   source?: LiveStreamPopupSource
   roomId?: string
   layout: LiveStreamLayout
+  selectedDeviceId?: string | null
   streams: LiveStreamPopupStream[]
   timestamp: number
 }

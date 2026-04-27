@@ -87,6 +87,7 @@ export default function RoomControlPage() {
       source: "rooms",
       roomId,
       layout: liveStreamLayout,
+      selectedDeviceId,
       streams: liveWindows.map((entry) => ({
         deviceId: entry.deviceId,
         title: entry.title,
@@ -94,7 +95,7 @@ export default function RoomControlPage() {
       })),
       timestamp: Date.now(),
     }
-  }, [liveStreamLayout, liveWindows, roomId])
+  }, [liveStreamLayout, liveWindows, roomId, selectedDeviceId])
 
   const playerByDeviceId = useMemo(() => {
     return new Map(playerData.map((player) => [player.device_id, player]))
