@@ -43,6 +43,14 @@ export type LiveStreamPopupMessage =
       timestamp: number
     }
   | {
+      type: "selection-requested"
+      source?: LiveStreamPopupSource
+      roomId?: string
+      deviceId: string
+      sender: "popup"
+      timestamp: number
+    }
+  | {
       type: "init" | "state-update"
       payload: LiveStreamPopupState
     }
