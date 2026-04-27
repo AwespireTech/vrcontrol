@@ -1,5 +1,6 @@
 import type { RoomMinimapConfig } from "@/lib/room-minimap/config"
 import type { RoomMinimapDisplayMarker } from "@/lib/room-minimap/display"
+import { getAdbStatusBadgeClass, getWsStatusBadgeClass } from "@/lib/utils/device-status"
 
 type RoomMinimapProps = {
   config: RoomMinimapConfig
@@ -260,6 +261,24 @@ export default function RoomMinimap({
                       {marker.position.isOutOfBounds && (
                         <span className="ui-badge ui-badge-danger">out of bounds</span>
                       )}
+                    </div>
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-foreground/55">
+                      <div>
+                        <span className="text-foreground/40">Chapter</span>
+                        <div className="mt-1 text-foreground/75">{marker.chapter || "—"}</div>
+                      </div>
+                      <div>
+                        <span className="text-foreground/40">狀態</span>
+                        <div className="mt-1 text-foreground/75">{marker.readyText}</div>
+                      </div>
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px]">
+                      <span className={`ui-badge ${getAdbStatusBadgeClass(marker.adbStatus)}`}>
+                        ADB {marker.adbStatusText}
+                      </span>
+                      <span className={`ui-badge ${getWsStatusBadgeClass(marker.wsStatus)}`}>
+                        WS {marker.wsStatusText}
+                      </span>
                     </div>
                   </div>
                 ))

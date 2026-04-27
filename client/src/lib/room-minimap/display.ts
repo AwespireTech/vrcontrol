@@ -1,4 +1,5 @@
 import { getDisplayName } from "@/lib/utils/device"
+import { getAdbStatusText, getWsStatusText } from "@/lib/utils/device-status"
 import type { PlayerData } from "@/interfaces/room.interface"
 import type { Device } from "@/services/api-types"
 
@@ -11,6 +12,9 @@ export type RoomMinimapDisplayMarker = RoomMinimapMarker & {
   chapter: number
   adbStatus?: Device["status"]
   wsStatus?: Device["ws_status"]
+  adbStatusText: string
+  wsStatusText: string
+  readyText: string
   hasDeviceMetadata: boolean
 }
 
@@ -65,6 +69,9 @@ export function buildRoomMinimapDisplayMarkers(
       chapter: player?.chapter ?? 0,
       adbStatus: device?.status,
       wsStatus: device?.ws_status,
+      adbStatusText: getAdbStatusText(device?.status),
+      wsStatusText: getWsStatusText(device?.ws_status),
+      readyText: marker.isStale ? "資料過舊" : marker.readyToMove ? "Ready" : "追蹤中",
       hasDeviceMetadata: !!device,
     }
   })
