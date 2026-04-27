@@ -61,9 +61,12 @@ export default function LiveStreamPopupPage() {
   }, [searchParams])
 
   const liveWindows = useMemo(() => mapStreamsToWindows(streams), [streams])
+  const canRequestSelection =
+    popupSource === "rooms" && syncStatus === "ready" && !sourceUnavailable && !takeoverReleased
+
   const handleSelectDevice = useCallback(
     (deviceId: string) => {
-      if (popupSource !== "rooms") {
+      if (!canRequestSelection) {
         return
       }
 
@@ -76,7 +79,7 @@ export default function LiveStreamPopupPage() {
         timestamp: Date.now(),
       })
     },
-    [popupRoomId, popupSource],
+    [canRequestSelection, popupRoomId, popupSource],
   )
 
   useEffect(() => {
@@ -253,7 +256,7 @@ export default function LiveStreamPopupPage() {
               windows={liveWindows}
               layout={layout}
               selectedDeviceId={selectedDeviceId}
-              onSelectDevice={popupSource === "rooms" ? handleSelectDevice : undefined}
+              onSelectDevice={canRequestSelection ? handleSelectDevice : undefined}
             />
           ) : (
             <div className="live-stream-empty-state">
