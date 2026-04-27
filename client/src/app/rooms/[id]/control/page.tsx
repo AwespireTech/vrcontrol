@@ -287,10 +287,6 @@ export default function RoomControlPage() {
           return
         }
 
-        if (!popupTakeoverActive) {
-          return
-        }
-
         if (!displayDeviceIds.includes(message.deviceId)) {
           return
         }
@@ -349,7 +345,6 @@ export default function RoomControlPage() {
     buildLiveStreamPopupState,
     displayDeviceIds,
     handleToggleSelectedDevice,
-    popupTakeoverActive,
     roomId,
   ])
 
