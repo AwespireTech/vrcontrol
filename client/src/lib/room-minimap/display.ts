@@ -22,6 +22,28 @@ function buildFallbackShortLabel(marker: RoomMinimapMarker) {
   return marker.deviceId.slice(-4).toUpperCase()
 }
 
+function buildAliasShortLabel(displayName: string, fallbackLabel: string) {
+  const trimmed = displayName.trim()
+  if (!trimmed) {
+    return fallbackLabel
+  }
+
+  const tokens = trimmed.split(/[\s_-]+/).filter(Boolean)
+  if (tokens.length > 1) {
+    const initials = tokens
+      .slice(0, 3)
+      .map((token) => token[0])
+      .join("")
+      .toUpperCase()
+
+    if (initials.length >= 2) {
+      return initials
+    }
+  }
+
+  return trimmed.length <= 6 ? trimmed : `${trimmed.slice(0, 5)}…`
+}
+
 export function buildRoomMinimapDisplayMarkers(
   markers: RoomMinimapMarker[],
   players: PlayerData[],
@@ -32,12 +54,13 @@ export function buildRoomMinimapDisplayMarkers(
   return markers.map((marker) => {
     const player = playerByDeviceId.get(marker.deviceId)
     const device = deviceMap.get(marker.deviceId)
-    const shortLabel = buildFallbackShortLabel(marker)
+    const fallbackLabel = buildFallbackShortLabel(marker)
+    const displayName = device ? getDisplayName(device) : fallbackLabel
 
     return {
       ...marker,
-      displayName: device ? getDisplayName(device) : shortLabel,
-      shortLabel,
+      displayName,
+      shortLabel: buildAliasShortLabel(displayName, fallbackLabel),
       secondaryLabel: marker.deviceId,
       chapter: player?.chapter ?? 0,
       adbStatus: device?.status,

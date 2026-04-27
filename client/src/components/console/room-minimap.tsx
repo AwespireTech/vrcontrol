@@ -153,6 +153,7 @@ export default function RoomMinimap({
 
                   return (
                     <g key={marker.deviceId}>
+                      <title>{`${marker.displayName} (${marker.secondaryLabel})`}</title>
                       {marker.heading && (
                         <line
                           x1={x}
@@ -236,9 +237,9 @@ export default function RoomMinimap({
                   >
                     <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="font-semibold text-foreground">{formatMarkerLabel(marker)}</div>
+                      <div className="truncate font-semibold text-foreground">{marker.displayName}</div>
                       <div className="truncate font-mono text-[11px] text-foreground/45">
-                        {marker.deviceId}
+                        {marker.secondaryLabel}
                       </div>
                     </div>
                     <div className="text-right text-[11px] text-foreground/50">
