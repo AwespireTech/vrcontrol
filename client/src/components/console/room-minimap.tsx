@@ -30,6 +30,8 @@ function getMarkerColorClass(marker: RoomMinimapDisplayMarker) {
 export default function RoomMinimap({
   config,
   markers,
+  selectedDeviceId,
+  onSelectDevice,
   title = "房間平面圖",
   subtitle = "固定 6 x 6 俯視圖，中心點為原點",
 }: RoomMinimapProps) {
@@ -153,18 +155,47 @@ export default function RoomMinimap({
                   const headingY = marker.heading ? y + marker.heading.dy * 100 : y
                   const markerColorClass = getMarkerColorClass(marker)
                   const label = formatMarkerLabel(marker)
+                  const isSelected = selectedDeviceId === marker.deviceId
 
                   return (
-                    <g key={marker.deviceId}>
+                    <g
+                      key={marker.deviceId}
+                      role="button"
+                      tabIndex={0}
+                      aria-pressed={isSelected}
+                      className="cursor-pointer outline-none"
+                      onClick={() => onSelectDevice?.(marker.deviceId)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault()
+                          onSelectDevice?.(marker.deviceId)
+                        }
+                      }}
+                    >
                       <title>{`${marker.displayName} (${marker.secondaryLabel})`}</title>
+                      {isSelected && (
+                        <circle
+                          cx={x}
+                          cy={y}
+                          r="6.1"
+                          className="fill-primary/10 stroke-primary"
+                          strokeWidth="1.1"
+                        />
+                      )}
                       {marker.heading && (
                         <line
                           x1={x}
                           y1={y}
                           x2={headingX}
                           y2={headingY}
-                          className={marker.isStale ? "stroke-muted/80" : "stroke-foreground/80"}
-                          strokeWidth="1.4"
+                          className={
+                            isSelected
+                              ? "stroke-primary"
+                              : marker.isStale
+                                ? "stroke-muted/80"
+                                : "stroke-foreground/80"
+                          }
+                          strokeWidth={isSelected ? "1.8" : "1.4"}
                           strokeLinecap="round"
                         />
                       )}
@@ -173,7 +204,7 @@ export default function RoomMinimap({
                         cy={y}
                         r="2.7"
                         className={`${markerColorClass} ${marker.position.isOutOfBounds ? "opacity-70" : ""}`}
-                        strokeWidth="1.25"
+                        strokeWidth={isSelected ? "1.8" : "1.25"}
                       />
                       {marker.position.isOutOfBounds && (
                         <circle
@@ -190,7 +221,11 @@ export default function RoomMinimap({
                           x={x}
                           y={Math.max(5, y - 4)}
                           textAnchor="middle"
-                          className="fill-foreground text-[4px] font-semibold tracking-[0.18em]"
+                          className={
+                            isSelected
+                              ? "fill-primary text-[4px] font-semibold tracking-[0.18em]"
+                              : "fill-foreground text-[4px] font-semibold tracking-[0.18em]"
+                          }
                         >
                           {label}
                         </text>
@@ -234,9 +269,16 @@ export default function RoomMinimap({
                 <div className="text-foreground/50">等待房間 WebSocket 回傳玩家資料。</div>
               ) : (
                 markers.map((marker) => (
-                  <div
+                  <button
                     key={marker.deviceId}
-                    className="rounded-xl border border-border/50 bg-background/20 px-3 py-2"
+                    type="button"
+                    aria-pressed={selectedDeviceId === marker.deviceId}
+                    onClick={() => onSelectDevice?.(marker.deviceId)}
+                    className={`w-full rounded-xl border px-3 py-2 text-left transition ${
+                      selectedDeviceId === marker.deviceId
+                        ? "border-primary bg-primary/10 shadow-[0_0_0_1px_rgba(96,165,250,0.35)]"
+                        : "border-border/50 bg-background/20 hover:border-primary/40"
+                    }`}
                   >
                     <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
@@ -282,7 +324,7 @@ export default function RoomMinimap({
                         WS {marker.wsStatusText}
                       </span>
                     </div>
-                  </div>
+                  </button>
                 ))
               )}
             </div>
