@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import LiveStreamStage from "@/components/console/live-stream-stage"
 import type { LiveStreamLayout } from "@/components/console/live-stream-stage"
@@ -37,6 +37,13 @@ export default function LiveStreamPopupPage() {
   const [takeoverReleased, setTakeoverReleased] = useState(false)
   const [sourceUnavailable, setSourceUnavailable] = useState(false)
   const channelRef = useRef<BroadcastChannel | null>(null)
+  const popupSource =
+    searchParams.get("source") === "devices"
+      ? "devices"
+      : searchParams.get("source") === "rooms"
+        ? "rooms"
+        : undefined
+  const popupRoomId = searchParams.get("roomId") || undefined
 
   const sourceLabel = useMemo(() => {
     const source = searchParams.get("source")
@@ -54,6 +61,23 @@ export default function LiveStreamPopupPage() {
   }, [searchParams])
 
   const liveWindows = useMemo(() => mapStreamsToWindows(streams), [streams])
+  const handleSelectDevice = useCallback(
+    (deviceId: string) => {
+      if (popupSource !== "rooms") {
+        return
+      }
+
+      postLiveStreamPopupMessage(channelRef.current, {
+        type: "selection-requested",
+        source: popupSource,
+        roomId: popupRoomId,
+        deviceId,
+        sender: "popup",
+        timestamp: Date.now(),
+      })
+    },
+    [popupRoomId, popupSource],
+  )
 
   useEffect(() => {
     const channel = createLiveStreamPopupChannel()
@@ -229,6 +253,7 @@ export default function LiveStreamPopupPage() {
               windows={liveWindows}
               layout={layout}
               selectedDeviceId={selectedDeviceId}
+              onSelectDevice={popupSource === "rooms" ? handleSelectDevice : undefined}
             />
           ) : (
             <div className="live-stream-empty-state">
