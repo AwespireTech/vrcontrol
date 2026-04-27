@@ -78,6 +78,7 @@ export default function RoomControlPage() {
   const [targetMonitorIndex, setTargetMonitorIndex] = useState(0)
   const [liveWindows, setLiveWindows] = useState<LiveStreamWindowState[]>([])
   const [liveStreamLayout, setLiveStreamLayout] = useState<LiveStreamLayout>("grid")
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
   const [popupTakeoverActive, setPopupTakeoverActive] = useState(false)
   const popupChannelRef = useRef<BroadcastChannel | null>(null)
 
@@ -142,6 +143,10 @@ export default function RoomControlPage() {
     const found = roomList.find((room) => room.value === roomId)
     return found?.label || roomId
   }, [roomId, roomList])
+
+  const handleToggleSelectedDevice = useCallback((deviceId: string) => {
+    setSelectedDeviceId((current) => (current === deviceId ? null : deviceId))
+  }, [])
 
   const loadControlData = useCallback(async () => {
     try {
@@ -802,6 +807,8 @@ export default function RoomControlPage() {
             <RoomMinimap
               config={minimapConfig}
               markers={minimapMarkers}
+              selectedDeviceId={selectedDeviceId}
+              onSelectDevice={handleToggleSelectedDevice}
               subtitle="使用 head_position / head_forward 的 xz 平面投影"
             />
           </div>

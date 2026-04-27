@@ -5,6 +5,8 @@ import { getAdbStatusBadgeClass, getWsStatusBadgeClass } from "@/lib/utils/devic
 type RoomMinimapProps = {
   config: RoomMinimapConfig
   markers: RoomMinimapDisplayMarker[]
+  selectedDeviceId?: string | null
+  onSelectDevice?: (deviceId: string) => void
   title?: string
   subtitle?: string
 }
