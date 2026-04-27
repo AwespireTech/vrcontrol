@@ -99,11 +99,6 @@ export default function RoomControlPage() {
     return new Map(playerData.map((player) => [player.device_id, player]))
   }, [playerData])
 
-  const minimapMarkers = useMemo(() => {
-    const spatialMarkers = buildRoomMinimapMarkers(playerData, minimapConfig)
-    return buildRoomMinimapDisplayMarkers(spatialMarkers, playerData, deviceMap)
-  }, [deviceMap, minimapConfig, playerData])
-
   const displayDeviceIds = useMemo(() => {
     const ids = new Set<string>()
     roomDeviceIds.forEach((id) => ids.add(id))
@@ -125,6 +120,23 @@ export default function RoomControlPage() {
     })
     return list
   }, [deviceMap, playerByDeviceId, playerData, roomDeviceIds])
+
+  const minimapMarkers = useMemo(() => {
+    const spatialMarkers = buildRoomMinimapMarkers(playerData, minimapConfig)
+    const markers = buildRoomMinimapDisplayMarkers(spatialMarkers, playerData, deviceMap)
+    const markerOrder = new Map(displayDeviceIds.map((deviceId, index) => [deviceId, index]))
+
+    return markers.sort((a, b) => {
+      const orderA = markerOrder.get(a.deviceId) ?? Number.MAX_SAFE_INTEGER
+      const orderB = markerOrder.get(b.deviceId) ?? Number.MAX_SAFE_INTEGER
+
+      if (orderA !== orderB) {
+        return orderA - orderB
+      }
+
+      return a.displayName.localeCompare(b.displayName)
+    })
+  }, [deviceMap, displayDeviceIds, minimapConfig, playerData])
 
   const currentRoomName = useMemo(() => {
     const found = roomList.find((room) => room.value === roomId)

@@ -226,7 +226,7 @@ export default function RoomMinimap({
           </div>
 
           <div className="surface-panel p-3">
-            <div className="text-[11px] uppercase tracking-wide text-foreground/45">玩家摘要</div>
+            <div className="text-[11px] uppercase tracking-wide text-foreground/45">設備對照</div>
             <div className="mt-2 space-y-2 text-xs text-foreground/70">
               {markers.length === 0 ? (
                 <div className="text-foreground/50">等待房間 WebSocket 回傳玩家資料。</div>
