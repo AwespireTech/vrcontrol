@@ -265,7 +265,7 @@ export default function RoomMinimap({
                     <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-foreground/55">
                       <div>
                         <span className="text-foreground/40">Chapter</span>
-                        <div className="mt-1 text-foreground/75">{marker.chapter || "—"}</div>
+                        <div className="mt-1 text-foreground/75">{marker.chapter}</div>
                       </div>
                       <div>
                         <span className="text-foreground/40">狀態</span>

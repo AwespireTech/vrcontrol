@@ -59,7 +59,7 @@ export function buildRoomMinimapDisplayMarkers(
     const player = playerByDeviceId.get(marker.deviceId)
     const device = deviceMap.get(marker.deviceId)
     const fallbackLabel = buildFallbackShortLabel(marker)
-    const displayName = device ? getDisplayName(device) : fallbackLabel
+    const displayName = device ? getDisplayName(device) : marker.deviceId
 
     return {
       ...marker,
