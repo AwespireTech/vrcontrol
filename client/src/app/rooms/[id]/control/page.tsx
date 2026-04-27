@@ -330,6 +330,16 @@ export default function RoomControlPage() {
     }
   }, [moveState])
 
+  useEffect(() => {
+    if (!selectedDeviceId) {
+      return
+    }
+
+    if (!displayDeviceIds.includes(selectedDeviceId)) {
+      setSelectedDeviceId(null)
+    }
+  }, [displayDeviceIds, selectedDeviceId])
+
   const handleChangeSequence = async (player: string, seq: number) => {
     if (!roomId) return
     setSequencePendingIds((prev) => {
