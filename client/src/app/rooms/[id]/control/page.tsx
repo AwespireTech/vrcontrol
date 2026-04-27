@@ -871,6 +871,7 @@ export default function RoomControlPage() {
               <LiveStreamStage
                 windows={liveWindows}
                 layout={liveStreamLayout}
+                selectedDeviceId={selectedDeviceId}
                 onClose={handleCloseLiveStream}
               />
             ) : (
