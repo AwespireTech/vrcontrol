@@ -261,6 +261,23 @@ export default function RoomControlPage() {
     popupChannelRef.current = channel
 
     const unsubscribe = subscribeLiveStreamPopupChannel(channel, (message) => {
+      if (message.type === "selection-requested") {
+        if (message.source && message.source !== "rooms") {
+          return
+        }
+
+        if (message.roomId && message.roomId !== roomId) {
+          return
+        }
+
+        if (!displayDeviceIds.includes(message.deviceId)) {
+          return
+        }
+
+        handleToggleSelectedDevice(message.deviceId)
+        return
+      }
+
       if (message.type === "popup-ready") {
         if (message.source && message.source !== "rooms") {
           return
@@ -307,7 +324,7 @@ export default function RoomControlPage() {
       unsubscribe()
       channel?.close()
     }
-  }, [buildLiveStreamPopupState, roomId])
+  }, [buildLiveStreamPopupState, displayDeviceIds, handleToggleSelectedDevice, roomId])
 
   useEffect(() => {
     postLiveStreamPopupMessage(popupChannelRef.current, {
