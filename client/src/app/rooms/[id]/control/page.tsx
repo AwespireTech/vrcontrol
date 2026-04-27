@@ -940,6 +940,7 @@ export default function RoomControlPage() {
                 windows={liveWindows}
                 layout={liveStreamLayout}
                 selectedDeviceId={selectedDeviceId}
+                onSelectDevice={handleToggleSelectedDevice}
                 onClose={handleCloseLiveStream}
               />
             ) : (
