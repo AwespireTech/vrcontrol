@@ -8,6 +8,7 @@ import RoomMinimap from "@/components/console/room-minimap"
 import LiveStreamTakeoverPlaceholder from "@/components/console/live-stream-takeover-placeholder"
 import type { LiveStreamLayout } from "@/components/console/live-stream-stage"
 import { useRoomMinimapConfig } from "@/hooks/useRoomMinimapConfig"
+import { buildRoomMinimapDisplayMarkers } from "@/lib/room-minimap/display"
 import { buildRoomMinimapMarkers } from "@/lib/room-minimap/mappers"
 import { actionApi, controlApi, deviceApi, roomApi, scrcpyApi, simpleApi } from "@/services/api"
 import { DEVICE_STATUS, type Action, type Device } from "@/services/api-types"
@@ -92,8 +93,9 @@ export default function RoomControlPage() {
   }, [playerData])
 
   const minimapMarkers = useMemo(() => {
-    return buildRoomMinimapMarkers(playerData, minimapConfig)
-  }, [minimapConfig, playerData])
+    const spatialMarkers = buildRoomMinimapMarkers(playerData, minimapConfig)
+    return buildRoomMinimapDisplayMarkers(spatialMarkers, playerData, deviceMap)
+  }, [deviceMap, minimapConfig, playerData])
 
   const displayDeviceIds = useMemo(() => {
     const ids = new Set<string>()
