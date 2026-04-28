@@ -87,14 +87,17 @@ export default function DevicesPage() {
     return {
       source: "devices",
       layout: liveStreamLayout,
-      streams: liveWindows.map((entry) => ({
-        deviceId: entry.deviceId,
-        title: entry.title,
-        subtitle: entry.subtitle,
-      })),
+      takeoverActive: popupTakeoverActive,
+      streams: popupTakeoverActive
+        ? liveWindows.map((entry) => ({
+            deviceId: entry.deviceId,
+            title: entry.title,
+            subtitle: entry.subtitle,
+          }))
+        : [],
       timestamp: Date.now(),
     }
-  }, [liveStreamLayout, liveWindows])
+  }, [liveStreamLayout, liveWindows, popupTakeoverActive])
 
   useEffect(() => {
     const channel = createLiveStreamPopupChannel()

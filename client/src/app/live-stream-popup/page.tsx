@@ -32,6 +32,7 @@ export default function LiveStreamPopupPage() {
   const [layout, setLayout] = useState<LiveStreamLayout>(initialLayout)
   const [streams, setStreams] = useState<LiveStreamPopupState["streams"]>([])
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
+  const [takeoverActive, setTakeoverActive] = useState(false)
   const [syncStatus, setSyncStatus] = useState<PopupSyncStatus>("connecting")
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
   const [takeoverReleased, setTakeoverReleased] = useState(false)
@@ -62,7 +63,11 @@ export default function LiveStreamPopupPage() {
 
   const liveWindows = useMemo(() => mapStreamsToWindows(streams), [streams])
   const canRequestSelection =
-    popupSource === "rooms" && syncStatus === "ready" && !sourceUnavailable && !takeoverReleased
+    popupSource === "rooms" &&
+    takeoverActive &&
+    syncStatus === "ready" &&
+    !sourceUnavailable &&
+    !takeoverReleased
 
   const handleSelectDevice = useCallback(
     (deviceId: string) => {
@@ -100,6 +105,7 @@ export default function LiveStreamPopupPage() {
         }
 
         setStreams([])
+        setTakeoverActive(false)
         setTakeoverReleased(true)
         setSourceUnavailable(false)
         setSyncStatus("waiting-data")
@@ -136,6 +142,7 @@ export default function LiveStreamPopupPage() {
       }
 
       setLayout(nextState.layout)
+  setTakeoverActive(nextState.takeoverActive)
       setSelectedDeviceId(nextState.selectedDeviceId ?? null)
       setStreams(nextState.takeoverActive ? nextState.streams : [])
       setTakeoverReleased((current) => (nextState.takeoverActive ? false : current))
