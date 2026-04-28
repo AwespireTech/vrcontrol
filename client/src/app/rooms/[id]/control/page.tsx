@@ -113,15 +113,18 @@ export default function RoomControlPage() {
       source: "rooms",
       roomId,
       layout: liveStreamLayout,
+      takeoverActive: popupTakeoverActive,
       selectedDeviceId,
-      streams: liveWindows.map((entry) => ({
-        deviceId: entry.deviceId,
-        title: entry.title,
-        subtitle: entry.subtitle,
-      })),
+      streams: popupTakeoverActive
+        ? liveWindows.map((entry) => ({
+            deviceId: entry.deviceId,
+            title: entry.title,
+            subtitle: entry.subtitle,
+          }))
+        : [],
       timestamp: Date.now(),
     }
-  }, [liveStreamLayout, liveWindows, roomId, selectedDeviceId])
+  }, [liveStreamLayout, liveWindows, popupTakeoverActive, roomId, selectedDeviceId])
 
   const playerByDeviceId = useMemo(() => {
     return new Map(playerData.map((player) => [player.device_id, player]))

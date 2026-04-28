@@ -137,8 +137,8 @@ export default function LiveStreamPopupPage() {
 
       setLayout(nextState.layout)
       setSelectedDeviceId(nextState.selectedDeviceId ?? null)
-      setStreams(nextState.streams)
-      setTakeoverReleased(false)
+      setStreams(nextState.takeoverActive ? nextState.streams : [])
+      setTakeoverReleased((current) => (nextState.takeoverActive ? false : current))
       setSourceUnavailable(false)
       setLastUpdatedAt(nextState.timestamp)
       setSyncStatus("ready")
