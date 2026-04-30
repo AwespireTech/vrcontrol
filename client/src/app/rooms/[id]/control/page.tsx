@@ -4,8 +4,19 @@ import { DEFAULT_POLL_INTERVAL_SECONDS, LIVE_VIEW_MAX_STREAMS, SERVER } from "@/
 import Button from "@/components/button"
 import PlayerInfo from "@/components/player-info"
 import LiveStreamStage from "@/components/console/live-stream-stage"
+import RoomMinimap from "@/components/console/room-minimap"
 import LiveStreamTakeoverPlaceholder from "@/components/console/live-stream-takeover-placeholder"
 import type { LiveStreamLayout } from "@/components/console/live-stream-stage"
+import { useRoomMinimapConfig } from "@/hooks/useRoomMinimapConfig"
+import { buildRoomMinimapDisplayMarkers } from "@/lib/room-minimap/display"
+import { buildRoomMinimapMarkers } from "@/lib/room-minimap/mappers"
+import {
+  getAdbStatusBadgeClass,
+  getAdbStatusText,
+  getWsStatusBadgeClass,
+  getWsStatusText,
+  isSupportedDeviceStatus,
+} from "@/lib/utils/device-status"
 import { actionApi, controlApi, deviceApi, roomApi, scrcpyApi, simpleApi } from "@/services/api"
 import { DEVICE_STATUS, type Action, type Device } from "@/services/api-types"
 import { getDisplayName } from "@/lib/utils/device"
@@ -28,6 +39,32 @@ import {
 } from "@/lib/utils/live-stream-windows"
 
 const TotalChapters = 11
+const DEVICE_CARD_INTERACTIVE_SELECTOR = [
+  "button",
+  "input",
+  "select",
+  "textarea",
+  "a",
+  '[role="button"]',
+  '[role="link"]',
+].join(", ")
+
+function shouldIgnoreDeviceCardSelectionEvent(
+  target: EventTarget | null,
+  currentTarget: HTMLElement,
+) {
+  if (!(target instanceof Node)) {
+    return false
+  }
+
+  const targetElement = target instanceof HTMLElement ? target : target.parentElement
+  if (!targetElement) {
+    return false
+  }
+
+  const interactiveTarget = targetElement.closest(DEVICE_CARD_INTERACTIVE_SELECTOR)
+  return !!interactiveTarget && interactiveTarget !== currentTarget
+}
 
 export default function RoomControlPage() {
   const navigate = useNavigate()
@@ -36,6 +73,7 @@ export default function RoomControlPage() {
 
   const wsProtocol = SERVER.startsWith("https") ? "wss" : "ws"
   const host = SERVER.replace(/^https?:\/\//, "")
+  const minimapConfig = useRoomMinimapConfig(roomId)
 
   const [playerData, setPlayerData] = useState<PlayerData[]>([])
   const [deviceMap, setDeviceMap] = useState<Map<string, Device>>(new Map())
@@ -66,6 +104,7 @@ export default function RoomControlPage() {
   const [targetMonitorIndex, setTargetMonitorIndex] = useState(0)
   const [liveWindows, setLiveWindows] = useState<LiveStreamWindowState[]>([])
   const [liveStreamLayout, setLiveStreamLayout] = useState<LiveStreamLayout>("grid")
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
   const [popupTakeoverActive, setPopupTakeoverActive] = useState(false)
   const popupChannelRef = useRef<BroadcastChannel | null>(null)
 
@@ -74,14 +113,18 @@ export default function RoomControlPage() {
       source: "rooms",
       roomId,
       layout: liveStreamLayout,
-      streams: liveWindows.map((entry) => ({
-        deviceId: entry.deviceId,
-        title: entry.title,
-        subtitle: entry.subtitle,
-      })),
+      takeoverActive: popupTakeoverActive,
+      selectedDeviceId,
+      streams: popupTakeoverActive
+        ? liveWindows.map((entry) => ({
+            deviceId: entry.deviceId,
+            title: entry.title,
+            subtitle: entry.subtitle,
+          }))
+        : [],
       timestamp: Date.now(),
     }
-  }, [liveStreamLayout, liveWindows, roomId])
+  }, [liveStreamLayout, liveWindows, popupTakeoverActive, roomId, selectedDeviceId])
 
   const playerByDeviceId = useMemo(() => {
     return new Map(playerData.map((player) => [player.device_id, player]))
@@ -109,10 +152,31 @@ export default function RoomControlPage() {
     return list
   }, [deviceMap, playerByDeviceId, playerData, roomDeviceIds])
 
+  const minimapMarkers = useMemo(() => {
+    const spatialMarkers = buildRoomMinimapMarkers(playerData, minimapConfig)
+    const markers = buildRoomMinimapDisplayMarkers(spatialMarkers, playerData, deviceMap)
+    const markerOrder = new Map(displayDeviceIds.map((deviceId, index) => [deviceId, index]))
+
+    return markers.sort((a, b) => {
+      const orderA = markerOrder.get(a.deviceId) ?? Number.MAX_SAFE_INTEGER
+      const orderB = markerOrder.get(b.deviceId) ?? Number.MAX_SAFE_INTEGER
+
+      if (orderA !== orderB) {
+        return orderA - orderB
+      }
+
+      return a.displayName.localeCompare(b.displayName)
+    })
+  }, [deviceMap, displayDeviceIds, minimapConfig, playerData])
+
   const currentRoomName = useMemo(() => {
     const found = roomList.find((room) => room.value === roomId)
     return found?.label || roomId
   }, [roomId, roomList])
+
+  const handleToggleSelectedDevice = useCallback((deviceId: string) => {
+    setSelectedDeviceId((current) => (current === deviceId ? null : deviceId))
+  }, [])
 
   const loadControlData = useCallback(async () => {
     try {
@@ -213,6 +277,27 @@ export default function RoomControlPage() {
     popupChannelRef.current = channel
 
     const unsubscribe = subscribeLiveStreamPopupChannel(channel, (message) => {
+      if (message.type === "selection-requested") {
+        if (message.sender !== "popup") {
+          return
+        }
+
+        if (message.source && message.source !== "rooms") {
+          return
+        }
+
+        if (message.roomId && message.roomId !== roomId) {
+          return
+        }
+
+        if (!displayDeviceIds.includes(message.deviceId)) {
+          return
+        }
+
+        handleToggleSelectedDevice(message.deviceId)
+        return
+      }
+
       if (message.type === "popup-ready") {
         if (message.source && message.source !== "rooms") {
           return
@@ -259,7 +344,12 @@ export default function RoomControlPage() {
       unsubscribe()
       channel?.close()
     }
-  }, [buildLiveStreamPopupState, roomId])
+  }, [
+    buildLiveStreamPopupState,
+    displayDeviceIds,
+    handleToggleSelectedDevice,
+    roomId,
+  ])
 
   useEffect(() => {
     postLiveStreamPopupMessage(popupChannelRef.current, {
@@ -294,6 +384,16 @@ export default function RoomControlPage() {
       return () => clearTimeout(timer)
     }
   }, [moveState])
+
+  useEffect(() => {
+    if (!selectedDeviceId) {
+      return
+    }
+
+    if (!displayDeviceIds.includes(selectedDeviceId)) {
+      setSelectedDeviceId(null)
+    }
+  }, [displayDeviceIds, selectedDeviceId])
 
   const handleChangeSequence = async (player: string, seq: number) => {
     if (!roomId) return
@@ -466,66 +566,6 @@ export default function RoomControlPage() {
       roomId,
       timestamp: Date.now(),
     })
-  }
-
-  const getAdbStatusText = (status?: Device["status"]) => {
-    switch (status) {
-      case DEVICE_STATUS.ONLINE:
-        return "在線"
-      case DEVICE_STATUS.OFFLINE:
-        return "離線"
-      case DEVICE_STATUS.CONNECTING:
-        return "連線中"
-      case DEVICE_STATUS.ERROR:
-        return "錯誤"
-      case DEVICE_STATUS.DISCONNECTED:
-        return "手動斷開"
-      default:
-        return "未知"
-    }
-  }
-
-  const getAdbStatusBadgeClass = (status?: Device["status"]) => {
-    switch (status) {
-      case DEVICE_STATUS.ONLINE:
-        return "ui-badge-success"
-      case DEVICE_STATUS.CONNECTING:
-        return "ui-badge-warning"
-      case DEVICE_STATUS.ERROR:
-        return "ui-badge-danger"
-      case DEVICE_STATUS.OFFLINE:
-      case DEVICE_STATUS.DISCONNECTED:
-      default:
-        return "ui-badge-muted"
-    }
-  }
-
-  const getWsStatusText = (status?: Device["ws_status"]) => {
-    switch (status) {
-      case "connected":
-        return "已連線"
-      case "disconnected":
-        return "已中斷"
-      default:
-        return "未知"
-    }
-  }
-
-  const getWsStatusBadgeClass = (status?: Device["ws_status"]) => {
-    switch (status) {
-      case "connected":
-        return "ui-badge-success"
-      case "disconnected":
-        return "ui-badge-danger"
-      default:
-        return "ui-badge-muted"
-    }
-  }
-
-  type AdbStatus = (typeof DEVICE_STATUS)[keyof typeof DEVICE_STATUS]
-
-  const isSupportedDeviceStatus = (status?: string): status is AdbStatus => {
-    return !!status && (Object.values(DEVICE_STATUS) as string[]).includes(status)
   }
 
   const options = Array.from({ length: TotalChapters }, (_, i) => i.toString())
@@ -830,6 +870,16 @@ export default function RoomControlPage() {
           </div>
 
           <div className="surface-card p-4 md:p-6">
+            <RoomMinimap
+              config={minimapConfig}
+              markers={minimapMarkers}
+              selectedDeviceId={selectedDeviceId}
+              onSelectDevice={handleToggleSelectedDevice}
+              subtitle="使用 head_position / head_forward 的 xz 平面投影"
+            />
+          </div>
+
+          <div className="surface-card p-4 md:p-6">
             <div className="live-stream-section__header">
               <div>
                 <h2 className="text-xl font-bold text-foreground">即時串流</h2>
@@ -887,6 +937,8 @@ export default function RoomControlPage() {
               <LiveStreamStage
                 windows={liveWindows}
                 layout={liveStreamLayout}
+                selectedDeviceId={selectedDeviceId}
+                onSelectDevice={handleToggleSelectedDevice}
                 onClose={handleCloseLiveStream}
               />
             ) : (
@@ -920,9 +972,40 @@ export default function RoomControlPage() {
                   isAdbOnline && device?.temperature !== undefined && device?.temperature !== null
                     ? `${device.temperature}°C`
                     : "—"
+                const isSelectedDevice = selectedDeviceId === deviceId
 
                 return (
-                  <div key={deviceId} className="surface-panel p-4">
+                  <div
+                    key={deviceId}
+                    role="button"
+                    tabIndex={0}
+                    data-device-id={deviceId}
+                    aria-selected={isSelectedDevice}
+                    onClick={(event) => {
+                      if (shouldIgnoreDeviceCardSelectionEvent(event.target, event.currentTarget)) {
+                        return
+                      }
+
+                      handleToggleSelectedDevice(deviceId)
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter" && event.key !== " ") {
+                        return
+                      }
+
+                      if (shouldIgnoreDeviceCardSelectionEvent(event.target, event.currentTarget)) {
+                        return
+                      }
+
+                      event.preventDefault()
+                      handleToggleSelectedDevice(deviceId)
+                    }}
+                    className={`surface-panel selection-surface selection-surface-interactive cursor-pointer p-4 ${
+                      isSelectedDevice
+                        ? "selection-surface-selected"
+                        : ""
+                    }`}
+                  >
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="space-y-1">
                         <div className="text-sm font-semibold text-foreground">{alias}</div>

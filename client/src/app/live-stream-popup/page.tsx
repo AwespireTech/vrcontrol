@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import LiveStreamStage from "@/components/console/live-stream-stage"
 import type { LiveStreamLayout } from "@/components/console/live-stream-stage"
@@ -31,11 +31,20 @@ export default function LiveStreamPopupPage() {
   const initialLayout = searchParams.get("layout") === "stack" ? "stack" : "grid"
   const [layout, setLayout] = useState<LiveStreamLayout>(initialLayout)
   const [streams, setStreams] = useState<LiveStreamPopupState["streams"]>([])
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
+  const [takeoverActive, setTakeoverActive] = useState(false)
   const [syncStatus, setSyncStatus] = useState<PopupSyncStatus>("connecting")
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null)
   const [takeoverReleased, setTakeoverReleased] = useState(false)
   const [sourceUnavailable, setSourceUnavailable] = useState(false)
   const channelRef = useRef<BroadcastChannel | null>(null)
+  const popupSource =
+    searchParams.get("source") === "devices"
+      ? "devices"
+      : searchParams.get("source") === "rooms"
+        ? "rooms"
+        : undefined
+  const popupRoomId = searchParams.get("roomId") || undefined
 
   const sourceLabel = useMemo(() => {
     const source = searchParams.get("source")
@@ -53,6 +62,30 @@ export default function LiveStreamPopupPage() {
   }, [searchParams])
 
   const liveWindows = useMemo(() => mapStreamsToWindows(streams), [streams])
+  const canRequestSelection =
+    popupSource === "rooms" &&
+    takeoverActive &&
+    syncStatus === "ready" &&
+    !sourceUnavailable &&
+    !takeoverReleased
+
+  const handleSelectDevice = useCallback(
+    (deviceId: string) => {
+      if (!canRequestSelection) {
+        return
+      }
+
+      postLiveStreamPopupMessage(channelRef.current, {
+        type: "selection-requested",
+        source: popupSource,
+        roomId: popupRoomId,
+        deviceId,
+        sender: "popup",
+        timestamp: Date.now(),
+      })
+    },
+    [canRequestSelection, popupRoomId, popupSource],
+  )
 
   useEffect(() => {
     const channel = createLiveStreamPopupChannel()
@@ -72,6 +105,7 @@ export default function LiveStreamPopupPage() {
         }
 
         setStreams([])
+        setTakeoverActive(false)
         setTakeoverReleased(true)
         setSourceUnavailable(false)
         setSyncStatus("waiting-data")
@@ -108,8 +142,10 @@ export default function LiveStreamPopupPage() {
       }
 
       setLayout(nextState.layout)
-      setStreams(nextState.streams)
-      setTakeoverReleased(false)
+  setTakeoverActive(nextState.takeoverActive)
+      setSelectedDeviceId(nextState.selectedDeviceId ?? null)
+      setStreams(nextState.takeoverActive ? nextState.streams : [])
+      setTakeoverReleased((current) => (nextState.takeoverActive ? false : current))
       setSourceUnavailable(false)
       setLastUpdatedAt(nextState.timestamp)
       setSyncStatus("ready")
@@ -223,7 +259,12 @@ export default function LiveStreamPopupPage() {
           </div>
 
           {streams.length > 0 ? (
-            <LiveStreamStage windows={liveWindows} layout={layout} />
+            <LiveStreamStage
+              windows={liveWindows}
+              layout={layout}
+              selectedDeviceId={selectedDeviceId}
+              onSelectDevice={canRequestSelection ? handleSelectDevice : undefined}
+            />
           ) : (
             <div className="live-stream-empty-state">
               {syncStatus === "connecting"

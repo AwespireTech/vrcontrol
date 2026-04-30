@@ -30,6 +30,8 @@ export type LiveStreamPopupState = {
   source?: LiveStreamPopupSource
   roomId?: string
   layout: LiveStreamLayout
+  takeoverActive: boolean
+  selectedDeviceId?: string | null
   streams: LiveStreamPopupStream[]
   timestamp: number
 }
@@ -39,6 +41,14 @@ export type LiveStreamPopupMessage =
       type: "popup-ready"
       source?: LiveStreamPopupSource
       roomId?: string
+      timestamp: number
+    }
+  | {
+      type: "selection-requested"
+      source?: LiveStreamPopupSource
+      roomId?: string
+      deviceId: string
+      sender: "popup"
       timestamp: number
     }
   | {
