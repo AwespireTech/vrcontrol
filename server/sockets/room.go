@@ -25,6 +25,13 @@ type Movement struct {
 	Target           string
 	Broadcast        bool
 }
+type SyncChapter struct {
+	StayStage 	int
+	PlayerCount int
+}
+type PlayCommander struct {
+	IsStart bool
+}
 type Room struct {
 	RoomID           string
 	RoomHash         string
@@ -33,6 +40,8 @@ type Room struct {
 	PlayerUnregister chan *Player
 	PlayerDetach     chan *Player
 	MoveControl      chan Movement
+	SyncControl      chan SyncChapter
+	PlayCommander 	 chan PlayCommander
 	Signals          chan ControlSignal
 	Players          map[*Player]bool
 	AssignedSequence map[string]int
@@ -70,6 +79,8 @@ func NewRoom(roomID string) *Room {
 		PlayerDetach:     make(chan *Player),
 		Players:          make(map[*Player]bool),
 		MoveControl:      make(chan Movement),
+		SyncControl:			make(chan SyncChapter),
+		PlayCommander:	  make(chan PlayCommander),
 		Signals:          make(chan ControlSignal),
 	}
 	room.AssignedSequence = make(map[string]int)
@@ -153,6 +164,9 @@ func (r *Room) Run() {
 			case model.MessageTypeReadyToMove:
 				// Should be handled in Player
 				log.Panicln("ReadyToMove should be handled in Player")
+			case model.MessageTypeWaitToSync:
+				// Should be handled in Player
+				log.Panicln("WaitToSync should be handled in Player")
 			case model.MessageTypeShotEvent:
 				// Broadcast the shot event to all players
 				senderIDKey := utils.NormalizeDeviceIDKey(playerMessage.ShotEvent.DeviceID)
@@ -317,6 +331,59 @@ func (r *Room) Run() {
 							log.Println("Player Channel is full, disconnecting player")
 							r.PlayerUnregister <- player
 						}
+					}
+				}
+			}
+		case syn := <- r.SyncControl:
+			for player := range r.Players {
+				if player == nil {
+					continue
+				} else {
+					eventMessage := model.EventMessage{
+						EventType: model.EventSyncCommand,
+						SyncCommand: &model.SyncCommandMessage{
+							PlayerCount: syn.PlayerCount,
+						},
+					}
+					message, err := json.Marshal(eventMessage)
+					if err != nil {
+						log.Println("Error Marshalling Event Message: ", err)
+						continue
+					}
+					player.WaitToSync = false
+					// Send the message to all players
+					select {
+					case player.InChannel <- message:
+					default:
+						log.Println("Player Channel is full, disconnecting player")
+						r.PlayerUnregister <- player
+					}
+				}
+			}
+		case play := <- r.PlayCommander:
+			for player := range r.Players {
+				if player == nil {
+					continue
+				} else {
+					eventMessage := model.EventMessage{
+						EventType: model.EventPlayCommand,
+						PlayCommand: &model.PlayCommandMessage{
+							PlayerCount: len(r.Players),
+							IsStart: play.IsStart,
+						},
+					}
+					message, err := json.Marshal(eventMessage)
+					if err != nil {
+						log.Println("Error Marshalling Event Message: ", err)
+						continue
+					}
+					player.WaitToSync = false
+					// Send the message to all players
+					select {
+					case player.InChannel <- message:
+					default:
+						log.Println("Player Channel is full, disconnecting player")
+						r.PlayerUnregister <- player
 					}
 				}
 			}

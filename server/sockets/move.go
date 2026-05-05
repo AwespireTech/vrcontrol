@@ -6,6 +6,31 @@ var (
 	// NoSyncChapter      = []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
 )
 
+func SyncCheck(r *Room, p *Player, stayChapter int) (SyncChapter, bool) {
+	if r == nil {
+		panic("room is nil")
+	}
+	if len(r.Players) == 0 {
+		return SyncChapter{}, false
+	}
+	// Wait All Player To Sync
+	for player := range r.Players {
+		if player == nil {
+			continue
+		}
+		if player.Stage >= stayChapter {
+			continue
+		}
+		// Player is not ready to move, wait for them
+		return SyncChapter{}, false
+	}
+
+	return SyncChapter{
+		StayStage:  stayChapter,
+		PlayerCount: len(r.Players),
+	}, true
+}
+
 func MovementCheck(r *Room, p *Player, from int) (Movement, bool) {
 	if r == nil {
 		panic("room is nil")
