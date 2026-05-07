@@ -11,6 +11,7 @@ const (
 	EventTypeQA            EventType = "qa"
 	EventTypeAsignSequence EventType = "assign_sequence"
 	EventTypeResumeQA      EventType = "resume_qa"
+	EventTypeConfig				 EventType = "config"
 )
 
 type EventMessage struct {
@@ -22,6 +23,7 @@ type EventMessage struct {
 	Latern      *LanternEventMessage `json:"lantern,omitempty"`
 	QA          *QAEventMessage      `json:"qa,omitempty"`
 	Sequence    *int                 `json:"sequence,omitempty"`
+	Config			*RoomConfigMessage	 `json:"config,omitempty"`
 }
 
 type MoveCommandMessage struct {
@@ -51,7 +53,11 @@ type ShotEventMessage struct {
 }
 
 type QAEventMessage struct {
-	QuestionID int  `json:"question_id"`
-	StateID    int  `json:"state_id"`
-	State      bool `json:"state"`
+	QuestionID string							`json:"qid"`
+	Answers 	 map[string]string  `json:"answers"`
+}
+
+type RoomConfigMessage struct {
+	SEED 			int 		`json:"seed"`
+	RoomHash	string 	`json:"rh"`
 }

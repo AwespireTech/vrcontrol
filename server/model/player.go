@@ -73,7 +73,7 @@ type WaitToSync struct {
 }
 
 type QA struct {
-	QuestionID int  `json:"question_id"`
-	StateBool  bool `json:"state_bool"`
-	StateInt   int  `json:"state_int"`
+	Timestamp 	int64		`json:"timestamp"`
+	QuestionID 	string  `json:"qid"`
+	AnswerID   	string  `json:"aid"`
 }

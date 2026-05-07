@@ -124,6 +124,9 @@ func (p *Player) read() {
 			if action {
 				p.Room.SyncControl <- syn
 			}
+		case model.MessagesTypeQA:
+			qaData := playerMessage.QA
+			ComposeQAResult(p.Room, p, qaData.QuestionID, qaData.AnswerID)
 		default:
 			// Other is broadcast message
 			// Send to the room
