@@ -26,7 +26,7 @@ type Movement struct {
 	Broadcast        bool
 }
 type SyncChapter struct {
-	StayStage 	int
+	StayStage   int
 	PlayerCount int
 }
 type PlayCommander struct {
@@ -41,7 +41,7 @@ type Room struct {
 	PlayerDetach     chan *Player
 	MoveControl      chan Movement
 	SyncControl      chan SyncChapter
-	PlayCommander 	 chan PlayCommander
+	PlayCommander    chan PlayCommander
 	Signals          chan ControlSignal
 	Players          map[*Player]bool
 	AssignedSequence map[string]int
@@ -79,8 +79,8 @@ func NewRoom(roomID string) *Room {
 		PlayerDetach:     make(chan *Player),
 		Players:          make(map[*Player]bool),
 		MoveControl:      make(chan Movement),
-		SyncControl:			make(chan SyncChapter),
-		PlayCommander:	  make(chan PlayCommander),
+		SyncControl:      make(chan SyncChapter),
+		PlayCommander:    make(chan PlayCommander),
 		Signals:          make(chan ControlSignal),
 	}
 	room.AssignedSequence = make(map[string]int)
@@ -334,7 +334,7 @@ func (r *Room) Run() {
 					}
 				}
 			}
-		case syn := <- r.SyncControl:
+		case syn := <-r.SyncControl:
 			for player := range r.Players {
 				if player == nil {
 					continue
@@ -360,7 +360,7 @@ func (r *Room) Run() {
 					}
 				}
 			}
-		case play := <- r.PlayCommander:
+		case play := <-r.PlayCommander:
 			for player := range r.Players {
 				if player == nil {
 					continue
@@ -369,7 +369,7 @@ func (r *Room) Run() {
 						EventType: model.EventPlayCommand,
 						PlayCommand: &model.PlayCommandMessage{
 							PlayerCount: len(r.Players),
-							IsStart: play.IsStart,
+							IsStart:     play.IsStart,
 						},
 					}
 					message, err := json.Marshal(eventMessage)

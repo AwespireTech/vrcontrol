@@ -26,7 +26,7 @@ func SyncCheck(r *Room, p *Player, stayChapter int) (SyncChapter, bool) {
 	}
 
 	return SyncChapter{
-		StayStage:  stayChapter,
+		StayStage:   stayChapter,
 		PlayerCount: len(r.Players),
 	}, true
 }

@@ -4,8 +4,8 @@ type EventType string
 
 const (
 	EventMoveCommand       EventType = "move_command"
-	EventPlayCommand			 EventType = "play_command"
-	EventSyncCommand			 EventType = "sync_command"
+	EventPlayCommand       EventType = "play_command"
+	EventSyncCommand       EventType = "sync_command"
 	EventTypeShotEvent     EventType = "shot_event"
 	EventTypeLatern        EventType = "lantern"
 	EventTypeQA            EventType = "qa"
@@ -30,12 +30,12 @@ type MoveCommandMessage struct {
 }
 
 type PlayCommandMessage struct {
-	PlayerCount 		 int  `json:"pcnt"`
-	IsStart					 bool `json:"isstart"`
+	PlayerCount int  `json:"pcnt"`
+	IsStart     bool `json:"isstart"`
 }
 
 type SyncCommandMessage struct {
-	PlayerCount 		 int  `json:"pcnt"`
+	PlayerCount int `json:"pcnt"`
 }
 
 type LanternEventMessage struct {
