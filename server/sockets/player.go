@@ -21,6 +21,7 @@ type Player struct {
 	Room              *Room
 	Stage             int
 	ReadyToMove       bool
+	WaitToSync        bool
 	InChannel         chan []byte
 	Sequence          int
 	LastUpdate        time.Time
@@ -113,7 +114,16 @@ func (p *Player) read() {
 			if action {
 				p.Room.MoveControl <- mov
 			}
+		case model.MessageTypeWaitToSync:
+			waitToSync := playerMessage.WaitToSync
+			p.RawDeviceID = waitToSync.DeviceID
+			p.DeiviceID = utils.NormalizeDeviceIDKey(waitToSync.DeviceID)
+			p.WaitToSync = true
 
+			syn, action := SyncCheck(p.Room, p, waitToSync.Stage)
+			if action {
+				p.Room.SyncControl <- syn
+			}
 		default:
 			// Other is broadcast message
 			// Send to the room

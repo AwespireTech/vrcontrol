@@ -5,6 +5,7 @@ type MessageType string
 const (
 	MessageTypeHeartbeat   MessageType = "heartbeat"
 	MessageTypeReadyToMove MessageType = "ready_to_move"
+	MessageTypeWaitToSync  MessageType = "wait_to_sync"
 	MessageTypeShotEvent   MessageType = "shot_event"
 	MessageTypeLantern     MessageType = "lantern"
 	MessagesTypeQA         MessageType = "qa"
@@ -23,6 +24,7 @@ type PlayerMessage struct {
 	ShotEvent   *ShotEvent   `json:"shot_event,omitempty"`
 	Latern      *Lantern     `json:"lantern,omitempty"`
 	ReadyToMove *ReadyToMove `json:"ready_to_move,omitempty"`
+	WaitToSync  *WaitToSync  `json:"wait_to_sync,omitempty"`
 	QA          *QA          `json:"qa,omitempty"`
 	ResumeQA    *bool        `json:"resume_qa,omitempty"`
 }
@@ -59,6 +61,12 @@ type Lantern struct {
 }
 
 type ReadyToMove struct {
+	Timestamp int64  `json:"timestamp"`
+	DeviceID  string `json:"device_id"`
+	Stage     int    `json:"chapter"`
+}
+
+type WaitToSync struct {
 	Timestamp int64  `json:"timestamp"`
 	DeviceID  string `json:"device_id"`
 	Stage     int    `json:"chapter"`
