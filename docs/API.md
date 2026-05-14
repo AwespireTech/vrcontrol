@@ -39,6 +39,16 @@
 - `DELETE /api/rooms/:id`
 - `POST /api/rooms/:id/devices/:deviceId`
 - `DELETE /api/rooms/:id/devices/:deviceId`
+- `POST /api/rooms/:id/activities`
+- `GET /api/rooms/:id/activities`
+
+### 活動管理
+- `GET /api/activities/:activityId`
+- `POST /api/activities/:activityId/start`
+- `POST /api/activities/:activityId/end`
+- `POST /api/activities/:activityId/cancel`
+- `GET /api/activities/:activityId/results`
+- `GET /api/activities/:activityId/context`
 
 ### 動作管理
 
@@ -845,6 +855,72 @@
 - `GET /api/scrcpy/config` / `PUT /api/scrcpy/config` 目前也會影響 WebRTC live view 的 standalone scrcpy 啟播參數。
 - `video_codec_options` 只會套用到 live view 的 standalone server 路徑，不會改變既有外部 scrcpy 視窗參數。
 - `video_codec_options` 可作為首幀等待過久時的 fallback/診斷手段，例如 `i-frame-interval:int=1`；預設建議維持空字串，優先依賴 control channel 與 RESET_VIDEO 啟播優化。
+
+#### 房間控制更新格式
+- `GET /api/ws/control/:roomId` 會持續推送房間狀態 JSON。
+- 回傳內容包含 `room_id`、`room_hash`、`current_activity_id`、`activity_name`、`activity_status`、`activity_started_at`、`player_count`、`players`。
+- `room_hash` 會在房間從 0 位玩家進入到有玩家的那一刻產生；當房間再次清空後，下次新局會更新成新的 hash。
+- `GET /api/control/lantern/:roomId/:roomHash` 可讀取該局累積的 lantern 事件資料。
+
+## Activity Context Sessions
+
+### 目的與邊界
+- Activity 是正式的房間場次 entity，使用 `activity_id` 作為主要識別，不以 `room_hash` 充當 business id。
+- Room 仍負責設備分組與 WebSocket runtime；Activity 負責開始、結束、共享上下文與結果保存。
+- `activity_context` 是一場活動共用、且可由前端或參與設備讀取的 immutable snapshot，不是使用者偏好，也不是房間設定本身。
+
+### 建立活動草稿
+- `POST /api/rooms/:id/activities`
+
+```json
+{
+	"name": "Round 1 - Warmup",
+	"activity_context": {
+		"mode": "warmup",
+		"round": 1
+	}
+}
+```
+
+### 啟動活動
+- `POST /api/activities/:activityId/start`
+- 可選擇在啟動前覆蓋 draft 的 `name` 或 `activity_context`。
+
+```json
+{
+	"name": "Round 1 - Warmup",
+	"activity_context": {
+		"mode": "warmup",
+		"round": 1
+	}
+}
+```
+
+### 取得活動結果
+- `GET /api/activities/:activityId/results`
+
+```json
+{
+	"success": true,
+	"data": {
+		"activity_id": "ACTIVITY-123456",
+		"status": "ended",
+		"result_summary": {
+			"participant_count": 4,
+			"event_counts": {
+				"lantern": 12,
+				"qa": 3
+			},
+			"duration_sec": 182
+		},
+		"artifact_refs": []
+	}
+}
+```
+
+### 取得活動上下文
+- `GET /api/activities/:activityId/context`
+- 回傳的是啟動當下快照下來的 `activity_context`，不會隨後續系統設定變動而改變。
 
 ## 已移除舊端點
 

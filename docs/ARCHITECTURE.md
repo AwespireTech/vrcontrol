@@ -41,6 +41,13 @@
 2. 後端保存至 JSON 資料庫
 3. 執行時由後端讀取動作並透過 ADB 對設備下指令
 
+### Activity Context Sessions
+1. 前端在房間控制頁建立 activity draft，提交 `name` 與 `activity_context`。
+2. 後端將 draft 保存到 `server/data/activities.json`，作為正式場次資料索引。
+3. 啟動活動時，後端會將 draft 轉成 running activity，並把 `activity_context` 當作 immutable snapshot 保存。
+4. room runtime 會保存目前活動狀態，並在收到 lantern、shot、qa、resume_qa 等事件時，把事件統計歸屬到當前 `activity_id`。
+5. 活動結束時，後端以 `activity_id` 保存結果摘要與 artifact 索引，而不是依賴房間清空才封存。
+
 ### 裝置監控
 
 1. 監控服務定期 Ping 裝置 IP
@@ -137,9 +144,11 @@
 - [server/data/devices.json](../server/data/devices.json)
 - [server/data/rooms.json](../server/data/rooms.json)
 - [server/data/actions.json](../server/data/actions.json)
+- [server/data/activities.json](../server/data/activities.json)
 - [server/data/scrcpy_config.json](../server/data/scrcpy_config.json)
 - [server/data/preferences.json](../server/data/preferences.json)
 - `server/data/lantern/<room_id>_<room_hash>.json`：房間單局的 lantern 事件歷史資料
+- `server/data/activities/<activity_id>/*.json`：活動級 artifact 資料，預留給 lantern / shot / qa 等詳細事件檔案
 
 ## Room Runtime
 
@@ -154,6 +163,14 @@
 - `MoveControl`、`SyncControl`、`PlayCommander` 是 room 內部協調 channel，分別對應章節移動、同步完成與播放狀態廣播。
 - room update 目前輸出 `ready_to_move`，但不輸出 `wait_to_sync` 旗標；同步等待狀態仍由 player socket 與 `sync_command` event 協調。
 - room 目前會記住玩家的 `play_status`，但這個狀態尚未被輸出到 room update payload。
+
+## Activity Runtime
+
+- Room runtime 目前會額外維護 `currentActivityID`、活動開始時間、活動事件統計與共享 `activity_context` cache。
+- `activity_context` 代表整場活動共用、且可提供給參與設備讀取的共享上下文，不只是設定值。
+- 同一個 room 在同一時間只允許一個 running activity。
+- 活動狀態會透過 [server/sockets/control.go](../server/sockets/control.go) 推送到控制端房間更新 payload。
+- 第一版設備讀取 `activity_context` 以 REST API 為主；若後續需要更即時同步，再擴充 WS 訊息型別。
 
 ## 已知限制
 
