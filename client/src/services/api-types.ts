@@ -121,6 +121,55 @@ export interface Room {
   updated_at: string
 }
 
+export type ActivityStatus = "draft" | "running" | "ended" | "cancelled"
+
+export interface ActivityContext {
+  [key: string]: unknown
+}
+
+export interface ActivityRuntimeInfo {
+  room_hash?: string
+  player_count: number
+  last_event_at?: string
+  last_updated_at?: string
+  context_version?: string
+  context_delivered: boolean
+}
+
+export interface ActivitySummary {
+  participant_count: number
+  event_counts?: Record<string, number>
+  duration_sec: number
+}
+
+export interface ActivityArtifactRef {
+  name: string
+  path: string
+  type?: string
+}
+
+export interface Activity {
+  activity_id: string
+  room_id: string
+  name: string
+  status: ActivityStatus
+  activity_context: ActivityContext
+  runtime_snapshot?: ActivityRuntimeInfo
+  result_summary?: ActivitySummary
+  artifact_refs?: ActivityArtifactRef[]
+  created_at: string
+  updated_at: string
+  started_at?: string
+  ended_at?: string
+}
+
+export interface ActivityResults {
+  activity_id: string
+  status: ActivityStatus
+  result_summary?: ActivitySummary
+  artifact_refs?: ActivityArtifactRef[]
+}
+
 // 動作類型
 export interface Action {
   action_id: string

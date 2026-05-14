@@ -5,6 +5,9 @@ import {
   type IsolationDevice,
   type USBDevice,
   type Room,
+  type Activity,
+  type ActivityContext,
+  type ActivityResults,
   type Action,
   type BatchExecuteRequest,
   type BatchExecuteResponse,
@@ -342,6 +345,80 @@ export const roomApi = {
     })
     const data: ApiResponse<void> = await res.json()
     if (!data.success) throw new Error(data.error || "Failed to remove device from room")
+  },
+}
+
+export const activityApi = {
+  createDraft: async (
+    roomId: string,
+    payload: { name: string; activity_context: ActivityContext },
+  ): Promise<Activity> => {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/activities`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+    const data: ApiResponse<Activity> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to create activity draft")
+    return data.data!
+  },
+
+  listByRoom: async (roomId: string): Promise<Activity[]> => {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/activities`)
+    const data: ApiResponse<Activity[]> = await res.json()
+    return data.data || []
+  },
+
+  get: async (activityId: string): Promise<Activity | null> => {
+    const res = await fetch(`${API_BASE}/activities/${activityId}`)
+    const data: ApiResponse<Activity> = await res.json()
+    return data.data || null
+  },
+
+  start: async (
+    activityId: string,
+    payload?: { name?: string; activity_context?: ActivityContext },
+  ): Promise<Activity> => {
+    const res = await fetch(`${API_BASE}/activities/${activityId}/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload || {}),
+    })
+    const data: ApiResponse<Activity> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to start activity")
+    return data.data!
+  },
+
+  end: async (activityId: string): Promise<Activity> => {
+    const res = await fetch(`${API_BASE}/activities/${activityId}/end`, {
+      method: "POST",
+    })
+    const data: ApiResponse<Activity> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to end activity")
+    return data.data!
+  },
+
+  cancel: async (activityId: string): Promise<Activity> => {
+    const res = await fetch(`${API_BASE}/activities/${activityId}/cancel`, {
+      method: "POST",
+    })
+    const data: ApiResponse<Activity> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to cancel activity")
+    return data.data!
+  },
+
+  getResults: async (activityId: string): Promise<ActivityResults> => {
+    const res = await fetch(`${API_BASE}/activities/${activityId}/results`)
+    const data: ApiResponse<ActivityResults> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to load activity results")
+    return data.data!
+  },
+
+  getContext: async (activityId: string): Promise<ActivityContext> => {
+    const res = await fetch(`${API_BASE}/activities/${activityId}/context`)
+    const data: ApiResponse<ActivityContext> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to load activity context")
+    return data.data || {}
   },
 }
 
