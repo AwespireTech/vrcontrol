@@ -21,28 +21,50 @@ type Controller struct {
 }
 
 func (r *Room) GetRoomUpdate() model.RoomUpdate {
+	activityID := ""
+	activityName := ""
+	activityStatus := model.ActivityStatus("")
+	var activityStartedAt *time.Time
+	if r != nil && r.CurrentActivity != nil {
+		activityID = r.CurrentActivity.ActivityID
+		activityName = r.CurrentActivity.Name
+		activityStatus = r.CurrentActivity.Status
+		activityStartedAt = r.CurrentActivity.StartedAt
+	}
 	if r == nil {
 		log.Println("GetRoomUpdate called on nil room")
 		return model.RoomUpdate{
-			RoomID:      "",
-			RoomHash:    "",
-			PlayerCount: 0,
-			Players:     []model.PlayerStatus{},
+			RoomID:            "",
+			RoomHash:          "",
+			CurrentActivityID: activityID,
+			ActivityName:      activityName,
+			ActivityStatus:    activityStatus,
+			ActivityStartedAt: activityStartedAt,
+			PlayerCount:       0,
+			Players:           []model.PlayerStatus{},
 		}
 	}
 	if len(r.Players) == 0 {
 		return model.RoomUpdate{
-			RoomID:      r.RoomID,
-			RoomHash:    r.RoomHash,
-			PlayerCount: 0,
-			Players:     []model.PlayerStatus{},
+			RoomID:            r.RoomID,
+			RoomHash:          r.RoomHash,
+			CurrentActivityID: activityID,
+			ActivityName:      activityName,
+			ActivityStatus:    activityStatus,
+			ActivityStartedAt: activityStartedAt,
+			PlayerCount:       0,
+			Players:           []model.PlayerStatus{},
 		}
 	}
 
 	return model.RoomUpdate{
-		RoomID:      r.RoomID,
-		RoomHash:    r.RoomHash,
-		PlayerCount: len(r.Players),
+		RoomID:            r.RoomID,
+		RoomHash:          r.RoomHash,
+		CurrentActivityID: activityID,
+		ActivityName:      activityName,
+		ActivityStatus:    activityStatus,
+		ActivityStartedAt: activityStartedAt,
+		PlayerCount:       len(r.Players),
 		Players: utilities.Fold2(maps.All(r.Players), make([]model.PlayerStatus, 0, len(r.Players)), func(_l []model.PlayerStatus, p *Player, inuse bool) []model.PlayerStatus {
 			if !inuse {
 				return _l
