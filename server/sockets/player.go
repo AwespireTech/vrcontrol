@@ -141,6 +141,7 @@ func (p *Player) read() {
 			}
 		case model.MessagesTypeQA:
 			qaData := playerMessage.QA
+			p.Room.recordActivityEvent(string(model.EventTypeQA))
 			ComposeQAResult(p.Room, p, qaData.QuestionID, qaData.AnswerID)
 		default:
 			// Other is broadcast message

@@ -406,58 +406,6 @@ func (r *Room) Run() {
 					}
 				}
 				lanternData[senderIDKey] = append(lanternData[senderIDKey], eventMessage.Latern)
-			case model.MessagesTypeQA:
-				r.recordActivityEvent(string(model.EventTypeQA))
-				// Broadcast the QA event to all players
-				eventMessage := model.EventMessage{
-					EventType: model.EventTypeQA,
-					QA: &model.QAEventMessage{
-						QuestionID: playerMessage.QA.QuestionID,
-						StateID:    playerMessage.QA.StateInt,
-						State:      playerMessage.QA.StateBool,
-					},
-				}
-				message, err := json.Marshal(eventMessage)
-				if err != nil {
-					log.Println("Error Marshalling Event Message: ", err)
-					continue
-				}
-				for player := range r.Players {
-					if player == nil {
-						continue
-					} else {
-						select {
-						case player.InChannel <- message:
-						default:
-							log.Println("Player Channel is full, disconnecting player")
-							r.PlayerUnregister <- player
-						}
-					}
-				}
-			case model.MessageTypeResumeQA:
-				r.recordActivityEvent(string(model.EventTypeResumeQA))
-				// Broadcast the resume QA event to all players
-				eventMessage := model.EventMessage{
-					EventType: model.EventTypeResumeQA,
-				}
-				message, err := json.Marshal(eventMessage)
-				if err != nil {
-					log.Println("Error Marshalling Event Message: ", err)
-					continue
-				}
-				for player := range r.Players {
-					if player == nil {
-						continue
-					} else {
-						select {
-						case player.InChannel <- message:
-						default:
-							log.Println("Player Channel is full, disconnecting player")
-							r.PlayerUnregister <- player
-						}
-					}
-				}
-
 			default:
 				//Message not handled
 				log.Println("Message not handled: ", playerMessage.MessageType)
