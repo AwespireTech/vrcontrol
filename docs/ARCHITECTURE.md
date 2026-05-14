@@ -15,6 +15,7 @@
 ## 模組分層
 
 ### 後端（API 模組）
+
 - 路由註冊：[server/routes/api_routes.go](../server/routes/api_routes.go)
 - 控制器：server/controller
 - 服務層：server/service
@@ -25,6 +26,7 @@
 - WebRTC H264 發送：server/webrtc
 
 ### 前端
+
 - App 入口：[client/src/App.tsx](../client/src/App.tsx)
 - 頁面實作：client/src/app
 - 主要前端入口 URL：`/`（管理介面）
@@ -34,21 +36,25 @@
 ## 資料流
 
 ### 動作執行
+
 1. 前端建立動作（`params` 依規格填寫）
 2. 後端保存至 JSON 資料庫
 3. 執行時由後端讀取動作並透過 ADB 對設備下指令
 
 ### 裝置監控
+
 1. 監控服務定期 Ping 裝置 IP
 2. 狀態更新回寫至資料庫
 3. 前端定期拉取狀態並更新 UI
 
 ### Scrcpy 鏡像
+
 1. 前端呼叫 `/api/scrcpy/*`
 2. 後端檢查 scrcpy 是否安裝
 3. 啟動 scrcpy 子行程並維護 session 狀態
 
 ### WebRTC 即時畫面
+
 1. 前端在設備頁或房間控制頁開啟 `LiveStreamPlayer`。
 2. 前端透過 `/api/ws/webrtc/:deviceId` 建立 WebSocket signaling。
 3. 後端 `WebRTCStreamController` 啟動 `ScrcpyStreamService`，建立 scrcpy standalone server session。
@@ -57,7 +63,17 @@
 6. `server/webrtc/streamer.go` 讀取 scrcpy raw H264 Annex-B stream，重組 access unit，並透過 Pion sample track 寫入 WebRTC video。
 7. 瀏覽器端收到 track 後，由 `client/src/components/console/live-stream-player.tsx` 顯示畫面，並回報首幀與解碼診斷資訊。
 
+### 房間設定與 QA 聚合
+
+1. 第一位玩家進入 room 時，`server/sockets/room.go` 會建立新的 `room_hash`，並為該局產生一個 `seed`。
+2. 玩家加入 room 後，後端會先送 `assign_sequence`，再送 `config` event，讓該玩家取得本局 `seed` 與 `room_hash`。
+3. 玩家作答時，透過 `/api/ws/client/:clientId` 送出 `qa` 訊息，payload 只包含 `qid` 與 `aid`。
+4. room runtime 會把答案寫入 `Answers[qid][device_id]`，同一玩家對同一題重送時會直接覆蓋舊答案。
+5. update loop 僅在 QA 狀態變更時廣播一次聚合後的 `qa` event，內容是該題目前所有玩家答案的完整 map。
+6. 當房間玩家數回到 0 時，room 會清空 QA 暫存狀態，下一局重新開始累積。
+
 ### Live View Popup Takeover
+
 1. 使用者在設備頁或房間控制頁的 live-stream section 點擊「在新視窗開啟」。
 2. 前端透過 `window.open` 開啟 `/live-stream-popup`，popup 頁面載入後用 BroadcastChannel 對主頁送出 `popup-ready`。
 3. 主頁收到 `popup-ready` 後送出 `init`，後續在清單或 layout 變動時送出 `state-update`。
@@ -70,6 +86,7 @@
 ## Live View 主要模組
 
 ### 前端
+
 - [client/src/app/devices/page.tsx](../client/src/app/devices/page.tsx)：設備頁的 live-stream section、外部視窗接管狀態與單台開啟入口。
 - [client/src/app/rooms/[id]/control/page.tsx](../client/src/app/rooms/%5Bid%5D/control/page.tsx)：房間控制頁的 live-stream section、批次開啟入口與 popup takeover 流程。
 - [client/src/app/live-stream-popup/page.tsx](../client/src/app/live-stream-popup/page.tsx)：外部 live-stream 視窗頁面，承接 popup 顯示與同步狀態提示。
@@ -80,6 +97,7 @@
 - [client/src/services/api.ts](../client/src/services/api.ts)：`webrtcApi.getSignalUrl()` 與錯誤碼對應。
 
 ### 後端
+
 - [server/controller/webrtc_stream_controller.go](../server/controller/webrtc_stream_controller.go)：WebRTC signaling 入口、錯誤分類與 session lifecycle。
 - [server/service/scrcpy_stream_service.go](../server/service/scrcpy_stream_service.go)：將 device/config 轉成 live view stream session。
 - [server/scrcpy/stream_manager.go](../server/scrcpy/stream_manager.go)：scrcpy standalone 啟播、source probe、control socket、RESET_VIDEO 與 fallback。
@@ -88,7 +106,7 @@
 
 ## Scrcpy Config 與資料儲存
 
-- `server/data/scrcpy_config.json` 目前除了既有 bitrate / max_size / max_fps / window_* 等欄位外，另有 `video_codec_options`。
+- `server/data/scrcpy_config.json` 目前除了既有 bitrate / max*size / max_fps / window*\* 等欄位外，另有 `video_codec_options`。
 - `video_codec_options` 是 WebRTC live view 用於啟播診斷與 fallback 的額外編碼器選項，不影響既有外部 scrcpy 視窗啟動參數。
 - 預設建議維持空字串；只有在特定設備首幀等待過久時，才暫時用較積極的 codec options 做排障。
 
@@ -105,7 +123,10 @@
 
 - Socket room 的執行時狀態由 [server/sockets/room.go](../server/sockets/room.go) 維護。
 - 當房間從無玩家進入到有玩家時，會產生新的 `room_hash`，代表一局新的房間 session。
+- 同一時刻也會產生該局專用的 `seed`，並透過玩家 socket 的 `config` event 發給加入中的玩家。
 - lantern 事件會先暫存在記憶體，等房間玩家數回到 0 時寫入 `server/data/lantern`。
+- QA 作答會先暫存在 room memory 的 `Answers` map，由 update loop 做 dirty-check 後再廣播聚合結果。
+- `QuestionLocked` 是 room 內部保護機制；若某題被標記 locked，後續玩家送來的答案會被忽略。
 - 控制端可先從 room update 取得 `room_hash`，再用 control API 查詢該局 lantern 歷史資料。
 
 ## 已知限制

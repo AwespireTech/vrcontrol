@@ -1,10 +1,10 @@
 package sockets
 
-func ComposeQAResult(r *Room, p *Player, qID string, aID string) () {
+func ComposeQAResult(r *Room, p *Player, qID string, aID string) {
 	if r == nil {
 		panic("room is nil")
 	}
-	
+
 	// 1. 檢查該題是否已經鎖定 (時間到)
 	if r.QuestionLocked[qID] {
 		// 時間已到，忽略此更新 (或者可以回傳一個 error 訊息給該玩家)

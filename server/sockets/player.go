@@ -21,7 +21,7 @@ type Player struct {
 	Room              *Room
 	Stage             int
 	ReadyToMove       bool
-	WaitToSync			  bool
+	WaitToSync        bool
 	InChannel         chan []byte
 	Sequence          int
 	LastUpdate        time.Time

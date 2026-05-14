@@ -73,7 +73,7 @@ type WaitToSync struct {
 }
 
 type QA struct {
-	Timestamp 	int64		`json:"timestamp"`
-	QuestionID 	string  `json:"qid"`
-	AnswerID   	string  `json:"aid"`
+	Timestamp  int64  `json:"timestamp"`
+	QuestionID string `json:"qid"`
+	AnswerID   string `json:"aid"`
 }

@@ -3,9 +3,9 @@ package sockets
 import (
 	"encoding/json"
 	"log"
+	"math/rand"
 	"strconv"
 	"time"
-	"math/rand"
 
 	"vrcontrol/server/consts"
 	"vrcontrol/server/model"
@@ -27,7 +27,7 @@ type Movement struct {
 	Broadcast        bool
 }
 type SyncChapter struct {
-	StayStage 	int
+	StayStage   int
 	PlayerCount int
 }
 type PlayCommander struct {
@@ -36,14 +36,14 @@ type PlayCommander struct {
 type Room struct {
 	RoomID           string
 	RoomHash         string
-	SEED						 int
+	SEED             int
 	PlayerBroadcast  chan []byte
 	PlayerRegister   chan *Player
 	PlayerUnregister chan *Player
 	PlayerDetach     chan *Player
 	MoveControl      chan Movement
 	SyncControl      chan SyncChapter
-	PlayCommander 	 chan PlayCommander
+	PlayCommander    chan PlayCommander
 	Signals          chan ControlSignal
 	Players          map[*Player]bool
 	AssignedSequence map[string]int
@@ -51,11 +51,11 @@ type Room struct {
 	// key1: qID (題目ID)
 	// key2: DeviceID (玩家ID)
 	// value: aID (答案ID)
-	Answers 				 map[string]map[string]string
+	Answers map[string]map[string]string
 	// 紀錄題目是否已經結束/鎖定 (true 表示不能再改答案)
-	QuestionLocked 	 map[string]bool
+	QuestionLocked map[string]bool
 	// 標記某個題目的狀態是否被修改過，避免沒人動也一直廣播
-	isDirty bool 
+	isDirty    bool
 	currentQID string // 目前正在進行的題目
 }
 type RoomMessage struct {
@@ -85,18 +85,18 @@ func NewRoom(roomID string) *Room {
 	room := &Room{
 		RoomID:           roomID,
 		RoomHash:         "",
-		SEED:							0,
+		SEED:             0,
 		PlayerBroadcast:  make(chan []byte, 1024),
 		PlayerRegister:   make(chan *Player),
 		PlayerUnregister: make(chan *Player),
 		PlayerDetach:     make(chan *Player),
 		Players:          make(map[*Player]bool),
 		MoveControl:      make(chan Movement),
-		SyncControl:			make(chan SyncChapter),
-		PlayCommander:	  make(chan PlayCommander),
+		SyncControl:      make(chan SyncChapter),
+		PlayCommander:    make(chan PlayCommander),
 		Signals:          make(chan ControlSignal),
-		Answers:   				make(map[string]map[string]string),
-		QuestionLocked: 	make(map[string]bool),
+		Answers:          make(map[string]map[string]string),
+		QuestionLocked:   make(map[string]bool),
 	}
 	room.AssignedSequence = make(map[string]int)
 	return room
@@ -144,8 +144,8 @@ func (r *Room) Run() {
 			cfgMsg := model.EventMessage{
 				EventType: model.EventTypeConfig,
 				Config: &model.RoomConfigMessage{
-					SEED: 	 	r.SEED,
-					RoomHash:	r.RoomHash,
+					SEED:     r.SEED,
+					RoomHash: r.RoomHash,
 				},
 			}
 			message, err := json.Marshal(cfgMsg)
@@ -321,7 +321,7 @@ func (r *Room) Run() {
 					}
 				}
 			}
-		case syn := <- r.SyncControl:
+		case syn := <-r.SyncControl:
 			for player := range r.Players {
 				if player == nil {
 					continue
@@ -347,7 +347,7 @@ func (r *Room) Run() {
 					}
 				}
 			}
-		case play := <- r.PlayCommander:
+		case play := <-r.PlayCommander:
 			for player := range r.Players {
 				if player == nil {
 					continue
@@ -356,7 +356,7 @@ func (r *Room) Run() {
 						EventType: model.EventPlayCommand,
 						PlayCommand: &model.PlayCommandMessage{
 							PlayerCount: len(r.Players),
-							IsStart: play.IsStart,
+							IsStart:     play.IsStart,
 						},
 					}
 					message, err := json.Marshal(eventMessage)
@@ -483,9 +483,9 @@ func (r *Room) UpdateInfo(stop chan struct{}) {
 
 				qaEventMessage := model.EventMessage{
 					EventType: model.EventTypeQA,
-					QA:	&model.QAEventMessage{
-						QuestionID:			qID,
-						Answers:				currentQStats,
+					QA: &model.QAEventMessage{
+						QuestionID: qID,
+						Answers:    currentQStats,
 					},
 				}
 
