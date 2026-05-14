@@ -3,6 +3,7 @@ package sockets
 import (
 	"encoding/json"
 	"log"
+	"math/rand"
 	"strconv"
 	"time"
 
@@ -35,6 +36,7 @@ type PlayCommander struct {
 type Room struct {
 	RoomID           string
 	RoomHash         string
+	SEED             int
 	PlayerBroadcast  chan []byte
 	PlayerRegister   chan *Player
 	PlayerUnregister chan *Player
@@ -45,6 +47,16 @@ type Room struct {
 	Signals          chan ControlSignal
 	Players          map[*Player]bool
 	AssignedSequence map[string]int
+	// 核心狀態：紀錄所有題目的回答狀況
+	// key1: qID (題目ID)
+	// key2: DeviceID (玩家ID)
+	// value: aID (答案ID)
+	Answers map[string]map[string]string
+	// 紀錄題目是否已經結束/鎖定 (true 表示不能再改答案)
+	QuestionLocked map[string]bool
+	// 標記某個題目的狀態是否被修改過，避免沒人動也一直廣播
+	isDirty    bool
+	currentQID string // 目前正在進行的題目
 }
 type RoomMessage struct {
 	MessageType         MessageType          `json:"message_type"`
@@ -73,6 +85,7 @@ func NewRoom(roomID string) *Room {
 	room := &Room{
 		RoomID:           roomID,
 		RoomHash:         "",
+		SEED:             0,
 		PlayerBroadcast:  make(chan []byte, 1024),
 		PlayerRegister:   make(chan *Player),
 		PlayerUnregister: make(chan *Player),
@@ -82,6 +95,8 @@ func NewRoom(roomID string) *Room {
 		SyncControl:      make(chan SyncChapter),
 		PlayCommander:    make(chan PlayCommander),
 		Signals:          make(chan ControlSignal),
+		Answers:          make(map[string]map[string]string),
+		QuestionLocked:   make(map[string]bool),
 	}
 	room.AssignedSequence = make(map[string]int)
 	return room
@@ -97,6 +112,7 @@ func (r *Room) Run() {
 			if !updater {
 				updater = true
 				r.RoomHash = strconv.FormatInt(time.Now().Unix(), 10)
+				r.SEED = rand.Intn(10000)
 				go r.UpdateInfo(updaterChannel)
 				log.Println("Updater Started")
 			}
@@ -124,6 +140,25 @@ func (r *Room) Run() {
 					r.PlayerUnregister <- seqUpdate.Player
 				}
 			}
+			// Handle Config Pass to New Player in Room
+			cfgMsg := model.EventMessage{
+				EventType: model.EventTypeConfig,
+				Config: &model.RoomConfigMessage{
+					SEED:     r.SEED,
+					RoomHash: r.RoomHash,
+				},
+			}
+			message, err := json.Marshal(cfgMsg)
+			if err != nil {
+				log.Println("Error Marshalling Event Message: ", err)
+				continue
+			}
+			select {
+			case player.InChannel <- message:
+			default:
+				log.Println("Player Channel is full, disconnecting player")
+				r.PlayerUnregister <- player
+			}
 		case player := <-r.PlayerUnregister:
 			if _, ok := r.Players[player]; ok {
 				delete(r.Players, player)
@@ -131,6 +166,7 @@ func (r *Room) Run() {
 				close(player.InChannel)
 				if len(r.Players) == 0 {
 					r.flushLanternData(lanternData)
+					r.flushQAData()
 					updater = false
 					updaterChannel <- struct{}{}
 					log.Println("Updater Stopped")
@@ -143,6 +179,7 @@ func (r *Room) Run() {
 				log.Println("Player Detached: ", player.DeiviceID)
 				if len(r.Players) == 0 {
 					r.flushLanternData(lanternData)
+					r.flushQAData()
 					updater = false
 					updaterChannel <- struct{}{}
 					log.Println("Updater Stopped")
@@ -224,56 +261,6 @@ func (r *Room) Run() {
 					}
 				}
 				lanternData[senderIDKey] = append(lanternData[senderIDKey], eventMessage.Latern)
-			case model.MessagesTypeQA:
-				// Broadcast the QA event to all players
-				eventMessage := model.EventMessage{
-					EventType: model.EventTypeQA,
-					QA: &model.QAEventMessage{
-						QuestionID: playerMessage.QA.QuestionID,
-						StateID:    playerMessage.QA.StateInt,
-						State:      playerMessage.QA.StateBool,
-					},
-				}
-				message, err := json.Marshal(eventMessage)
-				if err != nil {
-					log.Println("Error Marshalling Event Message: ", err)
-					continue
-				}
-				for player := range r.Players {
-					if player == nil {
-						continue
-					} else {
-						select {
-						case player.InChannel <- message:
-						default:
-							log.Println("Player Channel is full, disconnecting player")
-							r.PlayerUnregister <- player
-						}
-					}
-				}
-			case model.MessageTypeResumeQA:
-				// Broadcast the resume QA event to all players
-				eventMessage := model.EventMessage{
-					EventType: model.EventTypeResumeQA,
-				}
-				message, err := json.Marshal(eventMessage)
-				if err != nil {
-					log.Println("Error Marshalling Event Message: ", err)
-					continue
-				}
-				for player := range r.Players {
-					if player == nil {
-						continue
-					} else {
-						select {
-						case player.InChannel <- message:
-						default:
-							log.Println("Player Channel is full, disconnecting player")
-							r.PlayerUnregister <- player
-						}
-					}
-				}
-
 			default:
 				//Message not handled
 				log.Println("Message not handled: ", playerMessage.MessageType)
@@ -432,6 +419,15 @@ func (r *Room) flushLanternData(lanternData map[string][]*model.LanternEventMess
 	r.RoomHash = ""
 	clear(lanternData)
 }
+func (r *Room) flushQAData() {
+	// Release Memory by GO's GC
+	r.Answers = make(map[string]map[string]string)
+	r.QuestionLocked = make(map[string]bool)
+
+	// Reset Flags
+	r.currentQID = ""
+	r.isDirty = false
+}
 func (r *Room) UpdateInfo(stop chan struct{}) {
 	ticker := time.NewTicker(time.Second / time.Duration(TickRate))
 	defer ticker.Stop()
@@ -480,6 +476,35 @@ func (r *Room) UpdateInfo(stop chan struct{}) {
 					r.PlayerUnregister <- player
 				}
 			}
+			// 檢查QA是否有資料變更
+			if r.isDirty && r.currentQID != "" {
+				currentQStats := r.Answers[r.currentQID]
+				qID := r.currentQID
+
+				qaEventMessage := model.EventMessage{
+					EventType: model.EventTypeQA,
+					QA: &model.QAEventMessage{
+						QuestionID: qID,
+						Answers:    currentQStats,
+					},
+				}
+
+				messageBytes, err := json.Marshal(qaEventMessage)
+				if err != nil {
+					log.Println("Error Marshalling Room Message: ", err)
+					continue
+				}
+				for player := range r.Players {
+					select {
+					case player.InChannel <- messageBytes:
+					default:
+						log.Println("Player Channel is full, disconnecting player")
+						r.PlayerUnregister <- player
+					}
+				}
+				r.isDirty = false
+			}
+			// ----- End QA Part
 		}
 	}
 }

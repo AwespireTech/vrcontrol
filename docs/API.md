@@ -99,8 +99,9 @@
 ### 目的與邊界
 
 - `GET /api/ws/client/:clientId` 是玩家裝置連到房間 runtime 的雙向 WebSocket。
-- 這條路徑承接玩家 heartbeat、章節推進、同步等待與遊戲事件，並由 room runtime 轉成廣播 event。
+- 這條路徑承接玩家 heartbeat、章節推進、同步等待、QA 作答與遊戲事件，並由 room runtime 轉成廣播 event。
 - `clientId` 會在後端正規化成 device key；若裝置尚未分配到房間，連線會先留在 standby，直到設備與房間對上。
+- 當房間從 0 位玩家進入到有玩家時，後端會建立新的 `room_hash`，並同時產生一個 `seed`。之後新加入該局的玩家都會先收到同一組 room config。
 
 ### Client -> Server 訊息
 
@@ -158,12 +159,45 @@
 - room 會用目前房內玩家章節做 `SyncCheck`。
 - 當所有玩家都已到達或超過指定章節時，後端會廣播 `sync_command`。
 
+#### QA 作答
+
+```json
+{
+  "message_type": "qa",
+  "qa": {
+    "timestamp": 1715846400000,
+    "qid": "question_01",
+    "aid": "answer_b"
+  }
+}
+```
+
+- `qid` 是題目 ID，`aid` 是答案 ID。
+- 作答 payload 不再使用舊的 `question_id`、`state_bool`、`state_int` 欄位。
+- 後端會以目前連線的玩家身分覆蓋該題的最新答案，不需要另外傳 `device_id`。
+
 #### 其他玩家事件
 
-- `shot_event`、`lantern`、`qa`、`resume_qa` 仍由同一條 socket 傳入。
+- `shot_event`、`lantern`、`resume_qa` 仍由同一條 socket 傳入。
 - 後端會把這些訊息轉成對應 `event_type` 廣播給房內其他玩家或所有玩家。
 
 ### Server -> Client Event 訊息
+
+#### Config
+
+```json
+{
+  "event_type": "config",
+  "config": {
+    "seed": 3141,
+    "rh": "1715846400"
+  }
+}
+```
+
+- `config` 會在玩家成功加入 room 後送出。
+- `seed` 是房間本局使用的隨機種子，來自 room 開局時產生的整數。
+- `rh` 是本局 `room_hash`，可與控制端 room update 或 lantern 查詢搭配使用。
 
 #### Move Command
 
@@ -205,6 +239,25 @@
 - `isstart=true` 代表開始播放；`false` 代表停止播放。
 - 目前 repository 內已定義這個 room event payload 與廣播流程，但尚未提供對外 REST 端點來觸發它。
 
+#### QA 聚合結果
+
+```json
+{
+  "event_type": "qa",
+  "qa": {
+    "qid": "question_01",
+    "answers": {
+      "device_001": "answer_b",
+      "device_002": "answer_a"
+    }
+  }
+}
+```
+
+- 這個 event 會廣播「目前題目」的完整答案對照表，而不是單一玩家的 delta。
+- `answers` 的 key 是正規化後的 `device_id`，value 是該玩家目前選擇的 `aid`。
+- room 只會在 QA 狀態變更時廣播新的聚合結果，避免每個 tick 都重送同一份資料。
+
 #### Assign Sequence
 
 ```json
@@ -228,6 +281,7 @@
 - `players[]` 目前包含 `device_id`、`chapter`、`sequence`、`ready_to_move`、位置/朝向欄位、`message`、`last_update`。
 - `room_hash` 會在房間從 0 位玩家進入到有玩家的那一刻產生；當房間再次清空後，下次新局會更新成新的 hash。
 - `GET /api/control/lantern/:roomId/:roomHash` 可讀取該局累積的 lantern 事件資料。
+- 玩家側收到的 `config.rh` 與控制端 room update 裡的 `room_hash` 指向同一局 room session。
 
 #### Room Update 範例
 

@@ -71,6 +71,15 @@
 4. room runtime 也保留 `PlayCommander` channel，可對全房廣播 `play_command`，攜帶目前玩家數與 `isstart` 播放狀態。
 5. 控制端透過 `/api/ws/control/:roomId` 只讀取 room update，不直接經由這條 socket 下 room command。
 
+### 房間設定與 QA 聚合
+
+1. 第一位玩家進入 room 時，`server/sockets/room.go` 會建立新的 `room_hash`，並為該局產生一個 `seed`。
+2. 玩家加入 room 後，後端會先送 `assign_sequence`，再送 `config` event，讓該玩家取得本局 `seed` 與 `room_hash`。
+3. 玩家作答時，透過 `/api/ws/client/:clientId` 送出 `qa` 訊息，payload 只包含 `qid` 與 `aid`。
+4. room runtime 會把答案寫入 `Answers[qid][device_id]`，同一玩家對同一題重送時會直接覆蓋舊答案。
+5. update loop 僅在 QA 狀態變更時廣播一次聚合後的 `qa` event，內容是該題目前所有玩家答案的完整 map。
+6. 當房間玩家數回到 0 時，room 會清空 QA 暫存狀態，下一局重新開始累積。
+
 ### Live View Popup Takeover
 
 1. 使用者在設備頁或房間控制頁的 live-stream section 點擊「在新視窗開啟」。
@@ -122,7 +131,10 @@
 
 - Socket room 的執行時狀態由 [server/sockets/room.go](../server/sockets/room.go) 維護。
 - 當房間從無玩家進入到有玩家時，會產生新的 `room_hash`，代表一局新的房間 session。
+- 同一時刻也會產生該局專用的 `seed`，並透過玩家 socket 的 `config` event 發給加入中的玩家。
 - lantern 事件會先暫存在記憶體，等房間玩家數回到 0 時寫入 `server/data/lantern`。
+- QA 作答會先暫存在 room memory 的 `Answers` map，由 update loop 做 dirty-check 後再廣播聚合結果。
+- `QuestionLocked` 是 room 內部保護機制；若某題被標記 locked，後續玩家送來的答案會被忽略。
 - 控制端可先從 room update 取得 `room_hash`，再用 control API 查詢該局 lantern 歷史資料。
 - `MoveControl`、`SyncControl`、`PlayCommander` 是 room 內部協調 channel，分別對應章節移動、同步完成與播放狀態廣播。
 - room update 目前輸出 `ready_to_move`，但不輸出 `wait_to_sync` 旗標；同步等待狀態仍由 player socket 與 `sync_command` event 協調。

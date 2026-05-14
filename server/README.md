@@ -186,8 +186,8 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 
 ### 傳輸方式
 
-- 所有 socket 訊息都是 WebSocket text frame JSON，不使用額外 `\n` framing。
-- 玩家與控制端使用不同路徑：`/api/ws/client/:clientId`、`/api/ws/control/:roomId`。
+- 所有 room socket 訊息都是 WebSocket text frame JSON，不使用額外 `\n` framing。
+- 玩家端與控制端使用不同路徑：`/api/ws/client/:clientId`、`/api/ws/control/:roomId`。
 
 ### 玩家 Socket: Client -> Server
 
@@ -231,11 +231,41 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 }
 ```
 
+#### 玩家 QA 作答
+
+```json
+{
+  "message_type": "qa",
+  "qa": {
+    "timestamp": 1715846400000,
+    "qid": "question_01",
+    "aid": "answer_b"
+  }
+}
+```
+
 - `ready_to_move` 會進入 `MovementCheck`，符合條件時廣播 `move_command`。
 - `wait_to_sync` 會進入 `SyncCheck`，全員到齊時廣播 `sync_command`。
-- `shot_event`、`lantern`、`qa`、`resume_qa` 也走同一條 socket，由 room runtime 轉成 event 廣播。
+- QA input 目前以 `qid`/`aid` 為準，不再使用舊的 `question_id`、`state_bool`、`state_int`。
+- 後端會依連線玩家身分覆蓋目前答案，因此 payload 內不需要 `device_id`。
+- `shot_event`、`lantern`、`resume_qa` 也走同一條 socket，由 room runtime 轉成 event 廣播。
 
 ### 玩家 Socket: Server -> Client
+
+玩家加入 room 後，後端會依序送出 `assign_sequence`，以及本局 room config：
+
+```json
+{
+  "event_type": "config",
+  "config": {
+    "seed": 3141,
+    "rh": "1715846400"
+  }
+}
+```
+
+- `seed` 與 `rh` 會在房間從空房轉成 active room 時建立。
+- 同一局中的新玩家都會收到相同的 `seed` 與 `room_hash`。
 
 #### Move Command
 
@@ -272,6 +302,24 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 }
 ```
 
+#### QA 聚合結果
+
+```json
+{
+  "event_type": "qa",
+  "qa": {
+    "qid": "question_01",
+    "answers": {
+      "device_001": "answer_b",
+      "device_002": "answer_a"
+    }
+  }
+}
+```
+
+- 這是 room 目前題目的完整作答狀態，不是單筆增量更新。
+- 後端只有在答案資料真的發生變更時才會重送 QA event。
+
 #### Assign Sequence
 
 ```json
@@ -282,6 +330,7 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 ```
 
 - `play_command` payload 已在 room runtime 中定義；目前這個 repository 尚未暴露對外 API 來觸發播放/停止廣播。
+- room 仍會送出既有的 `shot_event`、`lantern`、`resume_qa` 等 event。
 
 ### 控制端 Socket: Server -> Controller
 
@@ -306,6 +355,7 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 ```
 
 這條 socket 目前只用於觀測房間狀態，不承接 controller -> server 命令。
+玩家側 `config.rh` 與控制端 room update 裡的 `room_hash` 對應同一局 session。若需要讀取該局累積的 lantern 歷史資料，可呼叫 `GET /api/control/lantern/:roomId/:roomHash`。
 
 ## 基本使用流程
 
