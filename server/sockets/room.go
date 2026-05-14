@@ -2,6 +2,7 @@ package sockets
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"math/rand"
 	"strconv"
@@ -9,6 +10,7 @@ import (
 
 	"vrcontrol/server/consts"
 	"vrcontrol/server/model"
+	"vrcontrol/server/service"
 	"vrcontrol/server/utils"
 )
 
@@ -40,6 +42,7 @@ type Room struct {
 	RoomID           string
 	RoomHash         string
 	SEED             int
+	ActivityService  *service.ActivityService
 	PlayerBroadcast  chan []byte
 	PlayerRegister   chan *Player
 	PlayerUnregister chan *Player
@@ -59,8 +62,20 @@ type Room struct {
 	// 紀錄題目是否已經結束/鎖定 (true 表示不能再改答案)
 	QuestionLocked map[string]bool
 	// 標記某個題目的狀態是否被修改過，避免沒人動也一直廣播
-	isDirty    bool
-	currentQID string // 目前正在進行的題目
+	isDirty         bool
+	currentQID      string // 目前正在進行的題目
+	CurrentActivity *RoomActivityRuntime
+}
+
+type RoomActivityRuntime struct {
+	ActivityID      string
+	Name            string
+	Status          model.ActivityStatus
+	StartedAt       *time.Time
+	ActivityContext model.ActivityContext
+	EventCounts     map[string]int
+	Participants    map[string]bool
+	LastEventAt     *time.Time
 }
 type RoomMessage struct {
 	MessageType         MessageType          `json:"message_type"`
@@ -106,6 +121,124 @@ func NewRoom(roomID string) *Room {
 	room.AssignedSequence = make(map[string]int)
 	return room
 }
+
+func (r *Room) SetActivityService(svc *service.ActivityService) {
+	r.ActivityService = svc
+}
+
+func (r *Room) StartActivity(activity *model.Activity) error {
+	if activity == nil {
+		return fmt.Errorf("activity is required")
+	}
+	if r.CurrentActivity != nil && r.CurrentActivity.Status == model.ActivityStatusRunning {
+		return logErrorf("room %s already has a running activity", r.RoomID)
+	}
+	startedAt := activity.StartedAt
+	if startedAt == nil {
+		now := time.Now()
+		startedAt = &now
+	}
+	r.CurrentActivity = &RoomActivityRuntime{
+		ActivityID:      activity.ActivityID,
+		Name:            activity.Name,
+		Status:          model.ActivityStatusRunning,
+		StartedAt:       startedAt,
+		ActivityContext: cloneRoomActivityContext(activity.ActivityContext),
+		EventCounts:     make(map[string]int),
+		Participants:    make(map[string]bool),
+	}
+	r.refreshActivityParticipants()
+	return nil
+}
+
+func (r *Room) EndActivity() *model.ActivitySummary {
+	if r.CurrentActivity == nil {
+		return nil
+	}
+	summary := r.BuildActivitySummary()
+	r.CurrentActivity = nil
+	return summary
+}
+
+func (r *Room) BuildActivitySummary() *model.ActivitySummary {
+	if r.CurrentActivity == nil {
+		return nil
+	}
+	summary := &model.ActivitySummary{
+		ParticipantCount: len(r.CurrentActivity.Participants),
+		EventCounts:      make(map[string]int, len(r.CurrentActivity.EventCounts)),
+	}
+	for key, value := range r.CurrentActivity.EventCounts {
+		summary.EventCounts[key] = value
+	}
+	if r.CurrentActivity.StartedAt != nil {
+		summary.DurationSec = int64(time.Since(*r.CurrentActivity.StartedAt).Seconds())
+	}
+	return summary
+}
+
+func (r *Room) GetCurrentActivityContext() model.ActivityContext {
+	if r.CurrentActivity == nil {
+		return model.DefaultActivityContext()
+	}
+	return cloneRoomActivityContext(r.CurrentActivity.ActivityContext)
+}
+
+func (r *Room) HasRunningActivity() bool {
+	return r.CurrentActivity != nil && r.CurrentActivity.Status == model.ActivityStatusRunning
+}
+
+func (r *Room) recordActivityEvent(eventType string) {
+	if r.CurrentActivity == nil || r.CurrentActivity.Status != model.ActivityStatusRunning {
+		return
+	}
+	r.CurrentActivity.EventCounts[eventType]++
+	now := time.Now()
+	r.CurrentActivity.LastEventAt = &now
+	if r.ActivityService != nil {
+		if _, err := r.ActivityService.AppendEventStats(r.CurrentActivity.ActivityID, eventType, 1); err != nil {
+			log.Println("Error updating activity event stats:", err)
+		}
+	}
+}
+
+func (r *Room) refreshActivityParticipants() {
+	if r.CurrentActivity == nil {
+		return
+	}
+	r.CurrentActivity.Participants = make(map[string]bool)
+	for player := range r.Players {
+		if player == nil {
+			continue
+		}
+		participantID := utils.NormalizeDeviceIDKey(player.DeiviceID)
+		if participantID == "" {
+			participantID = utils.NormalizeDeviceIDKey(player.StableID)
+		}
+		if participantID == "" {
+			continue
+		}
+		r.CurrentActivity.Participants[participantID] = true
+	}
+}
+
+func cloneRoomActivityContext(context model.ActivityContext) model.ActivityContext {
+	if context == nil {
+		return model.DefaultActivityContext()
+	}
+	cloned := make(model.ActivityContext, len(context))
+	for key, value := range context {
+		cloned[key] = value
+	}
+	return cloned
+}
+
+func logErrorf(format string, args ...any) error {
+	err := fmt.Errorf(format, args...)
+	log.Println(err)
+	return err
+}
+
 func (r *Room) Run() {
 	updater := false
 	updaterChannel := make(chan struct{})
@@ -122,6 +255,7 @@ func (r *Room) Run() {
 				log.Println("Updater Started")
 			}
 			r.Players[player] = true
+			r.refreshActivityParticipants()
 			log.Println("Player Registered: ", player.DeiviceID)
 			update := r.PlayerSequenceUpdate()
 			// Send the player sequence update to the newly registered player
@@ -167,6 +301,7 @@ func (r *Room) Run() {
 		case player := <-r.PlayerUnregister:
 			if _, ok := r.Players[player]; ok {
 				delete(r.Players, player)
+				r.refreshActivityParticipants()
 				log.Println("Player Unregistered: ", player.DeiviceID)
 				close(player.InChannel)
 				if len(r.Players) == 0 {
@@ -180,6 +315,7 @@ func (r *Room) Run() {
 		case player := <-r.PlayerDetach:
 			if _, ok := r.Players[player]; ok {
 				delete(r.Players, player)
+				r.refreshActivityParticipants()
 				player.Room = nil
 				log.Println("Player Detached: ", player.DeiviceID)
 				if len(r.Players) == 0 {
@@ -212,6 +348,7 @@ func (r *Room) Run() {
 			case model.MessageTypePlayStatus:
 				log.Panicln("PlayStatus should be handled in Player")
 			case model.MessageTypeShotEvent:
+				r.recordActivityEvent(string(model.EventTypeShotEvent))
 				// Broadcast the shot event to all players
 				senderIDKey := utils.NormalizeDeviceIDKey(playerMessage.ShotEvent.DeviceID)
 				eventMessage := model.EventMessage{
@@ -240,6 +377,7 @@ func (r *Room) Run() {
 					}
 				}
 			case model.MessageTypeLantern:
+				r.recordActivityEvent(string(model.EventTypeLatern))
 				// Broadcast the lantern event to all players
 				senderIDKey := utils.NormalizeDeviceIDKey(playerMessage.Latern.DeviceID)
 				eventMessage := model.EventMessage{
@@ -268,6 +406,58 @@ func (r *Room) Run() {
 					}
 				}
 				lanternData[senderIDKey] = append(lanternData[senderIDKey], eventMessage.Latern)
+			case model.MessagesTypeQA:
+				r.recordActivityEvent(string(model.EventTypeQA))
+				// Broadcast the QA event to all players
+				eventMessage := model.EventMessage{
+					EventType: model.EventTypeQA,
+					QA: &model.QAEventMessage{
+						QuestionID: playerMessage.QA.QuestionID,
+						StateID:    playerMessage.QA.StateInt,
+						State:      playerMessage.QA.StateBool,
+					},
+				}
+				message, err := json.Marshal(eventMessage)
+				if err != nil {
+					log.Println("Error Marshalling Event Message: ", err)
+					continue
+				}
+				for player := range r.Players {
+					if player == nil {
+						continue
+					} else {
+						select {
+						case player.InChannel <- message:
+						default:
+							log.Println("Player Channel is full, disconnecting player")
+							r.PlayerUnregister <- player
+						}
+					}
+				}
+			case model.MessageTypeResumeQA:
+				r.recordActivityEvent(string(model.EventTypeResumeQA))
+				// Broadcast the resume QA event to all players
+				eventMessage := model.EventMessage{
+					EventType: model.EventTypeResumeQA,
+				}
+				message, err := json.Marshal(eventMessage)
+				if err != nil {
+					log.Println("Error Marshalling Event Message: ", err)
+					continue
+				}
+				for player := range r.Players {
+					if player == nil {
+						continue
+					} else {
+						select {
+						case player.InChannel <- message:
+						default:
+							log.Println("Player Channel is full, disconnecting player")
+							r.PlayerUnregister <- player
+						}
+					}
+				}
+
 			default:
 				//Message not handled
 				log.Println("Message not handled: ", playerMessage.MessageType)

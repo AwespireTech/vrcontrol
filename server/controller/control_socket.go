@@ -79,8 +79,7 @@ func ConnectToRoomSocket(c *gin.Context) {
 				conn.Close()
 				return
 			}
-			room = sockets.NewRoom(roomId)
-			room.AssignedSequence = getAssignedSequences(roomId)
+			room = createRoomRuntime(roomId)
 			RoomList[roomId] = room
 			go room.Run()
 			log.Println("Room Created: ", roomId)
@@ -100,8 +99,7 @@ func ConnectToRoomControlSocket(c *gin.Context) {
 			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Room List is full, please try again later."})
 			return
 		}
-		room = sockets.NewRoom(roomId)
-		room.AssignedSequence = getAssignedSequences(roomId)
+		room = createRoomRuntime(roomId)
 		RoomList[roomId] = room
 		go room.Run()
 		log.Println("Room Created: ", roomId)

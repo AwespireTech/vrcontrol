@@ -18,6 +18,7 @@ var StandbyPlayerMap map[string]*sockets.Player = make(map[string]*sockets.Playe
 var StandbyPlayerDisconnect = make(chan string)
 var roomServiceRef *service.RoomService
 var deviceServiceRef *service.DeviceService
+var activityServiceRef *service.ActivityService
 
 func SetRoomService(svc *service.RoomService) {
 	roomServiceRef = svc
@@ -26,6 +27,23 @@ func SetRoomService(svc *service.RoomService) {
 
 func SetDeviceService(svc *service.DeviceService) {
 	deviceServiceRef = svc
+}
+
+func SetActivityService(svc *service.ActivityService) {
+	activityServiceRef = svc
+	for _, room := range RoomList {
+		if room == nil {
+			continue
+		}
+		room.SetActivityService(svc)
+	}
+}
+
+func createRoomRuntime(roomID string) *sockets.Room {
+	room := sockets.NewRoom(roomID)
+	room.AssignedSequence = getAssignedSequences(roomID)
+	room.SetActivityService(activityServiceRef)
+	return room
 }
 
 func init() {
@@ -182,8 +200,7 @@ func AssignConnectedPlayerToRoom(roomId, deviceId string) {
 		if len(RoomList) > MaxRoomCount {
 			return
 		}
-		room = sockets.NewRoom(roomId)
-		room.AssignedSequence = getAssignedSequences(roomId)
+		room = createRoomRuntime(roomId)
 		RoomList[roomId] = room
 		go room.Run()
 	}
