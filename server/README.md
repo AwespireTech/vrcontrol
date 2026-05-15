@@ -308,13 +308,16 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
   "event_type": "config",
   "config": {
     "seed": 3141,
-    "rh": "1715846400"
+    "rh": "1715846400",
+    "activity_id": "ACTIVITY-123456",
+    "activity_context_path": "/api/activities/ACTIVITY-123456/context"
   }
 }
 ```
 
 - `seed` 與 `rh` 會在房間從空房轉成 active room 時建立。
 - 同一局中的新玩家都會收到相同的 `seed` 與 `room_hash`。
+- 若房間目前有 running activity，玩家也會收到 `activity_id` 與 `activity_context_path`，QA 題目與規則請從該 activity context 取得。
 
 #### Move Command
 
@@ -368,6 +371,7 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 
 - 這是 room 目前題目的完整作答狀態，不是單筆增量更新。
 - 後端只有在答案資料真的發生變更時才會重送 QA event。
+- 活動結束時，room runtime 會把 QA answers 與題目鎖定狀態封存為 activity 的 `qa` artifact；房間清空時只清除 runtime 暫存。
 
 #### Assign Sequence
 

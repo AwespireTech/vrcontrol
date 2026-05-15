@@ -42,6 +42,7 @@
 3. 執行時由後端讀取動作並透過 ADB 對設備下指令
 
 ### Activity Context Sessions
+
 1. 前端在房間控制頁建立 activity draft，提交 `name` 與 `activity_context`。
 2. 後端將 draft 保存到 `server/data/activities.json`，作為正式場次資料索引。
 3. 啟動活動時，後端會將 draft 轉成 running activity，並把 `activity_context` 當作 immutable snapshot 保存。
@@ -92,14 +93,16 @@
 4. room runtime 也保留 `PlayCommander` channel，可對全房廣播 `play_command`，攜帶目前玩家數與 `isstart` 播放狀態。
 5. 控制端透過 `/api/ws/control/:roomId` 只讀取 room update，不直接經由這條 socket 下 room command。
 
-### 房間設定與 QA 聚合
+### 房間設定、Activity Context 與 QA 聚合
 
 1. 第一位玩家進入 room 時，`server/sockets/room.go` 會建立新的 `room_hash`，並為該局產生一個 `seed`。
 2. 玩家加入 room 後，後端會先送 `assign_sequence`，再送 `config` event，讓該玩家取得本局 `seed` 與 `room_hash`。
-3. 玩家作答時，透過 `/api/ws/client/:clientId` 送出 `qa` 訊息，payload 只包含 `qid` 與 `aid`。
-4. room runtime 會把答案寫入 `Answers[qid][device_id]`，同一玩家對同一題重送時會直接覆蓋舊答案。
-5. update loop 僅在 QA 狀態變更時廣播一次聚合後的 `qa` event，內容是該題目前所有玩家答案的完整 map。
-6. 當房間玩家數回到 0 時，room 會清空 QA 暫存狀態，下一局重新開始累積。
+3. 若 room 目前有 running activity，`config` event 也會帶 `activity_id` 與 `activity_context_path`，讓設備透過 REST 讀取當場 immutable `activity_context`。
+4. QA 題目、題序、計分、倒數與顯示規則屬於單場活動，放在 `activity_context.qa`；Room 只保留物理房間、設備分組與 runtime 同步狀態。
+5. 玩家作答時，透過 `/api/ws/client/:clientId` 送出 `qa` 訊息，payload 只包含 `qid` 與 `aid`。
+6. room runtime 會把答案寫入 `Answers[qid][device_id]`，同一玩家對同一題重送時會直接覆蓋舊答案。
+7. update loop 僅在 QA 狀態變更時廣播一次聚合後的 `qa` event，內容是該題目前所有玩家答案的完整 map。
+8. 活動結束時，room runtime 會把 QA answers、locked questions 與當場 `qa_context` 封存成 activity artifact；當房間玩家數回到 0 時，room 只負責清空暫存狀態。
 
 ### Live View Popup Takeover
 
@@ -155,9 +158,9 @@
 - Socket room 的執行時狀態由 [server/sockets/room.go](../server/sockets/room.go) 維護。
 - 當房間從無玩家進入到有玩家時，會產生新的 `room_hash`，代表一局新的房間 session。
 - 同一時刻也會產生該局專用的 `seed`，並透過玩家 socket 的 `config` event 發給加入中的玩家。
-- lantern 事件會先暫存在記憶體，並可由 snapshot 協調流程主動 flush 到 `server/data/lantern`。
-- QA 作答會先暫存在 room memory 的 `Answers` map，由 update loop 做 dirty-check 後再廣播聚合結果。
-- QA 聚合資料也會與 lantern 一起在 snapshot 流程中 flush/reset。
+- lantern 事件會先暫存在記憶體，並在 snapshot 或 activity 結束流程中封存為 activity artifact；Room runtime 不作為持久化來源。
+- QA 作答會先暫存在 room memory 的 `Answers` map，由 update loop 做 dirty-check 後再廣播聚合結果；活動結束時會封存為 activity `qa` artifact。
+- QA 聚合資料與 lantern runtime data 在封存後由 activity artifact 承接，Room 只負責清空暫存狀態。
 - `QuestionLocked` 是 room 內部保護機制；若某題被標記 locked，後續玩家送來的答案會被忽略。
 - 控制端可先從 room update 取得 `room_hash`，再用 control API 查詢該局 lantern 歷史資料。
 - `MoveControl`、`SyncControl`、`PlayCommander` 是 room 內部協調 channel，分別對應章節移動、同步完成與播放狀態廣播。
@@ -170,7 +173,7 @@
 - `activity_context` 代表整場活動共用、且可提供給參與設備讀取的共享上下文，不只是設定值。
 - 同一個 room 在同一時間只允許一個 running activity。
 - 活動狀態會透過 [server/sockets/control.go](../server/sockets/control.go) 推送到控制端房間更新 payload。
-- 第一版設備讀取 `activity_context` 以 REST API 為主；若後續需要更即時同步，再擴充 WS 訊息型別。
+- 第一版設備讀取 `activity_context` 以 REST API 為主；玩家 socket 的 `config` event 只提供 `activity_id` 與 `activity_context_path` 指標。若後續需要更即時同步，再擴充 WS 訊息型別。
 
 ## 已知限制
 

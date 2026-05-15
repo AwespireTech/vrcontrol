@@ -43,6 +43,7 @@
 - `GET /api/rooms/:id/activities`
 
 ### 活動管理
+
 - `GET /api/activities/:activityId`
 - `POST /api/activities/:activityId/start`
 - `POST /api/activities/:activityId/end`
@@ -223,7 +224,9 @@
   "event_type": "config",
   "config": {
     "seed": 3141,
-    "rh": "1715846400"
+    "rh": "1715846400",
+    "activity_id": "ACTIVITY-123456",
+    "activity_context_path": "/api/activities/ACTIVITY-123456/context"
   }
 }
 ```
@@ -231,6 +234,7 @@
 - `config` 會在玩家成功加入 room 後送出。
 - `seed` 是房間本局使用的隨機種子，來自 room 開局時產生的整數。
 - `rh` 是本局 `room_hash`，可與控制端 room update 或 lantern 查詢搭配使用。
+- 若 room 目前有 running activity，`config` 也會包含 `activity_id` 與 `activity_context_path`；QA 題目、題序、計分與顯示規則應透過該 activity context 取得，不放在 room config。
 
 #### Move Command
 
@@ -857,6 +861,7 @@
 - `video_codec_options` 可作為首幀等待過久時的 fallback/診斷手段，例如 `i-frame-interval:int=1`；預設建議維持空字串，優先依賴 control channel 與 RESET_VIDEO 啟播優化。
 
 #### 房間控制更新格式
+
 - `GET /api/ws/control/:roomId` 會持續推送房間狀態 JSON。
 - 回傳內容包含 `room_id`、`room_hash`、`current_activity_id`、`activity_name`、`activity_status`、`activity_started_at`、`player_count`、`players`。
 - `room_hash` 會在房間從 0 位玩家進入到有玩家的那一刻產生；當房間再次清空後，下次新局會更新成新的 hash。
@@ -865,60 +870,89 @@
 ## Activity Context Sessions
 
 ### 目的與邊界
+
 - Activity 是正式的房間場次 entity，使用 `activity_id` 作為主要識別，不以 `room_hash` 充當 business id。
 - Room 仍負責設備分組與 WebSocket runtime；Activity 負責開始、結束、共享上下文與結果保存。
 - `activity_context` 是一場活動共用、且可由前端或參與設備讀取的 immutable snapshot，不是使用者偏好，也不是房間設定本身。
 
 ### 建立活動草稿
+
 - `POST /api/rooms/:id/activities`
 
 ```json
 {
-	"name": "Round 1 - Warmup",
-	"activity_context": {
-		"mode": "warmup",
-		"round": 1
-	}
+  "name": "Round 1 - Warmup",
+  "activity_context": {
+    "mode": "warmup",
+    "round": 1,
+    "qa": {
+      "questionSetId": "QSET-001",
+      "questionOrder": ["question_01", "question_02"],
+      "timeLimitSec": 30,
+      "allowRetry": false,
+      "scoreMode": "team",
+      "display": {
+        "showCountdown": true,
+        "showResultAfterEachQuestion": true
+      },
+      "resumePolicy": "from_current_question"
+    }
+  }
 }
 ```
 
+- QA 題目、題序、計分、倒數與顯示規則屬於單場活動，應放在 `activity_context.qa`。
+- `Room.parameters.qa_defaults` 若存在，只能當作建立 activity draft 時的模板；活動啟動後以 `activity_context.qa` 快照為準。
+
 ### 啟動活動
+
 - `POST /api/activities/:activityId/start`
 - 可選擇在啟動前覆蓋 draft 的 `name` 或 `activity_context`。
 
 ```json
 {
-	"name": "Round 1 - Warmup",
-	"activity_context": {
-		"mode": "warmup",
-		"round": 1
-	}
+  "name": "Round 1 - Warmup",
+  "activity_context": {
+    "mode": "warmup",
+    "round": 1
+  }
 }
 ```
 
 ### 取得活動結果
+
 - `GET /api/activities/:activityId/results`
 
 ```json
 {
-	"success": true,
-	"data": {
-		"activity_id": "ACTIVITY-123456",
-		"status": "ended",
-		"result_summary": {
-			"participant_count": 4,
-			"event_counts": {
-				"lantern": 12,
-				"qa": 3
-			},
-			"duration_sec": 182
-		},
-		"artifact_refs": []
-	}
+  "success": true,
+  "data": {
+    "activity_id": "ACTIVITY-123456",
+    "status": "ended",
+    "result_summary": {
+      "participant_count": 4,
+      "event_counts": {
+        "lantern": 12,
+        "qa": 3
+      },
+      "duration_sec": 182
+    },
+    "artifact_refs": [
+      {
+        "name": "qa",
+        "path": "server/data/activities/ACTIVITY-123456/qa.json",
+        "type": "qa_result"
+      }
+    ]
+  }
 }
 ```
 
+- 若活動期間有 QA runtime 狀態，結束活動時會封存 `qa` artifact，內容包含最終 `answers`、`question_locked`、`current_qid`、`room_hash` 與當場 `qa_context` 快照。
+- room runtime 仍負責即時 QA 聚合與廣播；歷史查詢以 activity result/artifact 為準。
+
 ### 取得活動上下文
+
 - `GET /api/activities/:activityId/context`
 - 回傳的是啟動當下快照下來的 `activity_context`，不會隨後續系統設定變動而改變。
 
