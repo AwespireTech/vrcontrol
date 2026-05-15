@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"sort"
@@ -124,6 +125,12 @@ func (s *ActivityService) StartActivity(activityID string, runtime *model.Activi
 	activity.Status = model.ActivityStatusRunning
 	activity.StartedAt = &now
 	activity.ActivityContext = cloneActivityContext(activity.ActivityContext)
+	if runtime == nil {
+		runtime = &model.ActivityRuntimeInfo{}
+	}
+	if runtime.Seed <= 0 {
+		runtime.Seed = rand.Intn(10000) + 1
+	}
 	if runtime != nil {
 		copied := *runtime
 		copied.LastUpdatedAt = now

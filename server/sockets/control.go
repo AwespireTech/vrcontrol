@@ -24,11 +24,13 @@ func (r *Room) GetRoomUpdate() model.RoomUpdate {
 	activityID := ""
 	activityName := ""
 	activityStatus := model.ActivityStatus("")
+	activitySeed := 0
 	var activityStartedAt *time.Time
 	if r != nil && r.CurrentActivity != nil {
 		activityID = r.CurrentActivity.ActivityID
 		activityName = r.CurrentActivity.Name
 		activityStatus = r.CurrentActivity.Status
+		activitySeed = r.CurrentActivity.Seed
 		activityStartedAt = r.CurrentActivity.StartedAt
 	}
 	if r == nil {
@@ -40,6 +42,7 @@ func (r *Room) GetRoomUpdate() model.RoomUpdate {
 			ActivityName:      activityName,
 			ActivityStatus:    activityStatus,
 			ActivityStartedAt: activityStartedAt,
+			ActivitySeed:      activitySeed,
 			PlayerCount:       0,
 			Players:           []model.PlayerStatus{},
 		}
@@ -52,6 +55,7 @@ func (r *Room) GetRoomUpdate() model.RoomUpdate {
 			ActivityName:      activityName,
 			ActivityStatus:    activityStatus,
 			ActivityStartedAt: activityStartedAt,
+			ActivitySeed:      activitySeed,
 			PlayerCount:       0,
 			Players:           []model.PlayerStatus{},
 		}
@@ -64,6 +68,7 @@ func (r *Room) GetRoomUpdate() model.RoomUpdate {
 		ActivityName:      activityName,
 		ActivityStatus:    activityStatus,
 		ActivityStartedAt: activityStartedAt,
+		ActivitySeed:      activitySeed,
 		PlayerCount:       len(r.Players),
 		Players: utilities.Fold2(maps.All(r.Players), make([]model.PlayerStatus, 0, len(r.Players)), func(_l []model.PlayerStatus, p *Player, inuse bool) []model.PlayerStatus {
 			if !inuse {

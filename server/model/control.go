@@ -21,11 +21,12 @@ type Control struct {
 
 type RoomUpdate struct {
 	RoomID            string         `json:"room_id"`
-	RoomHash          string         `json:"room_hash"`
+	RoomHash          string         `json:"room_hash,omitempty"`
 	CurrentActivityID string         `json:"current_activity_id,omitempty"`
 	ActivityName      string         `json:"activity_name,omitempty"`
 	ActivityStatus    ActivityStatus `json:"activity_status,omitempty"`
 	ActivityStartedAt *time.Time     `json:"activity_started_at,omitempty"`
+	ActivitySeed      int            `json:"activity_seed,omitempty"`
 	Players           []PlayerStatus `json:"players"`
 	PlayerCount       int            `json:"player_count"`
 }

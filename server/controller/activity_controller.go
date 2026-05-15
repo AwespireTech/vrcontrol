@@ -76,6 +76,7 @@ func (c *ActivityController) StartActivity(ctx *gin.Context) {
 	var req struct {
 		Name            *string                `json:"name"`
 		ActivityContext *model.ActivityContext `json:"activity_context"`
+		Seed            *int                   `json:"seed"`
 	}
 	if err := ctx.ShouldBindJSON(&req); err != nil && err.Error() != "EOF" {
 		ctx.JSON(http.StatusBadRequest, gin.H{"success": false, "error": "Invalid request body"})
@@ -105,6 +106,9 @@ func (c *ActivityController) StartActivity(ctx *gin.Context) {
 	}
 
 	runtimeInfo := &model.ActivityRuntimeInfo{RoomHash: room.RoomHash, PlayerCount: len(room.Players)}
+	if req.Seed != nil {
+		runtimeInfo.Seed = *req.Seed
+	}
 	started, err := c.activityService.StartActivity(activityID, runtimeInfo)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
@@ -129,8 +133,10 @@ func (c *ActivityController) EndActivity(ctx *gin.Context) {
 
 	var summary *model.ActivitySummary
 	var qaSnapshot *model.ActivityQAResult
+	var lanternSnapshot *model.ActivityLanternResult
 	if room, ok := RoomList[activity.RoomID]; ok && room != nil && room.CurrentActivity != nil && room.CurrentActivity.ActivityID == activityID {
 		qaSnapshot = room.BuildQASnapshot(activityID)
+		lanternSnapshot = room.BuildLanternSnapshot(activityID)
 		summary = room.EndActivity()
 	}
 	if summary == nil {
@@ -147,6 +153,14 @@ func (c *ActivityController) EndActivity(ctx *gin.Context) {
 	}
 	if qaSnapshot != nil {
 		updated, err := c.activityService.AttachArtifact(activityID, model.ActivityArtifactRef{Name: "qa", Type: "qa_result"}, qaSnapshot)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+			return
+		}
+		ended = updated
+	}
+	if lanternSnapshot != nil {
+		updated, err := c.activityService.AttachArtifact(activityID, model.ActivityArtifactRef{Name: "lantern", Type: "lantern_result"}, lanternSnapshot)
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
 			return

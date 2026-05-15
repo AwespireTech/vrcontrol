@@ -30,6 +30,7 @@ type Activity struct {
 }
 
 type ActivityRuntimeInfo struct {
+	Seed             int       `json:"seed,omitempty"`
 	RoomHash         string    `json:"room_hash,omitempty"`
 	PlayerCount      int       `json:"player_count"`
 	LastEventAt      time.Time `json:"last_event_at,omitempty"`
@@ -59,6 +60,14 @@ type ActivityQAResult struct {
 	QuestionLocked map[string]bool              `json:"question_locked,omitempty"`
 	QAContext      any                          `json:"qa_context,omitempty"`
 	CapturedAt     time.Time                    `json:"captured_at"`
+}
+
+type ActivityLanternResult struct {
+	ActivityID string                            `json:"activity_id"`
+	RoomID     string                            `json:"room_id"`
+	RoomHash   string                            `json:"room_hash,omitempty"`
+	Events     map[string][]*LanternEventMessage `json:"events"`
+	CapturedAt time.Time                         `json:"captured_at"`
 }
 
 func DefaultActivityContext() ActivityContext {

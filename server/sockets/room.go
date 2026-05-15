@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
-	"strconv"
 	"time"
 
 	"vrcontrol/server/consts"
@@ -41,7 +39,6 @@ type PlayCommander struct {
 type Room struct {
 	RoomID           string
 	RoomHash         string
-	Seed             int
 	ActivityService  *service.ActivityService
 	PlayerBroadcast  chan []byte
 	PlayerRegister   chan *Player
@@ -59,6 +56,8 @@ type Room struct {
 	// key2: DeviceID (玩家ID)
 	// value: aID (答案ID)
 	Answers map[string]map[string]string
+	// 活動期間的 lantern 事件暫存；正式保存會在 Activity 結束時寫入 artifact。
+	LanternData map[string][]*model.LanternEventMessage
 	// 紀錄題目是否已經結束/鎖定 (true 表示不能再改答案)
 	QuestionLocked map[string]bool
 	// 標記某個題目的狀態是否被修改過，避免沒人動也一直廣播
@@ -71,6 +70,7 @@ type RoomActivityRuntime struct {
 	ActivityID      string
 	Name            string
 	Status          model.ActivityStatus
+	Seed            int
 	StartedAt       *time.Time
 	ActivityContext model.ActivityContext
 	EventCounts     map[string]int
@@ -104,7 +104,6 @@ func NewRoom(roomID string) *Room {
 	room := &Room{
 		RoomID:           roomID,
 		RoomHash:         "",
-		Seed:             0,
 		PlayerBroadcast:  make(chan []byte, 1024),
 		PlayerRegister:   make(chan *Player),
 		PlayerUnregister: make(chan *Player),
@@ -116,6 +115,7 @@ func NewRoom(roomID string) *Room {
 		PlayCommander:    make(chan PlayCommander),
 		Signals:          make(chan ControlSignal),
 		Answers:          make(map[string]map[string]string),
+		LanternData:      make(map[string][]*model.LanternEventMessage),
 		QuestionLocked:   make(map[string]bool),
 	}
 	room.AssignedSequence = make(map[string]int)
@@ -134,6 +134,7 @@ func (r *Room) StartActivity(activity *model.Activity) error {
 		return logErrorf("room %s already has a running activity", r.RoomID)
 	}
 	r.flushQAData()
+	r.clearLanternData()
 	startedAt := activity.StartedAt
 	if startedAt == nil {
 		now := time.Now()
@@ -143,6 +144,7 @@ func (r *Room) StartActivity(activity *model.Activity) error {
 		ActivityID:      activity.ActivityID,
 		Name:            activity.Name,
 		Status:          model.ActivityStatusRunning,
+		Seed:            activitySeed(activity),
 		StartedAt:       startedAt,
 		ActivityContext: cloneRoomActivityContext(activity.ActivityContext),
 		EventCounts:     make(map[string]int),
@@ -160,6 +162,8 @@ func (r *Room) EndActivity() *model.ActivitySummary {
 	summary := r.BuildActivitySummary()
 	r.CurrentActivity = nil
 	r.flushQAData()
+	r.clearLanternData()
+	r.BroadcastConfig()
 	return summary
 }
 
@@ -189,6 +193,13 @@ func (r *Room) GetCurrentActivityContext() model.ActivityContext {
 
 func (r *Room) HasRunningActivity() bool {
 	return r.CurrentActivity != nil && r.CurrentActivity.Status == model.ActivityStatusRunning
+}
+
+func activitySeed(activity *model.Activity) int {
+	if activity == nil || activity.RuntimeSnapshot == nil {
+		return 0
+	}
+	return activity.RuntimeSnapshot.Seed
 }
 
 func (r *Room) recordActivityEvent(eventType string) {
@@ -301,14 +312,41 @@ func (r *Room) BuildQASnapshot(activityID string) *model.ActivityQAResult {
 	}
 }
 
+func (r *Room) BuildLanternSnapshot(activityID string) *model.ActivityLanternResult {
+	if activityID == "" || len(r.LanternData) == 0 {
+		return nil
+	}
+
+	events := make(map[string][]*model.LanternEventMessage, len(r.LanternData))
+	for deviceID, deviceEvents := range r.LanternData {
+		if len(deviceEvents) == 0 {
+			continue
+		}
+		events[deviceID] = make([]*model.LanternEventMessage, len(deviceEvents))
+		copy(events[deviceID], deviceEvents)
+	}
+	if len(events) == 0 {
+		return nil
+	}
+
+	return &model.ActivityLanternResult{
+		ActivityID: activityID,
+		RoomID:     r.RoomID,
+		RoomHash:   r.RoomHash,
+		Events:     events,
+		CapturedAt: time.Now(),
+	}
+}
+
 func (r *Room) buildConfigMessage() model.EventMessage {
 	config := &model.RoomConfigMessage{
-		Seed:     r.Seed,
+		RoomID:   r.RoomID,
 		RoomHash: r.RoomHash,
 	}
 	if r.CurrentActivity != nil && r.CurrentActivity.Status == model.ActivityStatusRunning {
 		config.ActivityID = r.CurrentActivity.ActivityID
 		config.ActivityContextPath = fmt.Sprintf("/api/activities/%s/context", r.CurrentActivity.ActivityID)
+		config.Seed = r.CurrentActivity.Seed
 	}
 	return model.EventMessage{
 		EventType: model.EventTypeConfig,
@@ -352,15 +390,12 @@ func logErrorf(format string, args ...any) error {
 func (r *Room) Run() {
 	updater := false
 	updaterChannel := make(chan struct{})
-	lanternData := make(map[string][]*model.LanternEventMessage)
 	defer close(updaterChannel)
 	for {
 		select {
 		case player := <-r.PlayerRegister:
 			if !updater {
 				updater = true
-				r.RoomHash = strconv.FormatInt(time.Now().Unix(), 10)
-				r.Seed = rand.Intn(10000)
 				go r.UpdateInfo(updaterChannel)
 				log.Println("Updater Started")
 			}
@@ -399,8 +434,10 @@ func (r *Room) Run() {
 				log.Println("Player Unregistered: ", player.DeiviceID)
 				close(player.InChannel)
 				if len(r.Players) == 0 {
-					// r.flushLanternData(lanternData)
-					// r.flushQAData()
+					if !r.HasRunningActivity() {
+						r.flushQAData()
+						r.clearLanternData()
+					}
 					updater = false
 					updaterChannel <- struct{}{}
 					log.Println("Updater Stopped")
@@ -413,8 +450,10 @@ func (r *Room) Run() {
 				player.Room = nil
 				log.Println("Player Detached: ", player.DeiviceID)
 				if len(r.Players) == 0 {
-					// r.flushLanternData(lanternData)
-					// r.flushQAData()
+					if !r.HasRunningActivity() {
+						r.flushQAData()
+						r.clearLanternData()
+					}
 					updater = false
 					updaterChannel <- struct{}{}
 					log.Println("Updater Stopped")
@@ -499,7 +538,9 @@ func (r *Room) Run() {
 						}
 					}
 				}
-				lanternData[senderIDKey] = append(lanternData[senderIDKey], eventMessage.Latern)
+				if r.HasRunningActivity() {
+					r.LanternData[senderIDKey] = append(r.LanternData[senderIDKey], eventMessage.Latern)
+				}
 			default:
 				//Message not handled
 				log.Println("Message not handled: ", playerMessage.MessageType)
@@ -657,13 +698,16 @@ func (r *Room) Run() {
 	}
 }
 
-func (r *Room) flushLanternData(lanternData map[string][]*model.LanternEventMessage) {
+func (r *Room) flushLegacyLanternData() {
 	if r.RoomHash == "" {
 		return
 	}
-	consts.SaveAssignedLanternData(r.RoomID, r.RoomHash, lanternData)
+	consts.SaveAssignedLanternData(r.RoomID, r.RoomHash, r.LanternData)
 	r.RoomHash = ""
-	clear(lanternData)
+	r.clearLanternData()
+}
+func (r *Room) clearLanternData() {
+	r.LanternData = make(map[string][]*model.LanternEventMessage)
 }
 func (r *Room) flushQAData() {
 	// Release Memory by GO's GC
