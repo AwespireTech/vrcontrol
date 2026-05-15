@@ -93,7 +93,8 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
           placeholder='{"key": "value"}'
         />
         <p className="mt-1 text-xs text-foreground/50">
-          輸入 JSON 格式的參數，將會同步到 Socket Server 的所有客戶端
+          用於長期房間配置，例如 minimap 或跨活動預設模板 qa_defaults；單場 QA 題目與流程請放在
+          Activity context。
         </p>
       </div>
 

@@ -65,6 +65,27 @@ const DEVICE_CARD_INTERACTIVE_SELECTOR = [
   '[role="link"]',
 ].join(", ")
 
+const DEFAULT_ACTIVITY_CONTEXT_INPUT = JSON.stringify(
+  {
+    mode: "",
+    round: 1,
+    qa: {
+      questionSetId: "",
+      questionOrder: [],
+      timeLimitSec: 30,
+      allowRetry: false,
+      scoreMode: "team",
+      display: {
+        showCountdown: true,
+        showResultAfterEachQuestion: true,
+      },
+      resumePolicy: "from_current_question",
+    },
+  },
+  null,
+  2,
+)
+
 function shouldIgnoreDeviceCardSelectionEvent(
   target: EventTarget | null,
   currentTarget: HTMLElement,
@@ -114,10 +135,14 @@ export default function RoomControlPage() {
   const [activities, setActivities] = useState<Activity[]>([])
   const [selectedActionId, setSelectedActionId] = useState<string>("")
   const [selectedActivityId, setSelectedActivityId] = useState<string>("")
-  const [selectedActivityContext, setSelectedActivityContext] = useState<ActivityContext | null>(null)
-  const [selectedActivityResults, setSelectedActivityResults] = useState<ActivityResults | null>(null)
+  const [selectedActivityContext, setSelectedActivityContext] = useState<ActivityContext | null>(
+    null,
+  )
+  const [selectedActivityResults, setSelectedActivityResults] = useState<ActivityResults | null>(
+    null,
+  )
   const [activityDraftName, setActivityDraftName] = useState("")
-  const [activityContextInput, setActivityContextInput] = useState('{\n  "mode": "",\n  "round": 1\n}')
+  const [activityContextInput, setActivityContextInput] = useState(DEFAULT_ACTIVITY_CONTEXT_INPUT)
   const [activityPending, setActivityPending] = useState<string>("")
   const [currentActivityMeta, setCurrentActivityMeta] = useState<{
     id: string
@@ -236,31 +261,31 @@ export default function RoomControlPage() {
   }, [])
 
   const loadActivities = useCallback(async () => {
-  try {
-    if (!roomId) {
-      setActivities([])
-      return
+    try {
+      if (!roomId) {
+        setActivities([])
+        return
+      }
+      const activitiesData = await activityApi.listByRoom(roomId)
+      setActivities(activitiesData)
+    } catch (error) {
+      console.error("Failed to load activities:", error)
     }
-    const activitiesData = await activityApi.listByRoom(roomId)
-    setActivities(activitiesData)
-  } catch (error) {
-    console.error("Failed to load activities:", error)
-  }
   }, [roomId])
 
   const loadActivityDetails = useCallback(async (activityId: string) => {
-  try {
-    const [activityContext, activityResults] = await Promise.all([
-      activityApi.getContext(activityId),
-      activityApi.getResults(activityId),
-    ])
-    setSelectedActivityId(activityId)
-    setSelectedActivityContext(activityContext)
-    setSelectedActivityResults(activityResults)
-  } catch (error) {
-    console.error("Failed to load activity details:", error)
-    alert("讀取活動詳情失敗，請稍後再試")
-  }
+    try {
+      const [activityContext, activityResults] = await Promise.all([
+        activityApi.getContext(activityId),
+        activityApi.getResults(activityId),
+      ])
+      setSelectedActivityId(activityId)
+      setSelectedActivityContext(activityContext)
+      setSelectedActivityResults(activityResults)
+    } catch (error) {
+      console.error("Failed to load activity details:", error)
+      alert("讀取活動詳情失敗，請稍後再試")
+    }
   }, [])
 
   const refreshDeviceStatuses = useCallback(async () => {
@@ -414,12 +439,7 @@ export default function RoomControlPage() {
       unsubscribe()
       channel?.close()
     }
-  }, [
-    buildLiveStreamPopupState,
-    displayDeviceIds,
-    handleToggleSelectedDevice,
-    roomId,
-  ])
+  }, [buildLiveStreamPopupState, displayDeviceIds, handleToggleSelectedDevice, roomId])
 
   useEffect(() => {
     postLiveStreamPopupMessage(popupChannelRef.current, {
@@ -868,7 +888,9 @@ export default function RoomControlPage() {
       setBatchSelectedDeviceIds([])
 
       if (droppedCount > 0) {
-        alert(`即時畫面初版最多同時開啟 ${LIVE_VIEW_MAX_STREAMS} 台設備，已有 ${droppedCount} 台未加入直播牆`)
+        alert(
+          `即時畫面初版最多同時開啟 ${LIVE_VIEW_MAX_STREAMS} 台設備，已有 ${droppedCount} 台未加入直播牆`,
+        )
       }
       return
     }
@@ -922,9 +944,7 @@ export default function RoomControlPage() {
         layout: buildAutoLayout(orderedDeviceIds.length),
       })
 
-      alert(
-        `批次監看完成\n成功: ${result.success_count}\n失敗: ${result.failed_count}`,
-      )
+      alert(`批次監看完成\n成功: ${result.success_count}\n失敗: ${result.failed_count}`)
 
       setBatchModalOpen(false)
       setBatchSelectedDeviceIds([])
@@ -965,10 +985,7 @@ export default function RoomControlPage() {
                 ? "連線中"
                 : "已中斷"}
           </span>
-          <button
-            onClick={() => navigate("/rooms")}
-            className="ui-btn ui-btn-md ui-btn-muted"
-          >
+          <button onClick={() => navigate("/rooms")} className="ui-btn ui-btn-md ui-btn-muted">
             返回房間列表
           </button>
           <button
@@ -998,7 +1015,9 @@ export default function RoomControlPage() {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`ui-badge ${getActivityBadgeClass(currentActivityMeta.status)}`}>
-                  {currentActivityMeta.status ? `目前活動 ${currentActivityMeta.status}` : "目前沒有進行中的活動"}
+                  {currentActivityMeta.status
+                    ? `目前活動 ${currentActivityMeta.status}`
+                    : "目前沒有進行中的活動"}
                 </span>
                 {currentActivityMeta.name ? (
                   <span className="text-sm text-foreground/70">{currentActivityMeta.name}</span>
@@ -1032,7 +1051,8 @@ export default function RoomControlPage() {
                         建立 draft
                       </Button>
                       <span className="text-xs text-foreground/50">
-                        第一版用 JSON 物件編輯 activity context，後續可再升級為固定欄位表單。
+                        QA 題目、題序與計分規則請放在 activity
+                        context；房間參數只保留固定配置或預設模板。
                       </span>
                     </div>
                   </div>
@@ -1055,17 +1075,23 @@ export default function RoomControlPage() {
                         >
                           <div className="flex flex-wrap items-start justify-between gap-3">
                             <div>
-                              <div className="font-semibold text-foreground">{activity.name || activity.activity_id}</div>
+                              <div className="font-semibold text-foreground">
+                                {activity.name || activity.activity_id}
+                              </div>
                               <div className="font-mono text-xs text-foreground/50">
                                 {activity.activity_id}
                               </div>
                               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-foreground/60">
-                                <span className={`ui-badge ${getActivityBadgeClass(activity.status)}`}>
+                                <span
+                                  className={`ui-badge ${getActivityBadgeClass(activity.status)}`}
+                                >
                                   {activity.status}
                                 </span>
                                 <span>建立於 {new Date(activity.created_at).toLocaleString()}</span>
                                 {activity.started_at ? (
-                                  <span>開始於 {new Date(activity.started_at).toLocaleString()}</span>
+                                  <span>
+                                    開始於 {new Date(activity.started_at).toLocaleString()}
+                                  </span>
                                 ) : null}
                               </div>
                             </div>
@@ -1097,7 +1123,7 @@ export default function RoomControlPage() {
                                   結束
                                 </Button>
                               ) : null}
-                              {(activity.status === "draft" || activity.status === "running") ? (
+                              {activity.status === "draft" || activity.status === "running" ? (
                                 <Button
                                   loading={activityPending === `cancel:${activity.activity_id}`}
                                   disabled={activityPending !== ""}
@@ -1120,7 +1146,9 @@ export default function RoomControlPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm font-semibold text-foreground">活動詳情</div>
                   {selectedActivityId ? (
-                    <span className="font-mono text-xs text-foreground/50">{selectedActivityId}</span>
+                    <span className="font-mono text-xs text-foreground/50">
+                      {selectedActivityId}
+                    </span>
                   ) : null}
                 </div>
 
@@ -1159,6 +1187,14 @@ export default function RoomControlPage() {
                             2,
                           )}
                         </pre>
+                        {selectedActivityResults?.artifact_refs?.length ? (
+                          <>
+                            <div className="mt-3 text-xs text-foreground/50">Artifacts</div>
+                            <pre className="mt-2 overflow-x-auto rounded-2xl bg-surface/60 p-3 text-xs text-foreground/80">
+                              {JSON.stringify(selectedActivityResults.artifact_refs, null, 2)}
+                            </pre>
+                          </>
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -1275,9 +1311,7 @@ export default function RoomControlPage() {
                 >
                   選擇設備並開啟即時畫面
                 </Button>
-                <span className="text-xs text-foreground/50">
-                  只可選擇在線設備
-                </span>
+                <span className="text-xs text-foreground/50">只可選擇在線設備</span>
               </div>
             </div>
           </div>
@@ -1301,7 +1335,9 @@ export default function RoomControlPage() {
                 </p>
               </div>
               <div className="live-stream-section__toolbar">
-                <span className="ui-badge ui-badge-primary">{liveWindows.length} / {LIVE_VIEW_MAX_STREAMS}</span>
+                <span className="ui-badge ui-badge-primary">
+                  {liveWindows.length} / {LIVE_VIEW_MAX_STREAMS}
+                </span>
                 <div className="live-stream-layout-toggle" role="group" aria-label="即時串流排版">
                   <button
                     type="button"
@@ -1371,7 +1407,9 @@ export default function RoomControlPage() {
                 const player = playerByDeviceId.get(deviceId)
                 const device = deviceMap.get(deviceId)
                 const alias = device ? getDisplayName(device) : deviceId
-                const adbStatus = isSupportedDeviceStatus(device?.status) ? device?.status : undefined
+                const adbStatus = isSupportedDeviceStatus(device?.status)
+                  ? device?.status
+                  : undefined
                 const wsStatus = device?.ws_status
                 const isAdbOnline = adbStatus === DEVICE_STATUS.ONLINE
                 const isAdbConnecting = adbStatus === DEVICE_STATUS.CONNECTING
@@ -1414,9 +1452,7 @@ export default function RoomControlPage() {
                       handleToggleSelectedDevice(deviceId)
                     }}
                     className={`surface-panel selection-surface selection-surface-interactive cursor-pointer p-4 ${
-                      isSelectedDevice
-                        ? "selection-surface-selected"
-                        : ""
+                      isSelectedDevice ? "selection-surface-selected" : ""
                     }`}
                   >
                     <div className="flex flex-wrap items-start justify-between gap-2">
@@ -1434,7 +1470,9 @@ export default function RoomControlPage() {
                       <div className="flex items-center gap-2">
                         <span
                           className={`ui-badge ${getWsStatusBadgeClass(wsStatus)}`}
-                          title={device?.ws_last_seen ? `最後回報: ${device.ws_last_seen}` : undefined}
+                          title={
+                            device?.ws_last_seen ? `最後回報: ${device.ws_last_seen}` : undefined
+                          }
                         >
                           WS {getWsStatusText(wsStatus)}
                         </span>
@@ -1494,7 +1532,9 @@ export default function RoomControlPage() {
                         />
                       ) : (
                         <div className="px-4 py-3 text-xs text-foreground/60">
-                          <div className="ui-badge ui-badge-muted">未加入房間控制（無即時玩家資料）</div>
+                          <div className="ui-badge ui-badge-muted">
+                            未加入房間控制（無即時玩家資料）
+                          </div>
                           <div className="mt-2 text-foreground/50">
                             此設備已在房間設定中，但目前未連上房間 WebSocket。
                           </div>
@@ -1506,7 +1546,6 @@ export default function RoomControlPage() {
               })}
             </div>
           </div>
-
         </div>
       </div>
 

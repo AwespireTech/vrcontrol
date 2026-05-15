@@ -123,8 +123,32 @@ export interface Room {
 
 export type ActivityStatus = "draft" | "running" | "ended" | "cancelled"
 
-export interface ActivityContext {
+export interface ActivityQAContext {
+  questionSetId?: string
+  questionOrder?: string[]
+  timeLimitSec?: number
+  allowRetry?: boolean
+  scoreMode?: string
+  display?: Record<string, unknown>
+  resumePolicy?: string
+  questions?: Record<string, unknown>[]
   [key: string]: unknown
+}
+
+export interface ActivityContext {
+  qa?: ActivityQAContext
+  [key: string]: unknown
+}
+
+export interface ActivityQAResult {
+  activity_id: string
+  room_id: string
+  room_hash?: string
+  current_qid?: string
+  answers: Record<string, Record<string, string>>
+  question_locked?: Record<string, boolean>
+  qa_context?: ActivityQAContext
+  captured_at: string
 }
 
 export interface ActivityRuntimeInfo {
@@ -225,13 +249,7 @@ export interface MonitoringStatus {
 
 export type WebRTCSignalMessageType = "offer" | "answer" | "ice" | "close" | "error"
 
-export type WebRTCStreamStatus =
-  | "idle"
-  | "connecting"
-  | "live"
-  | "stalled"
-  | "error"
-  | "closed"
+export type WebRTCStreamStatus = "idle" | "connecting" | "live" | "stalled" | "error" | "closed"
 
 export type WebRTCStreamErrorCode =
   | "invalid_signal"
