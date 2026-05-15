@@ -151,7 +151,16 @@ export interface ActivityQAResult {
   captured_at: string
 }
 
+export interface ActivityLanternResult {
+  activity_id: string
+  room_id: string
+  room_hash?: string
+  events: Record<string, unknown[]>
+  captured_at: string
+}
+
 export interface ActivityRuntimeInfo {
+  seed?: number
   room_hash?: string
   player_count: number
   last_event_at?: string

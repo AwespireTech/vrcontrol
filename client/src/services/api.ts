@@ -377,7 +377,7 @@ export const activityApi = {
 
   start: async (
     activityId: string,
-    payload?: { name?: string; activity_context?: ActivityContext },
+    payload?: { name?: string; activity_context?: ActivityContext; seed?: number },
   ): Promise<Activity> => {
     const res = await fetch(`${API_BASE}/activities/${activityId}/start`, {
       method: "POST",

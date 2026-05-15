@@ -148,6 +148,7 @@ export default function RoomControlPage() {
     id: string
     name: string
     status: ActivityStatus | ""
+    seed?: number
     startedAt?: string
   }>({ id: "", name: "", status: "" })
   const [batchModalOpen, setBatchModalOpen] = useState(false)
@@ -353,6 +354,7 @@ export default function RoomControlPage() {
         id: data.current_activity_id || "",
         name: data.activity_name || "",
         status: data.activity_status || "",
+        seed: data.activity_seed,
         startedAt: data.activity_started_at,
       })
       const nextActivityId = data.current_activity_id || ""
@@ -1021,6 +1023,11 @@ export default function RoomControlPage() {
                 </span>
                 {currentActivityMeta.name ? (
                   <span className="text-sm text-foreground/70">{currentActivityMeta.name}</span>
+                ) : null}
+                {currentActivityMeta.seed ? (
+                  <span className="font-mono text-xs text-foreground/50">
+                    seed {currentActivityMeta.seed}
+                  </span>
                 ) : null}
               </div>
             </div>
