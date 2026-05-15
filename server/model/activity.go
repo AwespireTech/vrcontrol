@@ -50,6 +50,17 @@ type ActivityArtifactRef struct {
 	Type string `json:"type,omitempty"`
 }
 
+type ActivityQAResult struct {
+	ActivityID     string                       `json:"activity_id"`
+	RoomID         string                       `json:"room_id"`
+	RoomHash       string                       `json:"room_hash,omitempty"`
+	CurrentQID     string                       `json:"current_qid,omitempty"`
+	Answers        map[string]map[string]string `json:"answers"`
+	QuestionLocked map[string]bool              `json:"question_locked,omitempty"`
+	QAContext      any                          `json:"qa_context,omitempty"`
+	CapturedAt     time.Time                    `json:"captured_at"`
+}
+
 func DefaultActivityContext() ActivityContext {
 	return make(ActivityContext)
 }

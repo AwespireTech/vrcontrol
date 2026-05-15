@@ -41,7 +41,7 @@ type PlayCommander struct {
 type Room struct {
 	RoomID           string
 	RoomHash         string
-	SEED             int
+	Seed             int
 	ActivityService  *service.ActivityService
 	PlayerBroadcast  chan []byte
 	PlayerRegister   chan *Player
@@ -104,7 +104,7 @@ func NewRoom(roomID string) *Room {
 	room := &Room{
 		RoomID:           roomID,
 		RoomHash:         "",
-		SEED:             0,
+		Seed:             0,
 		PlayerBroadcast:  make(chan []byte, 1024),
 		PlayerRegister:   make(chan *Player),
 		PlayerUnregister: make(chan *Player),
@@ -133,6 +133,7 @@ func (r *Room) StartActivity(activity *model.Activity) error {
 	if r.CurrentActivity != nil && r.CurrentActivity.Status == model.ActivityStatusRunning {
 		return logErrorf("room %s already has a running activity", r.RoomID)
 	}
+	r.flushQAData()
 	startedAt := activity.StartedAt
 	if startedAt == nil {
 		now := time.Now()
@@ -148,6 +149,7 @@ func (r *Room) StartActivity(activity *model.Activity) error {
 		Participants:    make(map[string]bool),
 	}
 	r.refreshActivityParticipants()
+	r.BroadcastConfig()
 	return nil
 }
 
@@ -157,6 +159,7 @@ func (r *Room) EndActivity() *model.ActivitySummary {
 	}
 	summary := r.BuildActivitySummary()
 	r.CurrentActivity = nil
+	r.flushQAData()
 	return summary
 }
 
@@ -226,11 +229,118 @@ func cloneRoomActivityContext(context model.ActivityContext) model.ActivityConte
 	if context == nil {
 		return model.DefaultActivityContext()
 	}
-	cloned := make(model.ActivityContext, len(context))
-	for key, value := range context {
-		cloned[key] = value
+	bytes, err := json.Marshal(context)
+	if err != nil {
+		cloned := make(model.ActivityContext, len(context))
+		for key, value := range context {
+			cloned[key] = value
+		}
+		return cloned
+	}
+	var cloned model.ActivityContext
+	if err := json.Unmarshal(bytes, &cloned); err != nil {
+		fallback := make(model.ActivityContext, len(context))
+		for key, value := range context {
+			fallback[key] = value
+		}
+		return fallback
 	}
 	return cloned
+}
+
+func cloneRoomActivityContextValue(value any) any {
+	if value == nil {
+		return nil
+	}
+	bytes, err := json.Marshal(value)
+	if err != nil {
+		return value
+	}
+	var cloned any
+	if err := json.Unmarshal(bytes, &cloned); err != nil {
+		return value
+	}
+	return cloned
+}
+
+func (r *Room) BuildQASnapshot(activityID string) *model.ActivityQAResult {
+	if activityID == "" {
+		return nil
+	}
+	if len(r.Answers) == 0 && len(r.QuestionLocked) == 0 && r.currentQID == "" {
+		return nil
+	}
+
+	answers := make(map[string]map[string]string, len(r.Answers))
+	for questionID, questionAnswers := range r.Answers {
+		answers[questionID] = make(map[string]string, len(questionAnswers))
+		for deviceID, answerID := range questionAnswers {
+			answers[questionID][deviceID] = answerID
+		}
+	}
+
+	questionLocked := make(map[string]bool, len(r.QuestionLocked))
+	for questionID, locked := range r.QuestionLocked {
+		questionLocked[questionID] = locked
+	}
+
+	var qaContext any
+	if r.CurrentActivity != nil && r.CurrentActivity.ActivityID == activityID {
+		qaContext = cloneRoomActivityContextValue(r.CurrentActivity.ActivityContext["qa"])
+	}
+
+	return &model.ActivityQAResult{
+		ActivityID:     activityID,
+		RoomID:         r.RoomID,
+		RoomHash:       r.RoomHash,
+		CurrentQID:     r.currentQID,
+		Answers:        answers,
+		QuestionLocked: questionLocked,
+		QAContext:      qaContext,
+		CapturedAt:     time.Now(),
+	}
+}
+
+func (r *Room) buildConfigMessage() model.EventMessage {
+	config := &model.RoomConfigMessage{
+		Seed:     r.Seed,
+		RoomHash: r.RoomHash,
+	}
+	if r.CurrentActivity != nil && r.CurrentActivity.Status == model.ActivityStatusRunning {
+		config.ActivityID = r.CurrentActivity.ActivityID
+		config.ActivityContextPath = fmt.Sprintf("/api/activities/%s/context", r.CurrentActivity.ActivityID)
+	}
+	return model.EventMessage{
+		EventType: model.EventTypeConfig,
+		Config:    config,
+	}
+}
+
+func (r *Room) sendConfigToPlayer(player *Player) bool {
+	if player == nil {
+		return false
+	}
+	message, err := json.Marshal(r.buildConfigMessage())
+	if err != nil {
+		log.Println("Error Marshalling Event Message: ", err)
+		return false
+	}
+	select {
+	case player.InChannel <- message:
+		return true
+	default:
+		log.Println("Player Channel is full, disconnecting player")
+		return false
+	}
+}
+
+func (r *Room) BroadcastConfig() {
+	for player := range r.Players {
+		if r.sendConfigToPlayer(player) {
+			continue
+		}
+		r.PlayerUnregister <- player
+	}
 }
 
 func logErrorf(format string, args ...any) error {
@@ -250,7 +360,7 @@ func (r *Room) Run() {
 			if !updater {
 				updater = true
 				r.RoomHash = strconv.FormatInt(time.Now().Unix(), 10)
-				r.SEED = rand.Intn(10000)
+				r.Seed = rand.Intn(10000)
 				go r.UpdateInfo(updaterChannel)
 				log.Println("Updater Started")
 			}
@@ -279,23 +389,7 @@ func (r *Room) Run() {
 					r.PlayerUnregister <- seqUpdate.Player
 				}
 			}
-			// Handle Config Pass to New Player in Room
-			cfgMsg := model.EventMessage{
-				EventType: model.EventTypeConfig,
-				Config: &model.RoomConfigMessage{
-					SEED:     r.SEED,
-					RoomHash: r.RoomHash,
-				},
-			}
-			message, err := json.Marshal(cfgMsg)
-			if err != nil {
-				log.Println("Error Marshalling Event Message: ", err)
-				continue
-			}
-			select {
-			case player.InChannel <- message:
-			default:
-				log.Println("Player Channel is full, disconnecting player")
+			if !r.sendConfigToPlayer(player) {
 				r.PlayerUnregister <- player
 			}
 		case player := <-r.PlayerUnregister:

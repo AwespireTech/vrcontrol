@@ -128,7 +128,9 @@ func (c *ActivityController) EndActivity(ctx *gin.Context) {
 	}
 
 	var summary *model.ActivitySummary
+	var qaSnapshot *model.ActivityQAResult
 	if room, ok := RoomList[activity.RoomID]; ok && room != nil && room.CurrentActivity != nil && room.CurrentActivity.ActivityID == activityID {
+		qaSnapshot = room.BuildQASnapshot(activityID)
 		summary = room.EndActivity()
 	}
 	if summary == nil {
@@ -142,6 +144,14 @@ func (c *ActivityController) EndActivity(ctx *gin.Context) {
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
 		return
+	}
+	if qaSnapshot != nil {
+		updated, err := c.activityService.AttachArtifact(activityID, model.ActivityArtifactRef{Name: "qa", Type: "qa_result"}, qaSnapshot)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+			return
+		}
+		ended = updated
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{"success": true, "data": ended, "message": "Activity ended successfully"})

@@ -293,9 +293,21 @@ func cloneActivityContext(context model.ActivityContext) model.ActivityContext {
 	if context == nil {
 		return model.DefaultActivityContext()
 	}
-	cloned := make(model.ActivityContext, len(context))
-	for key, value := range context {
-		cloned[key] = value
+	bytes, err := json.Marshal(context)
+	if err != nil {
+		cloned := make(model.ActivityContext, len(context))
+		for key, value := range context {
+			cloned[key] = value
+		}
+		return cloned
+	}
+	var cloned model.ActivityContext
+	if err := json.Unmarshal(bytes, &cloned); err != nil {
+		fallback := make(model.ActivityContext, len(context))
+		for key, value := range context {
+			fallback[key] = value
+		}
+		return fallback
 	}
 	return cloned
 }
