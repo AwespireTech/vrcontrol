@@ -100,7 +100,7 @@ npm run dev
 - 玩家連線：`ws://localhost:8080/api/ws/client/<player_id>`
 - 房間控制：`ws://localhost:8080/api/ws/control/<roomId>`
 
-房間控制 WS 更新會包含 `room_hash`。若需要讀取該局累積的 lantern 歷史資料，可呼叫 `GET /api/control/lantern/:roomId/:roomHash`。
+房間控制 WS 更新會包含目前的 `current_activity_id` 與 `activity_seed`。若需要讀取該局累積的 lantern 歷史資料，請用 Activity results/artifacts；`GET /api/control/lantern/:roomId/:roomHash` 僅作舊資料 fallback。
 
 - 即時畫面 signaling：`ws://localhost:8080/api/ws/webrtc/<deviceId>`
 
@@ -301,23 +301,25 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 
 ### 玩家 Socket: Server -> Client
 
-玩家加入 room 後，後端會依序送出 `assign_sequence`，以及本局 room config：
+玩家加入 room 後，後端會依序送出 `assign_sequence`，以及目前 hub / Activity config：
 
 ```json
 {
   "event_type": "config",
   "config": {
-    "seed": 3141,
-    "rh": "1715846400",
+    "room_id": "room-a",
     "activity_id": "ACTIVITY-123456",
-    "activity_context_path": "/api/activities/ACTIVITY-123456/context"
+    "activity_context_path": "/api/activities/ACTIVITY-123456/context",
+    "seed": 3141
   }
 }
 ```
 
-- `seed` 與 `rh` 會在房間從空房轉成 active room 時建立。
-- 同一局中的新玩家都會收到相同的 `seed` 與 `room_hash`。
-- 若房間目前有 running activity，玩家也會收到 `activity_id` 與 `activity_context_path`，QA 題目與規則請從該 activity context 取得。
+- `room_id` 代表目前 hub / group。
+- `activity_id` 代表正式遊戲/session；沒有 running Activity 時可能省略。
+- `seed` 來自 running Activity，不再由玩家進出 room 自動建立。
+- `activity_context_path` 指向該場 Activity 的 immutable context，QA 題目與規則請從該 activity context 取得。
+- `rh` / room hash 已 deprecated；接收方不應再將它視為正式 session id。
 
 #### Move Command
 
@@ -371,7 +373,7 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 
 - 這是 room 目前題目的完整作答狀態，不是單筆增量更新。
 - 後端只有在答案資料真的發生變更時才會重送 QA event。
-- 活動結束時，room runtime 會把 QA answers 與題目鎖定狀態封存為 activity 的 `qa` artifact；房間清空時只清除 runtime 暫存。
+- 活動結束時，room runtime 會把 QA answers 與題目鎖定狀態封存為 activity 的 `qa` artifact；房間清空不代表 Activity 結束。
 
 #### Assign Sequence
 
@@ -392,7 +394,10 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 ```json
 {
   "room_id": "room-a",
-  "room_hash": "1715000000",
+  "current_activity_id": "ACTIVITY-123456",
+  "activity_name": "Round 1",
+  "activity_status": "running",
+  "activity_seed": 3141,
   "player_count": 2,
   "players": [
     {
@@ -408,7 +413,7 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 ```
 
 這條 socket 目前只用於觀測房間狀態，不承接 controller -> server 命令。
-玩家側 `config.rh` 與控制端 room update 裡的 `room_hash` 對應同一局 session。若需要讀取該局累積的 lantern 歷史資料，可呼叫 `GET /api/control/lantern/:roomId/:roomHash`。
+`room_hash` 與玩家側 `config.rh` 已 deprecated。若需要讀取該局累積的 lantern 歷史資料，請用 `current_activity_id` 查 Activity results/artifacts；`GET /api/control/lantern/:roomId/:roomHash` 只作舊資料 fallback。
 
 ### 控制端 Lantern API
 
