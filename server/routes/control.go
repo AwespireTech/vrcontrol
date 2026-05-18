@@ -13,5 +13,7 @@ func SetControlRoutes(router *gin.RouterGroup) {
 	router.GET("/assignseq/:roomId/:clientId/:seq", controller.AssignSequence)
 
 	router.GET("/roomlist", controller.GetRoomList)
+
+	router.GET("/lantern/newest", controller.GetLanternListJson)
 	router.GET("/lantern/:roomId/:roomHash", controller.GetLanternJson)
 }
