@@ -11,13 +11,6 @@ import { useRoomMinimapConfig } from "@/hooks/useRoomMinimapConfig"
 import { buildRoomMinimapDisplayMarkers } from "@/lib/room-minimap/display"
 import { buildRoomMinimapMarkers } from "@/lib/room-minimap/mappers"
 import {
-  getAdbStatusBadgeClass,
-  getAdbStatusText,
-  getWsStatusBadgeClass,
-  getWsStatusText,
-  isSupportedDeviceStatus,
-} from "@/lib/utils/device-status"
-import {
   actionApi,
   activityApi,
   controlApi,
@@ -29,11 +22,11 @@ import {
 import {
   DEVICE_STATUS,
   type Action,
-  type Activity,
   type ActivityContext,
-  type ActivityResults,
   type ActivityStatus,
   type Device,
+  type Room,
+  type RoomOperationProfile,
 } from "@/services/api-types"
 import { getDisplayName } from "@/lib/utils/device"
 import type { PlayerData, RoomInfoData } from "@/interfaces/room.interface"
@@ -65,26 +58,32 @@ const DEVICE_CARD_INTERACTIVE_SELECTOR = [
   '[role="link"]',
 ].join(", ")
 
-const DEFAULT_ACTIVITY_CONTEXT_INPUT = JSON.stringify(
-  {
-    mode: "",
-    round: 1,
-    qa: {
-      questionSetId: "",
-      questionOrder: [],
-      timeLimitSec: 30,
-      allowRetry: false,
-      scoreMode: "team",
-      display: {
-        showCountdown: true,
-        showResultAfterEachQuestion: true,
-      },
-      resumePolicy: "from_current_question",
+const DEFAULT_ACTIVITY_CONTEXT: ActivityContext = {
+  mode: "",
+  round: 1,
+  qa: {
+    questionSetId: "",
+    questionOrder: [],
+    timeLimitSec: 30,
+    allowRetry: false,
+    scoreMode: "team",
+    display: {
+      showCountdown: true,
+      showResultAfterEachQuestion: true,
     },
+    resumePolicy: "from_current_question",
   },
-  null,
-  2,
-)
+}
+
+const DEFAULT_ROOM_OPERATION_PROFILE: RoomOperationProfile = {
+  activity_defaults: {
+    name: "",
+    activity_context: DEFAULT_ACTIVITY_CONTEXT,
+  },
+  batch_action_ids: [],
+  allow_activity_name_override: true,
+  allow_seed_override: true,
+}
 
 function shouldIgnoreDeviceCardSelectionEvent(
   target: EventTarget | null,
@@ -130,19 +129,12 @@ export default function RoomControlPage() {
 
   const [roomList, setRoomList] = useState<{ value: string; label: string }[]>([])
   const [roomDeviceIds, setRoomDeviceIds] = useState<string[]>([])
+  const [currentRoom, setCurrentRoom] = useState<Room | null>(null)
 
   const [actions, setActions] = useState<Action[]>([])
-  const [activities, setActivities] = useState<Activity[]>([])
   const [selectedActionId, setSelectedActionId] = useState<string>("")
-  const [selectedActivityId, setSelectedActivityId] = useState<string>("")
-  const [selectedActivityContext, setSelectedActivityContext] = useState<ActivityContext | null>(
-    null,
-  )
-  const [selectedActivityResults, setSelectedActivityResults] = useState<ActivityResults | null>(
-    null,
-  )
-  const [activityDraftName, setActivityDraftName] = useState("")
-  const [activityContextInput, setActivityContextInput] = useState(DEFAULT_ACTIVITY_CONTEXT_INPUT)
+  const [activityNameOverride, setActivityNameOverride] = useState("")
+  const [activitySeedOverride, setActivitySeedOverride] = useState("")
   const [activityPending, setActivityPending] = useState<string>("")
   const [currentActivityMeta, setCurrentActivityMeta] = useState<{
     id: string
@@ -162,7 +154,6 @@ export default function RoomControlPage() {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
   const [popupTakeoverActive, setPopupTakeoverActive] = useState(false)
   const popupChannelRef = useRef<BroadcastChannel | null>(null)
-  const lastActivityIdRef = useRef("")
 
   const buildLiveStreamPopupState = useCallback((): LiveStreamPopupState => {
     return {
@@ -226,9 +217,16 @@ export default function RoomControlPage() {
   }, [deviceMap, displayDeviceIds, minimapConfig, playerData])
 
   const currentRoomName = useMemo(() => {
+    if (currentRoom?.name) {
+      return currentRoom.name
+    }
     const found = roomList.find((room) => room.value === roomId)
     return found?.label || roomId
-  }, [roomId, roomList])
+  }, [currentRoom?.name, roomId, roomList])
+
+  const roomProfile = useMemo(() => {
+    return currentRoom?.operation_profile || DEFAULT_ROOM_OPERATION_PROFILE
+  }, [currentRoom])
 
   const handleToggleSelectedDevice = useCallback((deviceId: string) => {
     setSelectedDeviceId((current) => (current === deviceId ? null : deviceId))
@@ -236,17 +234,19 @@ export default function RoomControlPage() {
 
   const loadControlData = useCallback(async () => {
     try {
-      const [rooms, devices] = await Promise.all([roomApi.getAll(), deviceApi.getAll()])
+      const [rooms, devices, room] = await Promise.all([
+        roomApi.getAll(),
+        deviceApi.getAll(),
+        roomId ? roomApi.get(roomId) : Promise.resolve(null),
+      ])
       const roomOptions = rooms
         .map((room) => ({ value: room.room_id, label: room.name }))
         .sort((a, b) => a.label.localeCompare(b.label))
       setRoomList(roomOptions)
       setDeviceMap(new Map(devices.map((device) => [device.device_id, device])))
+      setCurrentRoom(room)
 
-      if (roomId) {
-        const currentRoom = rooms.find((room) => room.room_id === roomId)
-        setRoomDeviceIds(currentRoom?.device_ids || [])
-      }
+      setRoomDeviceIds(room?.device_ids || [])
     } catch (error) {
       console.error("Failed to load control data:", error)
     }
@@ -258,34 +258,6 @@ export default function RoomControlPage() {
       setActions(actionsData)
     } catch (error) {
       console.error("Failed to load actions:", error)
-    }
-  }, [])
-
-  const loadActivities = useCallback(async () => {
-    try {
-      if (!roomId) {
-        setActivities([])
-        return
-      }
-      const activitiesData = await activityApi.listByRoom(roomId)
-      setActivities(activitiesData)
-    } catch (error) {
-      console.error("Failed to load activities:", error)
-    }
-  }, [roomId])
-
-  const loadActivityDetails = useCallback(async (activityId: string) => {
-    try {
-      const [activityContext, activityResults] = await Promise.all([
-        activityApi.getContext(activityId),
-        activityApi.getResults(activityId),
-      ])
-      setSelectedActivityId(activityId)
-      setSelectedActivityContext(activityContext)
-      setSelectedActivityResults(activityResults)
-    } catch (error) {
-      console.error("Failed to load activity details:", error)
-      alert("讀取活動詳情失敗，請稍後再試")
     }
   }, [])
 
@@ -305,8 +277,12 @@ export default function RoomControlPage() {
   useEffect(() => {
     loadControlData()
     loadActions()
-    loadActivities()
-  }, [loadActions, loadActivities, loadControlData])
+  }, [loadActions, loadControlData])
+
+  useEffect(() => {
+    setActivityNameOverride(roomProfile.activity_defaults.name || "")
+    setActivitySeedOverride(roomProfile.activity_defaults.seed?.toString() || "")
+  }, [roomId, roomProfile])
 
   useEffect(() => {
     if (!roomId) return
@@ -357,17 +333,12 @@ export default function RoomControlPage() {
         seed: data.activity_seed,
         startedAt: data.activity_started_at,
       })
-      const nextActivityId = data.current_activity_id || ""
-      if (nextActivityId !== lastActivityIdRef.current) {
-        lastActivityIdRef.current = nextActivityId
-        void loadActivities()
-      }
     }
 
     return () => {
       ws.close()
     }
-  }, [loadActivities, roomId, host, wsProtocol])
+  }, [roomId, host, wsProtocol])
 
   useEffect(() => {
     const channel = createLiveStreamPopupChannel()
@@ -726,13 +697,19 @@ export default function RoomControlPage() {
     return actions.find((action) => action.action_id === selectedActionId) || null
   }, [actions, selectedActionId])
 
-  const runningActivity = useMemo(() => {
-    return (
-      activities.find((activity) => activity.activity_id === currentActivityMeta.id) ||
-      activities.find((activity) => activity.status === "running") ||
-      null
+  const hasRunningActivity = currentActivityMeta.status === "running" && currentActivityMeta.id !== ""
+
+  const presetActions = useMemo(() => {
+    return roomProfile.batch_action_ids
+      .map((actionId) => actions.find((action) => action.action_id === actionId) || null)
+      .filter((action): action is Action => action !== null)
+  }, [actions, roomProfile.batch_action_ids])
+
+  const missingBatchActionIds = useMemo(() => {
+    return roomProfile.batch_action_ids.filter(
+      (actionId) => !actions.some((action) => action.action_id === actionId),
     )
-  }, [activities, currentActivityMeta.id])
+  }, [actions, roomProfile.batch_action_ids])
 
   const modalDeviceIds = useMemo(() => {
     return roomDeviceIds.length > 0 ? roomDeviceIds : displayDeviceIds
@@ -753,53 +730,44 @@ export default function RoomControlPage() {
     }
   }
 
-  const parseActivityContext = (): ActivityContext | null => {
-    try {
-      const parsed = JSON.parse(activityContextInput || "{}")
-      if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
-        alert("活動 context 必須是 JSON 物件")
-        return null
-      }
-      return parsed as ActivityContext
-    } catch (error) {
-      console.error("Invalid activity context JSON:", error)
-      alert("活動 context JSON 格式無效")
-      return null
-    }
-  }
+  const handleStartConfiguredActivity = async () => {
+    const defaultName = roomProfile.activity_defaults.name.trim()
+    const activityName = roomProfile.allow_activity_name_override
+      ? activityNameOverride.trim() || defaultName || `${currentRoomName} Session`
+      : defaultName || `${currentRoomName} Session`
 
-  const handleCreateActivityDraft = async () => {
-    const trimmedName = activityDraftName.trim()
-    if (!trimmedName) {
-      alert("請先輸入活動名稱")
-      return
+    const seedInput = roomProfile.allow_seed_override
+      ? activitySeedOverride.trim()
+      : roomProfile.activity_defaults.seed?.toString() || ""
+
+    let seed: number | undefined = roomProfile.activity_defaults.seed
+    if (seedInput !== "") {
+      const parsedSeed = Number(seedInput)
+      if (!Number.isInteger(parsedSeed)) {
+        alert("seed 必須是整數")
+        return
+      }
+      seed = parsedSeed
     }
-    const parsedContext = parseActivityContext()
-    if (!parsedContext) return
-    setActivityPending("create")
+
+    let createdActivityId = ""
+    setActivityPending("start")
     try {
       const created = await activityApi.createDraft(roomId, {
-        name: trimmedName,
-        activity_context: parsedContext,
+        name: activityName,
+        activity_context: roomProfile.activity_defaults.activity_context || DEFAULT_ACTIVITY_CONTEXT,
       })
-      await loadActivities()
-      await loadActivityDetails(created.activity_id)
+      createdActivityId = created.activity_id
+      await activityApi.start(created.activity_id, seed !== undefined ? { seed } : undefined)
     } catch (error) {
-      console.error("Failed to create activity draft:", error)
-      alert("建立活動草稿失敗，請稍後再試")
-    } finally {
-      setActivityPending("")
-    }
-  }
-
-  const handleStartActivity = async (activityId: string) => {
-    setActivityPending(`start:${activityId}`)
-    try {
-      await activityApi.start(activityId)
-      await loadActivities()
-      await loadActivityDetails(activityId)
-    } catch (error) {
-      console.error("Failed to start activity:", error)
+      if (createdActivityId) {
+        try {
+          await activityApi.cancel(createdActivityId)
+        } catch (cancelError) {
+          console.error("Failed to roll back draft activity:", cancelError)
+        }
+      }
+      console.error("Failed to start configured activity:", error)
       alert("啟動活動失敗，請稍後再試")
     } finally {
       setActivityPending("")
@@ -810,25 +778,10 @@ export default function RoomControlPage() {
     setActivityPending(`end:${activityId}`)
     try {
       await activityApi.end(activityId)
-      await loadActivities()
-      await loadActivityDetails(activityId)
+      await loadControlData()
     } catch (error) {
       console.error("Failed to end activity:", error)
       alert("結束活動失敗，請稍後再試")
-    } finally {
-      setActivityPending("")
-    }
-  }
-
-  const handleCancelActivity = async (activityId: string) => {
-    setActivityPending(`cancel:${activityId}`)
-    try {
-      await activityApi.cancel(activityId)
-      await loadActivities()
-      await loadActivityDetails(activityId)
-    } catch (error) {
-      console.error("Failed to cancel activity:", error)
-      alert("取消活動失敗，請稍後再試")
     } finally {
       setActivityPending("")
     }
@@ -1010,9 +963,9 @@ export default function RoomControlPage() {
           <div className="surface-card space-y-5 p-6">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h2 className="text-xl font-bold text-foreground">活動控制</h2>
+                <h2 className="text-xl font-bold text-foreground">目前設定</h2>
                 <p className="mt-1 text-sm text-foreground/60">
-                  使用 draft 建立每一場活動，再開始、結束並查看該場的 activity context 與結果摘要。
+                  這個房間會重複使用同一組 activity 預設與固定批次動作，操作人員只需依當前設定開始或結束活動。
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -1035,174 +988,136 @@ export default function RoomControlPage() {
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
               <div className="space-y-4">
                 <div className="rounded-2xl border border-border bg-surface/30 p-4">
-                  <div className="text-sm font-semibold text-foreground">建立活動草稿</div>
-                  <div className="mt-3 grid gap-3">
-                    <input
-                      value={activityDraftName}
-                      onChange={(event) => setActivityDraftName(event.target.value)}
-                      placeholder="例如：Round 1 - Warmup"
-                      className="ui-input"
-                    />
-                    <textarea
-                      value={activityContextInput}
-                      onChange={(event) => setActivityContextInput(event.target.value)}
-                      rows={8}
-                      className="ui-textarea font-mono text-sm"
-                    />
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        loading={activityPending === "create"}
-                        disabled={activityPending !== ""}
-                        onClick={handleCreateActivityDraft}
-                      >
-                        建立 draft
-                      </Button>
-                      <span className="text-xs text-foreground/50">
-                        QA 題目、題序與計分規則請放在 activity
-                        context；房間參數只保留固定配置或預設模板。
-                      </span>
+                  <div className="text-sm font-semibold text-foreground">活動預設</div>
+                  <div className="mt-3 grid gap-4 md:grid-cols-2">
+                    <div className="rounded-2xl bg-background/60 p-3">
+                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/40">
+                        預設名稱
+                      </div>
+                      <div className="mt-2 text-sm text-foreground">
+                        {roomProfile.activity_defaults.name || "未設定"}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl bg-background/60 p-3">
+                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/40">
+                        Seed 策略
+                      </div>
+                      <div className="mt-2 text-sm text-foreground">
+                        {roomProfile.activity_defaults.seed !== undefined
+                          ? `固定 ${roomProfile.activity_defaults.seed}`
+                          : "啟動時自動產生"}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl bg-background/60 p-3">
+                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/40">
+                        固定批次動作
+                      </div>
+                      <div className="mt-2 text-sm text-foreground">
+                        {roomProfile.batch_action_ids.length > 0
+                          ? `${roomProfile.batch_action_ids.length} 個已綁定動作`
+                          : "未設定"}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl bg-background/60 p-3">
+                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/40">
+                        覆蓋權限
+                      </div>
+                      <div className="mt-2 text-sm text-foreground">
+                        {roomProfile.allow_activity_name_override ? "名稱可覆蓋" : "名稱固定"}
+                        {roomProfile.allow_seed_override ? " / Seed 可覆蓋" : " / Seed 固定"}
+                      </div>
                     </div>
                   </div>
                 </div>
 
                 <div className="rounded-2xl border border-border bg-surface/30 p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-semibold text-foreground">房間活動列表</div>
-                    <span className="text-xs text-foreground/50">{activities.length} 筆</span>
+                  <div className="text-sm font-semibold text-foreground">開始新活動</div>
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    <label className="space-y-2">
+                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/40">
+                        活動名稱
+                      </span>
+                      <input
+                        value={activityNameOverride}
+                        onChange={(event) => setActivityNameOverride(event.target.value)}
+                        disabled={!roomProfile.allow_activity_name_override}
+                        placeholder="例如：Standard Round"
+                        className="ui-input"
+                      />
+                    </label>
+                    <label className="space-y-2">
+                      <span className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/40">
+                        Seed
+                      </span>
+                      <input
+                        type="number"
+                        value={activitySeedOverride}
+                        onChange={(event) => setActivitySeedOverride(event.target.value)}
+                        disabled={!roomProfile.allow_seed_override}
+                        placeholder="留白則使用房間預設"
+                        className="ui-input"
+                      />
+                    </label>
                   </div>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Button
+                      loading={activityPending === "start"}
+                      disabled={activityPending !== "" || hasRunningActivity}
+                      onClick={handleStartConfiguredActivity}
+                    >
+                      以目前設定開始活動
+                    </Button>
+                    <Button
+                      loading={activityPending === `end:${currentActivityMeta.id}`}
+                      disabled={activityPending !== "" || !hasRunningActivity}
+                      className="ui-btn-danger"
+                      onClick={() => handleEndActivity(currentActivityMeta.id)}
+                    >
+                      結束目前活動
+                    </Button>
+                    <span className="text-xs text-foreground/50">
+                      activity context 由房間設定頁維護；控制頁只保留少量臨時覆蓋欄位。
+                    </span>
+                  </div>
+                </div>
 
-                  {activities.length === 0 ? (
-                    <div className="mt-3 text-sm text-foreground/60">尚未建立任何活動。</div>
-                  ) : (
-                    <div className="mt-3 space-y-3">
-                      {activities.map((activity) => (
-                        <div
-                          key={activity.activity_id}
-                          className="rounded-2xl border border-border bg-background/60 p-4"
-                        >
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div>
-                              <div className="font-semibold text-foreground">
-                                {activity.name || activity.activity_id}
-                              </div>
-                              <div className="font-mono text-xs text-foreground/50">
-                                {activity.activity_id}
-                              </div>
-                              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-foreground/60">
-                                <span
-                                  className={`ui-badge ${getActivityBadgeClass(activity.status)}`}
-                                >
-                                  {activity.status}
-                                </span>
-                                <span>建立於 {new Date(activity.created_at).toLocaleString()}</span>
-                                {activity.started_at ? (
-                                  <span>
-                                    開始於 {new Date(activity.started_at).toLocaleString()}
-                                  </span>
-                                ) : null}
-                              </div>
-                            </div>
-                            <div className="flex flex-wrap justify-end gap-2">
-                              <button
-                                type="button"
-                                className="ui-btn ui-btn-xs ui-btn-muted"
-                                onClick={() => loadActivityDetails(activity.activity_id)}
-                              >
-                                查看
-                              </button>
-                              {activity.status === "draft" ? (
-                                <Button
-                                  loading={activityPending === `start:${activity.activity_id}`}
-                                  disabled={activityPending !== "" || !!runningActivity}
-                                  className="ui-btn-xs ui-btn-primary"
-                                  onClick={() => handleStartActivity(activity.activity_id)}
-                                >
-                                  啟動
-                                </Button>
-                              ) : null}
-                              {activity.status === "running" ? (
-                                <Button
-                                  loading={activityPending === `end:${activity.activity_id}`}
-                                  disabled={activityPending !== ""}
-                                  className="ui-btn-xs ui-btn-primary"
-                                  onClick={() => handleEndActivity(activity.activity_id)}
-                                >
-                                  結束
-                                </Button>
-                              ) : null}
-                              {activity.status === "draft" || activity.status === "running" ? (
-                                <Button
-                                  loading={activityPending === `cancel:${activity.activity_id}`}
-                                  disabled={activityPending !== ""}
-                                  className="ui-btn-xs ui-btn-danger"
-                                  onClick={() => handleCancelActivity(activity.activity_id)}
-                                >
-                                  取消
-                                </Button>
-                              ) : null}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                <div className="rounded-2xl border border-border bg-surface/30 p-4">
+                  <div className="text-sm font-semibold text-foreground">Activity Context</div>
+                  <pre className="mt-3 overflow-x-auto rounded-2xl bg-background/70 p-3 text-xs text-foreground/80">
+                    {JSON.stringify(roomProfile.activity_defaults.activity_context || {}, null, 2)}
+                  </pre>
                 </div>
               </div>
 
               <div className="rounded-2xl border border-border bg-surface/30 p-4">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm font-semibold text-foreground">活動詳情</div>
-                  {selectedActivityId ? (
+                  <div className="text-sm font-semibold text-foreground">目前活動狀態</div>
+                  {currentActivityMeta.id ? (
                     <span className="font-mono text-xs text-foreground/50">
-                      {selectedActivityId}
+                      {currentActivityMeta.id}
                     </span>
                   ) : null}
                 </div>
 
-                {!selectedActivityId ? (
+                {!currentActivityMeta.id ? (
                   <div className="mt-3 text-sm text-foreground/60">
-                    從左側列表選一場活動，即可查看 activity context 與結果摘要。
+                    目前沒有進行中的活動。按左側按鈕即可依 room 的固定設定開始新活動。
                   </div>
                 ) : (
                   <div className="mt-3 space-y-4">
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/40">
-                        Activity Context
+                    <div className="rounded-2xl bg-background/60 p-3 text-sm text-foreground/80">
+                      <div>名稱: {currentActivityMeta.name || "未命名活動"}</div>
+                      <div className="mt-2">狀態: {currentActivityMeta.status || "unknown"}</div>
+                      <div className="mt-2">Seed: {currentActivityMeta.seed ?? "—"}</div>
+                      <div className="mt-2">
+                        開始時間:
+                        {currentActivityMeta.startedAt
+                          ? ` ${new Date(currentActivityMeta.startedAt).toLocaleString()}`
+                          : " —"}
                       </div>
-                      <pre className="mt-2 overflow-x-auto rounded-2xl bg-background/70 p-3 text-xs text-foreground/80">
-                        {JSON.stringify(selectedActivityContext || {}, null, 2)}
-                      </pre>
                     </div>
-
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground/40">
-                        Result Summary
-                      </div>
-                      <div className="mt-2 rounded-2xl bg-background/70 p-3 text-sm text-foreground/80">
-                        <div>狀態: {selectedActivityResults?.status || "unknown"}</div>
-                        <div>
-                          參與數: {selectedActivityResults?.result_summary?.participant_count ?? 0}
-                        </div>
-                        <div>
-                          持續秒數: {selectedActivityResults?.result_summary?.duration_sec ?? 0}
-                        </div>
-                        <div className="mt-3 text-xs text-foreground/50">事件統計</div>
-                        <pre className="mt-2 overflow-x-auto rounded-2xl bg-surface/60 p-3 text-xs text-foreground/80">
-                          {JSON.stringify(
-                            selectedActivityResults?.result_summary?.event_counts || {},
-                            null,
-                            2,
-                          )}
-                        </pre>
-                        {selectedActivityResults?.artifact_refs?.length ? (
-                          <>
-                            <div className="mt-3 text-xs text-foreground/50">Artifacts</div>
-                            <pre className="mt-2 overflow-x-auto rounded-2xl bg-surface/60 p-3 text-xs text-foreground/80">
-                              {JSON.stringify(selectedActivityResults.artifact_refs, null, 2)}
-                            </pre>
-                          </>
-                        ) : null}
-                      </div>
+                    <div className="text-xs text-foreground/50">
+                      活動歷史與結果查詢暫時保留在後端 API，不再放在這個操作頁上。
                     </div>
                   </div>
                 )}
@@ -1247,41 +1162,55 @@ export default function RoomControlPage() {
             </div>
 
             <div className="border-t border-border pt-4">
-              <div className="text-sm font-semibold text-foreground">動作執行（批次）</div>
+              <div className="text-sm font-semibold text-foreground">固定批次動作</div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="text-foreground/70">Action</span>
-                <select
-                  className={`ui-select mx-2 max-w-[320px] px-2 py-1 ${
-                    selectedActionId === "" ? "text-foreground/50" : ""
-                  }`}
-                  value={selectedActionId}
-                  onChange={(e) => setSelectedActionId(e.target.value)}
-                >
-                  <option value="" className="text-foreground/50"></option>
-                  {actions.map((action) => (
-                    <option
+                {presetActions.length === 0 ? (
+                  <span className="text-xs text-foreground/50">
+                    尚未設定固定批次動作，請到房間設定頁填入 batch_action_ids。
+                  </span>
+                ) : (
+                  presetActions.map((action) => (
+                    <Button
                       key={action.action_id}
-                      value={action.action_id}
-                      className="text-foreground"
+                      onClick={() => {
+                        setSelectedActionId(action.action_id)
+                        setBatchMode("action")
+                        setBatchSelectedDeviceIds([])
+                        setBatchModalOpen(true)
+                      }}
                     >
-                      {action.name}
-                    </option>
-                  ))}
-                </select>
-                <Button
-                  disabled={!selectedAction}
-                  onClick={() => {
-                    if (!selectedAction) return
-                    setBatchMode("action")
-                    setBatchSelectedDeviceIds([])
-                    setBatchModalOpen(true)
-                  }}
+                      執行 {action.name}
+                    </Button>
+                  ))
+                )}
+              </div>
+              {missingBatchActionIds.length > 0 ? (
+                <div className="mt-2 text-xs text-warning">
+                  找不到這些固定動作：{missingBatchActionIds.join(", ")}
+                </div>
+              ) : null}
+              {actions.length === 0 ? (
+                <span className="mt-2 block text-xs text-foreground/50">
+                  尚無動作（請先到動作管理建立）
+                </span>
+              ) : null}
+              <div className="mt-2 text-xs text-foreground/50">
+                固定批次動作由 room operation profile 管理，不再讓操作人員每次手動選 action。
+              </div>
+            </div>
+
+            <div className="border-t border-border pt-4">
+              <div className="text-sm font-semibold text-foreground">房間設定捷徑</div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => navigate(`/rooms/${roomId}`)}
+                  className="ui-btn ui-btn-md ui-btn-muted"
                 >
-                  選擇設備並執行
-                </Button>
-                {actions.length === 0 ? (
-                  <span className="text-xs text-foreground/50">尚無動作（請先到動作管理建立）</span>
-                ) : null}
+                  編輯目前設定
+                </button>
+                <span className="text-xs text-foreground/50">
+                  若要調整 activity context、固定 seed 或固定批次動作，請回房間設定頁修改。
+                </span>
               </div>
             </div>
 

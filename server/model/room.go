@@ -2,20 +2,34 @@ package model
 
 import "time"
 
+type RoomActivityDefaults struct {
+	Name            string         `json:"name"`
+	ActivityContext map[string]any `json:"activity_context"`
+	Seed            *int           `json:"seed,omitempty"`
+}
+
+type RoomOperationProfile struct {
+	ActivityDefaults          RoomActivityDefaults `json:"activity_defaults"`
+	BatchActionIDs            []string             `json:"batch_action_ids"`
+	AllowActivityNameOverride bool                 `json:"allow_activity_name_override"`
+	AllowSeedOverride         bool                 `json:"allow_seed_override"`
+}
+
 // Room 房間模型
 type Room struct {
-	RoomID            string         `json:"room_id"`
-	Name              string         `json:"name"`
-	Description       string         `json:"description"`
-	MaxDevices        int            `json:"max_devices"`
-	DeviceIDs         []string       `json:"device_ids"`
-	AssignedSequences map[string]int `json:"assigned_sequences"`
-	SocketIP          string         `json:"socket_ip"`
-	SocketPort        int            `json:"socket_port"`
-	SocketRunning     bool           `json:"socket_running"`
-	Parameters        map[string]any `json:"parameters"`
-	CreatedAt         time.Time      `json:"created_at"`
-	UpdatedAt         time.Time      `json:"updated_at"`
+	RoomID            string               `json:"room_id"`
+	Name              string               `json:"name"`
+	Description       string               `json:"description"`
+	MaxDevices        int                  `json:"max_devices"`
+	DeviceIDs         []string             `json:"device_ids"`
+	AssignedSequences map[string]int       `json:"assigned_sequences"`
+	SocketIP          string               `json:"socket_ip"`
+	SocketPort        int                  `json:"socket_port"`
+	SocketRunning     bool                 `json:"socket_running"`
+	Parameters        map[string]any       `json:"parameters"`
+	OperationProfile  RoomOperationProfile `json:"operation_profile"`
+	CreatedAt         time.Time            `json:"created_at"`
+	UpdatedAt         time.Time            `json:"updated_at"`
 }
 
 // RoomParameter 房間參數

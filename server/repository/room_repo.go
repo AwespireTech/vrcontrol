@@ -119,6 +119,12 @@ func (r *RoomRepository) Create(room *model.Room) error {
 	if room.AssignedSequences == nil {
 		room.AssignedSequences = make(map[string]int)
 	}
+	if room.OperationProfile.ActivityDefaults.ActivityContext == nil {
+		room.OperationProfile.ActivityDefaults.ActivityContext = make(map[string]any)
+	}
+	if room.OperationProfile.BatchActionIDs == nil {
+		room.OperationProfile.BatchActionIDs = []string{}
+	}
 
 	r.rooms[room.RoomID] = room
 
@@ -137,6 +143,15 @@ func (r *RoomRepository) Update(room *model.Room) error {
 	room.UpdatedAt = time.Now()
 	if room.AssignedSequences == nil {
 		room.AssignedSequences = make(map[string]int)
+	}
+	if room.Parameters == nil {
+		room.Parameters = make(map[string]any)
+	}
+	if room.OperationProfile.ActivityDefaults.ActivityContext == nil {
+		room.OperationProfile.ActivityDefaults.ActivityContext = make(map[string]any)
+	}
+	if room.OperationProfile.BatchActionIDs == nil {
+		room.OperationProfile.BatchActionIDs = []string{}
 	}
 	r.rooms[room.RoomID] = room
 

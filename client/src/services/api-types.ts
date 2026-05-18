@@ -117,8 +117,22 @@ export interface Room {
   socket_port: number
   socket_running: boolean
   parameters: Record<string, unknown>
+  operation_profile: RoomOperationProfile
   created_at: string
   updated_at: string
+}
+
+export interface RoomActivityDefaults {
+  name: string
+  activity_context: Record<string, unknown>
+  seed?: number
+}
+
+export interface RoomOperationProfile {
+  activity_defaults: RoomActivityDefaults
+  batch_action_ids: string[]
+  allow_activity_name_override: boolean
+  allow_seed_override: boolean
 }
 
 export type ActivityStatus = "draft" | "running" | "ended" | "cancelled"
