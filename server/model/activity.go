@@ -14,6 +14,31 @@ const (
 // ActivityContext 是一場活動共用、且可提供給參與設備讀取的只讀快照。
 type ActivityContext map[string]any
 
+type ActivityIndex struct {
+	ActivityID string         `json:"activity_id"`
+	RoomID     string         `json:"room_id"`
+	Name       string         `json:"name"`
+	Status     ActivityStatus `json:"status"`
+	CreatedAt  time.Time      `json:"created_at"`
+	StartedAt  *time.Time     `json:"started_at,omitempty"`
+	EndedAt    *time.Time     `json:"ended_at,omitempty"`
+}
+
+type ActivityDetail struct {
+	ActivityID       string                `json:"activity_id"`
+	RoomID           string                `json:"room_id"`
+	Name             string                `json:"name"`
+	Status           ActivityStatus        `json:"status"`
+	CreatedAt        time.Time             `json:"created_at"`
+	UpdatedAt        time.Time             `json:"updated_at"`
+	StartedAt        *time.Time            `json:"started_at,omitempty"`
+	EndedAt          *time.Time            `json:"ended_at,omitempty"`
+	ActivityContext  ActivityContext       `json:"activity_context"`
+	RuntimeSnapshot  *ActivityRuntimeInfo  `json:"runtime_snapshot,omitempty"`
+	ResultSummary    *ActivitySummary      `json:"result_summary,omitempty"`
+	ArtifactManifest []ActivityArtifactRef `json:"artifact_manifest,omitempty"`
+}
+
 type Activity struct {
 	ActivityID      string                `json:"activity_id"`
 	RoomID          string                `json:"room_id"`
@@ -31,7 +56,6 @@ type Activity struct {
 
 type ActivityRuntimeInfo struct {
 	Seed             int       `json:"seed,omitempty"`
-	RoomHash         string    `json:"room_hash,omitempty"`
 	PlayerCount      int       `json:"player_count"`
 	LastEventAt      time.Time `json:"last_event_at,omitempty"`
 	LastUpdatedAt    time.Time `json:"last_updated_at,omitempty"`
@@ -54,7 +78,6 @@ type ActivityArtifactRef struct {
 type ActivityQAResult struct {
 	ActivityID     string                       `json:"activity_id"`
 	RoomID         string                       `json:"room_id"`
-	RoomHash       string                       `json:"room_hash,omitempty"`
 	CurrentQID     string                       `json:"current_qid,omitempty"`
 	Answers        map[string]map[string]string `json:"answers"`
 	QuestionLocked map[string]bool              `json:"question_locked,omitempty"`
@@ -65,7 +88,6 @@ type ActivityQAResult struct {
 type ActivityLanternResult struct {
 	ActivityID string                            `json:"activity_id"`
 	RoomID     string                            `json:"room_id"`
-	RoomHash   string                            `json:"room_hash,omitempty"`
 	Events     map[string][]*LanternEventMessage `json:"events"`
 	CapturedAt time.Time                         `json:"captured_at"`
 }

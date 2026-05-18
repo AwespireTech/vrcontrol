@@ -21,7 +21,6 @@ type Control struct {
 
 type RoomUpdate struct {
 	RoomID            string         `json:"room_id"`
-	RoomHash          string         `json:"room_hash,omitempty"`
 	CurrentActivityID string         `json:"current_activity_id,omitempty"`
 	ActivityName      string         `json:"activity_name,omitempty"`
 	ActivityStatus    ActivityStatus `json:"activity_status,omitempty"`

@@ -105,7 +105,7 @@ func (c *ActivityController) StartActivity(ctx *gin.Context) {
 		return
 	}
 
-	runtimeInfo := &model.ActivityRuntimeInfo{RoomHash: room.RoomHash, PlayerCount: len(room.Players)}
+	runtimeInfo := &model.ActivityRuntimeInfo{PlayerCount: len(room.Players)}
 	if req.Seed != nil {
 		runtimeInfo.Seed = *req.Seed
 	}

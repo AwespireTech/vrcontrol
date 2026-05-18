@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -33,7 +34,16 @@ func NewActivityService(activityRepo *repository.ActivityRepository, artifactRoo
 }
 
 func (s *ActivityService) ListActivities() []*model.Activity {
-	activities := s.activityRepo.GetAll()
+	indices := s.activityRepo.GetAll()
+	activities := make([]*model.Activity, 0, len(indices))
+	for _, index := range indices {
+		activity, err := s.composeActivity(index)
+		if err != nil {
+			log.Printf("[activity] failed to load detail for %s: %v", index.ActivityID, err)
+			activity = buildActivityFromIndexAndDetail(index, nil)
+		}
+		activities = append(activities, activity)
+	}
 	sort.SliceStable(activities, func(i, j int) bool {
 		left := activities[i]
 		right := activities[j]
@@ -49,7 +59,16 @@ func (s *ActivityService) ListActivities() []*model.Activity {
 }
 
 func (s *ActivityService) ListActivitiesByRoom(roomID string) []*model.Activity {
-	activities := s.activityRepo.GetByRoomID(roomID)
+	indices := s.activityRepo.GetByRoomID(roomID)
+	activities := make([]*model.Activity, 0, len(indices))
+	for _, index := range indices {
+		activity, err := s.composeActivity(index)
+		if err != nil {
+			log.Printf("[activity] failed to load detail for %s: %v", index.ActivityID, err)
+			activity = buildActivityFromIndexAndDetail(index, nil)
+		}
+		activities = append(activities, activity)
+	}
 	sort.SliceStable(activities, func(i, j int) bool {
 		left := activities[i]
 		right := activities[j]
@@ -62,11 +81,15 @@ func (s *ActivityService) ListActivitiesByRoom(roomID string) []*model.Activity 
 }
 
 func (s *ActivityService) GetActivity(activityID string) (*model.Activity, error) {
-	return s.activityRepo.GetByID(activityID)
+	index, err := s.activityRepo.GetByID(activityID)
+	if err != nil {
+		return nil, err
+	}
+	return s.composeActivity(index)
 }
 
 func (s *ActivityService) GetActivityContext(activityID string) (model.ActivityContext, error) {
-	activity, err := s.activityRepo.GetByID(activityID)
+	activity, err := s.GetActivity(activityID)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +98,7 @@ func (s *ActivityService) GetActivityContext(activityID string) (model.ActivityC
 
 func (s *ActivityService) CreateDraft(activity *model.Activity) error {
 	if activity.ActivityID == "" {
-		activity.ActivityID = fmt.Sprintf("ACTIVITY-%d", time.Now().UnixNano()%1000000000)
+		activity.ActivityID = s.generateActivityID()
 	}
 	if activity.Status == "" {
 		activity.Status = model.ActivityStatusDraft
@@ -87,11 +110,24 @@ func (s *ActivityService) CreateDraft(activity *model.Activity) error {
 		activity.ActivityContext = model.DefaultActivityContext()
 	}
 	activity.ActivityContext = cloneActivityContext(activity.ActivityContext)
-	return s.activityRepo.Create(activity)
+	activity.ArtifactRefs = cloneArtifactRefs(activity.ArtifactRefs)
+	index := buildIndexFromActivity(activity)
+	if err := s.activityRepo.Create(index); err != nil {
+		return err
+	}
+	activity.CreatedAt = index.CreatedAt
+	activity.UpdatedAt = index.CreatedAt
+	activity.StartedAt = cloneTimePointer(index.StartedAt)
+	activity.EndedAt = cloneTimePointer(index.EndedAt)
+	if err := s.saveDetail(activity); err != nil {
+		_ = s.activityRepo.Delete(activity.ActivityID)
+		return err
+	}
+	return nil
 }
 
 func (s *ActivityService) UpdateDraft(activityID string, patch ActivityDraftPatch) (*model.Activity, error) {
-	activity, err := s.activityRepo.GetByID(activityID)
+	activity, err := s.GetActivity(activityID)
 	if err != nil {
 		return nil, err
 	}
@@ -104,14 +140,15 @@ func (s *ActivityService) UpdateDraft(activityID string, patch ActivityDraftPatc
 	if patch.ActivityContext != nil {
 		activity.ActivityContext = cloneActivityContext(*patch.ActivityContext)
 	}
-	if err := s.activityRepo.Update(activity); err != nil {
+	activity.UpdatedAt = time.Now()
+	if err := s.persistActivity(activity); err != nil {
 		return nil, err
 	}
 	return activity, nil
 }
 
 func (s *ActivityService) StartActivity(activityID string, runtime *model.ActivityRuntimeInfo) (*model.Activity, error) {
-	activity, err := s.activityRepo.GetByID(activityID)
+	activity, err := s.GetActivity(activityID)
 	if err != nil {
 		return nil, err
 	}
@@ -136,14 +173,15 @@ func (s *ActivityService) StartActivity(activityID string, runtime *model.Activi
 		copied.LastUpdatedAt = now
 		activity.RuntimeSnapshot = &copied
 	}
-	if err := s.activityRepo.Update(activity); err != nil {
+	activity.UpdatedAt = now
+	if err := s.persistActivity(activity); err != nil {
 		return nil, err
 	}
 	return activity, nil
 }
 
 func (s *ActivityService) EndActivity(activityID string, summary *model.ActivitySummary) (*model.Activity, error) {
-	activity, err := s.activityRepo.GetByID(activityID)
+	activity, err := s.GetActivity(activityID)
 	if err != nil {
 		return nil, err
 	}
@@ -162,14 +200,15 @@ func (s *ActivityService) EndActivity(activityID string, summary *model.Activity
 	if activity.RuntimeSnapshot != nil {
 		activity.RuntimeSnapshot.LastUpdatedAt = now
 	}
-	if err := s.activityRepo.Update(activity); err != nil {
+	activity.UpdatedAt = now
+	if err := s.persistActivity(activity); err != nil {
 		return nil, err
 	}
 	return activity, nil
 }
 
 func (s *ActivityService) CancelActivity(activityID string) (*model.Activity, error) {
-	activity, err := s.activityRepo.GetByID(activityID)
+	activity, err := s.GetActivity(activityID)
 	if err != nil {
 		return nil, err
 	}
@@ -182,18 +221,27 @@ func (s *ActivityService) CancelActivity(activityID string) (*model.Activity, er
 	if activity.RuntimeSnapshot != nil {
 		activity.RuntimeSnapshot.LastUpdatedAt = now
 	}
-	if err := s.activityRepo.Update(activity); err != nil {
+	activity.UpdatedAt = now
+	if err := s.persistActivity(activity); err != nil {
 		return nil, err
 	}
 	return activity, nil
 }
 
 func (s *ActivityService) DeleteActivity(activityID string) error {
-	return s.activityRepo.Delete(activityID)
+	if err := s.activityRepo.Delete(activityID); err != nil {
+		return err
+	}
+	if s.artifactRoot != "" {
+		if err := os.RemoveAll(filepath.Join(s.artifactRoot, activityID)); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *ActivityService) AppendEventStats(activityID string, eventType string, increment int) (*model.Activity, error) {
-	activity, err := s.activityRepo.GetByID(activityID)
+	activity, err := s.GetActivity(activityID)
 	if err != nil {
 		return nil, err
 	}
@@ -211,14 +259,15 @@ func (s *ActivityService) AppendEventStats(activityID string, eventType string, 
 		activity.RuntimeSnapshot.LastEventAt = time.Now()
 		activity.RuntimeSnapshot.LastUpdatedAt = time.Now()
 	}
-	if err := s.activityRepo.Update(activity); err != nil {
+	activity.UpdatedAt = time.Now()
+	if err := s.persistActivity(activity); err != nil {
 		return nil, err
 	}
 	return activity, nil
 }
 
 func (s *ActivityService) AttachArtifact(activityID string, artifact model.ActivityArtifactRef, payload any) (*model.Activity, error) {
-	activity, err := s.activityRepo.GetByID(activityID)
+	activity, err := s.GetActivity(activityID)
 	if err != nil {
 		return nil, err
 	}
@@ -234,14 +283,15 @@ func (s *ActivityService) AttachArtifact(activityID string, artifact model.Activ
 	if activity.RuntimeSnapshot != nil {
 		activity.RuntimeSnapshot.LastUpdatedAt = time.Now()
 	}
-	if err := s.activityRepo.Update(activity); err != nil {
+	activity.UpdatedAt = time.Now()
+	if err := s.persistActivity(activity); err != nil {
 		return nil, err
 	}
 	return activity, nil
 }
 
 func (s *ActivityService) BuildResultSummary(activityID string, participantCount int) (*model.ActivitySummary, error) {
-	activity, err := s.activityRepo.GetByID(activityID)
+	activity, err := s.GetActivity(activityID)
 	if err != nil {
 		return nil, err
 	}
@@ -265,8 +315,8 @@ func (s *ActivityService) BuildResultSummary(activityID string, participantCount
 }
 
 func (s *ActivityService) ensureRoomHasNoRunningActivity(roomID string, excludeActivityID string) error {
-	activities := s.activityRepo.GetByRoomID(roomID)
-	for _, activity := range activities {
+	indices := s.activityRepo.GetByRoomID(roomID)
+	for _, activity := range indices {
 		if activity == nil || activity.ActivityID == excludeActivityID {
 			continue
 		}
@@ -286,14 +336,75 @@ func (s *ActivityService) writeArtifact(activityID string, name string, payload 
 		return "", err
 	}
 	path := filepath.Join(activityDir, name+".json")
-	bytes, err := json.MarshalIndent(payload, "", "  ")
-	if err != nil {
-		return "", err
-	}
-	if err := os.WriteFile(path, bytes, 0644); err != nil {
+	if err := saveJSONFile(path, payload); err != nil {
 		return "", err
 	}
 	return path, nil
+}
+
+func (s *ActivityService) persistActivity(activity *model.Activity) error {
+	if err := s.activityRepo.Update(buildIndexFromActivity(activity)); err != nil {
+		return err
+	}
+	return s.saveDetail(activity)
+}
+
+func (s *ActivityService) composeActivity(index *model.ActivityIndex) (*model.Activity, error) {
+	detail, err := s.loadDetail(index.ActivityID)
+	if err != nil {
+		return nil, err
+	}
+	return buildActivityFromIndexAndDetail(index, detail), nil
+}
+
+func (s *ActivityService) loadDetail(activityID string) (*model.ActivityDetail, error) {
+	if s.artifactRoot == "" {
+		return nil, nil
+	}
+	path := filepath.Join(s.artifactRoot, activityID, "detail.json")
+	content, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	if len(content) == 0 {
+		return nil, nil
+	}
+	var detail model.ActivityDetail
+	if err := json.Unmarshal(content, &detail); err != nil {
+		return nil, err
+	}
+	if detail.ActivityContext == nil {
+		detail.ActivityContext = model.DefaultActivityContext()
+	}
+	if detail.ArtifactManifest == nil {
+		detail.ArtifactManifest = []model.ActivityArtifactRef{}
+	}
+	return &detail, nil
+}
+
+func (s *ActivityService) saveDetail(activity *model.Activity) error {
+	if s.artifactRoot == "" {
+		return fmt.Errorf("artifact root is not configured")
+	}
+	activityDir := filepath.Join(s.artifactRoot, activity.ActivityID)
+	if err := os.MkdirAll(activityDir, 0755); err != nil {
+		return err
+	}
+	return saveJSONFile(filepath.Join(activityDir, "detail.json"), buildDetailFromActivity(activity))
+}
+
+func (s *ActivityService) generateActivityID() string {
+	timestamp := time.Now().UnixMilli()
+	for {
+		activityID := fmt.Sprintf("ACTIVITY-%d", timestamp)
+		if !s.activityRepo.Exists(activityID) {
+			return activityID
+		}
+		timestamp++
+	}
 }
 
 func cloneActivityContext(context model.ActivityContext) model.ActivityContext {
@@ -317,6 +428,115 @@ func cloneActivityContext(context model.ActivityContext) model.ActivityContext {
 		return fallback
 	}
 	return cloned
+}
+
+func cloneArtifactRefs(refs []model.ActivityArtifactRef) []model.ActivityArtifactRef {
+	if refs == nil {
+		return []model.ActivityArtifactRef{}
+	}
+	cloned := make([]model.ActivityArtifactRef, len(refs))
+	copy(cloned, refs)
+	return cloned
+}
+
+func cloneRuntimeSnapshot(runtime *model.ActivityRuntimeInfo) *model.ActivityRuntimeInfo {
+	if runtime == nil {
+		return nil
+	}
+	cloned := *runtime
+	return &cloned
+}
+
+func cloneTimePointer(value *time.Time) *time.Time {
+	if value == nil {
+		return nil
+	}
+	cloned := *value
+	return &cloned
+}
+
+func buildIndexFromActivity(activity *model.Activity) *model.ActivityIndex {
+	if activity == nil {
+		return nil
+	}
+	return &model.ActivityIndex{
+		ActivityID: activity.ActivityID,
+		RoomID:     activity.RoomID,
+		Name:       activity.Name,
+		Status:     activity.Status,
+		CreatedAt:  activity.CreatedAt,
+		StartedAt:  cloneTimePointer(activity.StartedAt),
+		EndedAt:    cloneTimePointer(activity.EndedAt),
+	}
+}
+
+func buildDetailFromActivity(activity *model.Activity) *model.ActivityDetail {
+	if activity == nil {
+		return nil
+	}
+	return &model.ActivityDetail{
+		ActivityID:       activity.ActivityID,
+		RoomID:           activity.RoomID,
+		Name:             activity.Name,
+		Status:           activity.Status,
+		CreatedAt:        activity.CreatedAt,
+		UpdatedAt:        activity.UpdatedAt,
+		StartedAt:        cloneTimePointer(activity.StartedAt),
+		EndedAt:          cloneTimePointer(activity.EndedAt),
+		ActivityContext:  cloneActivityContext(activity.ActivityContext),
+		RuntimeSnapshot:  cloneRuntimeSnapshot(activity.RuntimeSnapshot),
+		ResultSummary:    cloneSummary(activity.ResultSummary),
+		ArtifactManifest: cloneArtifactRefs(activity.ArtifactRefs),
+	}
+}
+
+func buildActivityFromIndexAndDetail(index *model.ActivityIndex, detail *model.ActivityDetail) *model.Activity {
+	if index == nil {
+		return nil
+	}
+	activity := &model.Activity{
+		ActivityID:      index.ActivityID,
+		RoomID:          index.RoomID,
+		Name:            index.Name,
+		Status:          index.Status,
+		ActivityContext: model.DefaultActivityContext(),
+		ArtifactRefs:    []model.ActivityArtifactRef{},
+		CreatedAt:       index.CreatedAt,
+		StartedAt:       cloneTimePointer(index.StartedAt),
+		EndedAt:         cloneTimePointer(index.EndedAt),
+		UpdatedAt:       index.CreatedAt,
+	}
+	if detail == nil {
+		return activity
+	}
+	activity.UpdatedAt = detail.UpdatedAt
+	activity.ActivityContext = cloneActivityContext(detail.ActivityContext)
+	activity.RuntimeSnapshot = cloneRuntimeSnapshot(detail.RuntimeSnapshot)
+	activity.ResultSummary = cloneSummary(detail.ResultSummary)
+	activity.ArtifactRefs = cloneArtifactRefs(detail.ArtifactManifest)
+	if activity.ActivityContext == nil {
+		activity.ActivityContext = model.DefaultActivityContext()
+	}
+	if activity.ArtifactRefs == nil {
+		activity.ArtifactRefs = []model.ActivityArtifactRef{}
+	}
+	return activity
+}
+
+func saveJSONFile(path string, payload any) error {
+	content, err := json.MarshalIndent(payload, "", "  ")
+	if err != nil {
+		return err
+	}
+	tempFile := path + ".tmp"
+	if err := os.WriteFile(tempFile, content, 0644); err != nil {
+		return err
+	}
+	if err := os.Rename(tempFile, path); err != nil {
+		_ = os.Remove(tempFile)
+		return err
+	}
+	return nil
 }
 
 func cloneSummary(summary *model.ActivitySummary) *model.ActivitySummary {

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"vrcontrol/server/adb"
-	"vrcontrol/server/consts"
 	"vrcontrol/server/controller"
 	"vrcontrol/server/repository"
 	"vrcontrol/server/scrcpy"
@@ -16,8 +15,6 @@ import (
 
 // SetupRoutes 設置 API 路由
 func SetupRoutes(router *gin.Engine, dataDir string) {
-	consts.SetLanternDataDir(dataDir + "/lantern")
-
 	// 初始化 Managers
 	adbManager := adb.NewADBManager("", 30*time.Second)
 	pingManager := adb.NewPingManager(2 * time.Second)

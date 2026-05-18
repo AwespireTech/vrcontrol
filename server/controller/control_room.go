@@ -2,7 +2,6 @@ package controller
 
 import (
 	"strings"
-	"vrcontrol/server/consts"
 	"vrcontrol/server/service"
 	"vrcontrol/server/sockets"
 	"vrcontrol/server/utils"
@@ -94,36 +93,6 @@ func GetRoomList(c *gin.Context) {
 	c.JSON(200, gin.H{"rooms": lis})
 
 }
-
-func GetLanternListJson(c *gin.Context) {
-	// cnt := c.Param("Counts")
-
-	newestFiles, err := consts.LoadNewestLanternList(2)
-	if err != nil {
-		c.JSON(400, gin.H{"error": err})
-		return
-	}
-
-	c.JSON(200, gin.H{"data": newestFiles})
-}
-
-func GetLanternJson(c *gin.Context) {
-	roomID := c.Param("roomId")
-	roomHash := c.Param("roomHash")
-
-	if roomID == "" {
-		c.JSON(400, gin.H{"error": "Room ID is required"})
-		return
-	}
-
-	if roomHash == "" {
-		c.JSON(400, gin.H{"error": "Room Hash is required"})
-		return
-	}
-
-	c.JSON(200, gin.H{"data": consts.LoadAssignedLanternData(roomID, roomHash)})
-}
-
 func updateAssignedSequence(roomId string, deviceId string, seq int) {
 	if roomServiceRef == nil {
 		return

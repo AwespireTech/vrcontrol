@@ -37,7 +37,6 @@ func (r *Room) GetRoomUpdate() model.RoomUpdate {
 		log.Println("GetRoomUpdate called on nil room")
 		return model.RoomUpdate{
 			RoomID:            "",
-			RoomHash:          "",
 			CurrentActivityID: activityID,
 			ActivityName:      activityName,
 			ActivityStatus:    activityStatus,
@@ -50,7 +49,6 @@ func (r *Room) GetRoomUpdate() model.RoomUpdate {
 	if len(r.Players) == 0 {
 		return model.RoomUpdate{
 			RoomID:            r.RoomID,
-			RoomHash:          r.RoomHash,
 			CurrentActivityID: activityID,
 			ActivityName:      activityName,
 			ActivityStatus:    activityStatus,
@@ -63,7 +61,6 @@ func (r *Room) GetRoomUpdate() model.RoomUpdate {
 
 	return model.RoomUpdate{
 		RoomID:            r.RoomID,
-		RoomHash:          r.RoomHash,
 		CurrentActivityID: activityID,
 		ActivityName:      activityName,
 		ActivityStatus:    activityStatus,

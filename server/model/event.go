@@ -62,5 +62,4 @@ type RoomConfigMessage struct {
 	ActivityID          string `json:"activity_id,omitempty"`
 	ActivityContextPath string `json:"activity_context_path,omitempty"`
 	Seed                int    `json:"seed,omitempty"`
-	RoomHash            string `json:"rh,omitempty"`
 }

@@ -157,7 +157,6 @@ export interface ActivityContext {
 export interface ActivityQAResult {
   activity_id: string
   room_id: string
-  room_hash?: string
   current_qid?: string
   answers: Record<string, Record<string, string>>
   question_locked?: Record<string, boolean>
@@ -168,14 +167,12 @@ export interface ActivityQAResult {
 export interface ActivityLanternResult {
   activity_id: string
   room_id: string
-  room_hash?: string
   events: Record<string, unknown[]>
   captured_at: string
 }
 
 export interface ActivityRuntimeInfo {
   seed?: number
-  room_hash?: string
   player_count: number
   last_event_at?: string
   last_updated_at?: string

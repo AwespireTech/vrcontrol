@@ -11,19 +11,19 @@ import (
 // ActivityRepository 活動資料存儲。
 type ActivityRepository struct {
 	repo       *JSONRepository
-	activities map[string]*model.Activity
+	activities map[string]*model.ActivityIndex
 	mu         sync.RWMutex
 }
 
 func NewActivityRepository(filePath string) *ActivityRepository {
 	return &ActivityRepository{
 		repo:       NewJSONRepository(filePath),
-		activities: make(map[string]*model.Activity),
+		activities: make(map[string]*model.ActivityIndex),
 	}
 }
 
 func (r *ActivityRepository) Load() error {
-	var activities []*model.Activity
+	var activities []*model.ActivityIndex
 	if err := r.repo.Load(&activities); err != nil {
 		return err
 	}
@@ -31,18 +31,21 @@ func (r *ActivityRepository) Load() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	r.activities = make(map[string]*model.Activity)
+	r.activities = make(map[string]*model.ActivityIndex)
 	for _, activity := range activities {
-		r.activities[activity.ActivityID] = activity
+		if activity == nil || activity.ActivityID == "" {
+			continue
+		}
+		r.activities[activity.ActivityID] = cloneActivityIndex(activity)
 	}
 
 	return nil
 }
 
 func (r *ActivityRepository) save() error {
-	activities := make([]*model.Activity, 0, len(r.activities))
+	activities := make([]*model.ActivityIndex, 0, len(r.activities))
 	for _, activity := range r.activities {
-		activities = append(activities, activity)
+		activities = append(activities, cloneActivityIndex(activity))
 	}
 	return r.repo.Save(activities)
 }
@@ -53,19 +56,19 @@ func (r *ActivityRepository) Save() error {
 	return r.save()
 }
 
-func (r *ActivityRepository) GetAll() []*model.Activity {
+func (r *ActivityRepository) GetAll() []*model.ActivityIndex {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	activities := make([]*model.Activity, 0, len(r.activities))
+	activities := make([]*model.ActivityIndex, 0, len(r.activities))
 	for _, activity := range r.activities {
-		activities = append(activities, activity)
+		activities = append(activities, cloneActivityIndex(activity))
 	}
 
 	return activities
 }
 
-func (r *ActivityRepository) GetByID(activityID string) (*model.Activity, error) {
+func (r *ActivityRepository) GetByID(activityID string) (*model.ActivityIndex, error) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
@@ -74,24 +77,24 @@ func (r *ActivityRepository) GetByID(activityID string) (*model.Activity, error)
 		return nil, fmt.Errorf("activity not found: %s", activityID)
 	}
 
-	return activity, nil
+	return cloneActivityIndex(activity), nil
 }
 
-func (r *ActivityRepository) GetByRoomID(roomID string) []*model.Activity {
+func (r *ActivityRepository) GetByRoomID(roomID string) []*model.ActivityIndex {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	activities := make([]*model.Activity, 0)
+	activities := make([]*model.ActivityIndex, 0)
 	for _, activity := range r.activities {
 		if activity.RoomID == roomID {
-			activities = append(activities, activity)
+			activities = append(activities, cloneActivityIndex(activity))
 		}
 	}
 
 	return activities
 }
 
-func (r *ActivityRepository) Create(activity *model.Activity) error {
+func (r *ActivityRepository) Create(activity *model.ActivityIndex) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -100,37 +103,29 @@ func (r *ActivityRepository) Create(activity *model.Activity) error {
 	}
 
 	now := time.Now()
-	activity.CreatedAt = now
-	activity.UpdatedAt = now
-	if activity.ActivityContext == nil {
-		activity.ActivityContext = model.DefaultActivityContext()
-	}
-	if activity.ArtifactRefs == nil {
-		activity.ArtifactRefs = []model.ActivityArtifactRef{}
+	if activity.CreatedAt.IsZero() {
+		activity.CreatedAt = now
 	}
 
-	r.activities[activity.ActivityID] = activity
+	r.activities[activity.ActivityID] = cloneActivityIndex(activity)
 
 	return r.save()
 }
 
-func (r *ActivityRepository) Update(activity *model.Activity) error {
+func (r *ActivityRepository) Update(activity *model.ActivityIndex) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if _, exists := r.activities[activity.ActivityID]; !exists {
+	existing, exists := r.activities[activity.ActivityID]
+	if !exists {
 		return fmt.Errorf("activity not found: %s", activity.ActivityID)
 	}
 
-	activity.UpdatedAt = time.Now()
-	if activity.ActivityContext == nil {
-		activity.ActivityContext = model.DefaultActivityContext()
-	}
-	if activity.ArtifactRefs == nil {
-		activity.ArtifactRefs = []model.ActivityArtifactRef{}
+	if activity.CreatedAt.IsZero() {
+		activity.CreatedAt = existing.CreatedAt
 	}
 
-	r.activities[activity.ActivityID] = activity
+	r.activities[activity.ActivityID] = cloneActivityIndex(activity)
 
 	return r.save()
 }
@@ -153,4 +148,20 @@ func (r *ActivityRepository) Exists(activityID string) bool {
 	defer r.mu.RUnlock()
 	_, exists := r.activities[activityID]
 	return exists
+}
+
+func cloneActivityIndex(activity *model.ActivityIndex) *model.ActivityIndex {
+	if activity == nil {
+		return nil
+	}
+	cloned := *activity
+	if activity.StartedAt != nil {
+		startedAt := *activity.StartedAt
+		cloned.StartedAt = &startedAt
+	}
+	if activity.EndedAt != nil {
+		endedAt := *activity.EndedAt
+		cloned.EndedAt = &endedAt
+	}
+	return &cloned
 }

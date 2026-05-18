@@ -23,7 +23,6 @@ export interface PlayerData {
 
 export interface RoomInfoData {
   room_id: string
-  room_hash?: string
   current_activity_id?: string
   activity_name?: string
   activity_status?: "draft" | "running" | "ended" | "cancelled"

@@ -6,7 +6,6 @@ import (
 	"log"
 	"time"
 
-	"vrcontrol/server/consts"
 	"vrcontrol/server/model"
 	"vrcontrol/server/service"
 	"vrcontrol/server/utils"
@@ -38,7 +37,6 @@ type PlayCommander struct {
 }
 type Room struct {
 	RoomID           string
-	RoomHash         string
 	ActivityService  *service.ActivityService
 	PlayerBroadcast  chan []byte
 	PlayerRegister   chan *Player
@@ -103,7 +101,6 @@ type ControlSignal struct {
 func NewRoom(roomID string) *Room {
 	room := &Room{
 		RoomID:           roomID,
-		RoomHash:         "",
 		PlayerBroadcast:  make(chan []byte, 1024),
 		PlayerRegister:   make(chan *Player),
 		PlayerUnregister: make(chan *Player),
@@ -303,7 +300,6 @@ func (r *Room) BuildQASnapshot(activityID string) *model.ActivityQAResult {
 	return &model.ActivityQAResult{
 		ActivityID:     activityID,
 		RoomID:         r.RoomID,
-		RoomHash:       r.RoomHash,
 		CurrentQID:     r.currentQID,
 		Answers:        answers,
 		QuestionLocked: questionLocked,
@@ -332,7 +328,6 @@ func (r *Room) BuildLanternSnapshot(activityID string) *model.ActivityLanternRes
 	return &model.ActivityLanternResult{
 		ActivityID: activityID,
 		RoomID:     r.RoomID,
-		RoomHash:   r.RoomHash,
 		Events:     events,
 		CapturedAt: time.Now(),
 	}
@@ -340,8 +335,7 @@ func (r *Room) BuildLanternSnapshot(activityID string) *model.ActivityLanternRes
 
 func (r *Room) buildConfigMessage() model.EventMessage {
 	config := &model.RoomConfigMessage{
-		RoomID:   r.RoomID,
-		RoomHash: r.RoomHash,
+		RoomID: r.RoomID,
 	}
 	if r.CurrentActivity != nil && r.CurrentActivity.Status == model.ActivityStatusRunning {
 		config.ActivityID = r.CurrentActivity.ActivityID
@@ -698,14 +692,6 @@ func (r *Room) Run() {
 	}
 }
 
-func (r *Room) flushLegacyLanternData() {
-	if r.RoomHash == "" {
-		return
-	}
-	consts.SaveAssignedLanternData(r.RoomID, r.RoomHash, r.LanternData)
-	r.RoomHash = ""
-	r.clearLanternData()
-}
 func (r *Room) clearLanternData() {
 	r.LanternData = make(map[string][]*model.LanternEventMessage)
 }
