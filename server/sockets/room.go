@@ -204,6 +204,8 @@ func (r *Room) Run() {
 			case model.MessageTypeWaitToSync:
 				// Should be handled in Player
 				log.Panicln("WaitToSync should be handled in Player")
+			case model.MessageTypePlayStatus:
+				log.Panicln("PlayStatus should be handled in Player")
 			case model.MessageTypeShotEvent:
 				// Broadcast the shot event to all players
 				senderIDKey := utils.NormalizeDeviceIDKey(playerMessage.ShotEvent.DeviceID)
