@@ -111,3 +111,37 @@ Breaking changes:
 - [ ] 接收方在 Activity start 的新 `config` 廣播後更新 seed/context。
 - [ ] lantern 歷史查詢改讀 Activity results/artifacts。
 - [ ] 控制端顯示目前場次改讀 `current_activity_id` / `activity_seed`。
+
+## 2026-05-18 Room Operation Profile
+
+### 背景
+
+- 控制頁改成以 Room 上的單一固定操作設定重複執行，不再在 UI 中管理多組 activity template 或 activity 歷史。
+- 這次變更不影響 player/control WebSocket shape，但會影響 room REST payload 與前端控制流程。
+
+### Room REST Payload
+
+`GET /api/rooms`、`GET /api/rooms/:id`、`POST /api/rooms`、`PUT /api/rooms/:id`、`PATCH /api/rooms/:id` 現在都包含：
+
+```json
+{
+  "operation_profile": {
+    "activity_defaults": {
+      "name": "Standard Round",
+      "activity_context": {
+        "mode": "standard"
+      },
+      "seed": 3141
+    },
+    "batch_action_ids": ["ACTION-001"],
+    "allow_activity_name_override": true,
+    "allow_seed_override": true
+  }
+}
+```
+
+注意事項：
+
+- `parameters` 應只保留房間級固定配置，不再作為主要操作 template 容器。
+- 控制頁會優先讀 `operation_profile` 來建立並啟動 activity。
+- Activity 歷史 API 仍保留，但不再是控制頁主流程的一部分。

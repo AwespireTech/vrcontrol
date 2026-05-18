@@ -42,6 +42,37 @@
 - `POST /api/rooms/:id/activities`
 - `GET /api/rooms/:id/activities`
 
+房間 payload 現在包含 `operation_profile`，用來保存單一可重複使用的操作設定：
+
+```json
+{
+  "room_id": "ROOM-001",
+  "name": "VR Room 1",
+  "parameters": {
+    "minimap": {
+      "width": 6,
+      "depth": 6
+    }
+  },
+  "operation_profile": {
+    "activity_defaults": {
+      "name": "Standard Round",
+      "activity_context": {
+        "mode": "standard",
+        "round": 1
+      },
+      "seed": 3141
+    },
+    "batch_action_ids": ["ACTION-001", "ACTION-002"],
+    "allow_activity_name_override": true,
+    "allow_seed_override": true
+  }
+}
+```
+
+- `parameters` 只保留房間級固定配置，例如 minimap、空間資料、長期 defaults。
+- `operation_profile` 是控制頁重複執行的主要來源，包含 activity 預設與固定批次動作。
+
 ### 活動管理
 
 - `GET /api/activities/:activityId`
@@ -459,6 +490,7 @@
 - Activity 是正式的 app session / 一局遊戲 entity，使用 `activity_id` 作為主要識別，不以 `room_hash` 充當 business id。
 - Room 仍負責設備分組與 WebSocket hub runtime；Activity 負責開始、執行中 seed/context、結果與 artifact 保存。
 - `activity_context` 是一場活動共用、且可由前端或參與設備讀取的 immutable snapshot，不是使用者偏好，也不是房間設定本身。
+- 控制頁第一版不再直接管理 activity 歷史；它通常會先讀取 room `operation_profile`，再建立 draft 並立即 start。
 
 ### 建立活動草稿
 
@@ -488,6 +520,7 @@
 
 - QA 題目、題序、計分、倒數與顯示規則屬於單場活動，應放在 `activity_context.qa`。
 - `Room.parameters.qa_defaults` 若存在，只能當作建立 activity draft 時的模板；活動啟動後以 `activity_context.qa` 快照為準。
+- 若房間有 `operation_profile.activity_defaults`，控制頁應優先使用該預設來建立 draft，而不是在操作頁臨時維護多組 template。
 
 ### 啟動活動
 
@@ -545,6 +578,7 @@
 - 若活動期間有 QA runtime 狀態，結束活動時會封存 `qa` artifact，內容包含最終 `answers`、`question_locked`、`current_qid` 與當場 `qa_context` 快照。
 - 若活動期間有 lantern event，結束活動時會封存 `lantern` artifact；新接收方應以 `activity_id` 查詢 lantern 歷史。
 - room runtime 仍負責即時 QA 聚合與廣播；歷史查詢以 activity result/artifact 為準。
+- 控制頁不再顯示這些歷史結果；需要查詢歷史時，請直接使用 activity API。
 
 ### 取得活動上下文
 

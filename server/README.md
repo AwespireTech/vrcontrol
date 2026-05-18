@@ -138,6 +138,15 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 - `POST /api/rooms/:id/devices/:deviceId`
 - `DELETE /api/rooms/:id/devices/:deviceId`
 
+`Room` payload 現在包含 `operation_profile`，作為控制頁的固定操作設定來源：
+
+- `parameters`：房間級固定配置，例如 minimap、空間資料、長期 defaults。
+- `operation_profile.activity_defaults`：建立 activity draft 時的預設名稱、context、seed。
+- `operation_profile.batch_action_ids`：控制頁顯示的固定批次動作清單。
+- `allow_activity_name_override`、`allow_seed_override`：控制頁是否允許現場臨時覆蓋少量欄位。
+
+控制頁目前不再顯示 activity 歷史；若需要查歷史結果或 artifacts，請直接使用 Activity API。
+
 ### 動作管理
 
 - `GET /api/actions`

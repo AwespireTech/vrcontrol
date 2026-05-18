@@ -43,11 +43,12 @@
 
 ### Activity Context Sessions
 
-1. 前端在房間控制頁建立 activity draft，提交 `name` 與 `activity_context`。
-2. 後端將 draft 保存到 `server/data/activities.json`，作為正式場次資料索引。
-3. 啟動活動時，後端會將 draft 轉成 running activity，並把 `activity_context` 當作 immutable snapshot 保存。
-4. room runtime 會保存目前活動狀態，並在收到 lantern、shot、qa、resume_qa 等事件時，把事件統計歸屬到當前 `activity_id`。
-5. 活動結束時，後端以 `activity_id` 保存結果摘要與 artifact 索引，而不是依賴房間清空才封存。
+1. 房間設定頁在 `Room.operation_profile` 保存單一可重複使用的 activity 預設與固定批次動作。
+2. 前端在房間控制頁通常不是維護多筆 draft/history，而是用 room 的 `operation_profile.activity_defaults` 建立 activity draft。
+3. 後端將 draft 保存到 `server/data/activities.json`，作為正式場次資料索引。
+4. 啟動活動時，後端會將 draft 轉成 running activity，並把 `activity_context` 當作 immutable snapshot 保存。
+5. room runtime 會保存目前活動狀態，並在收到 lantern、shot、qa、resume_qa 等事件時，把事件統計歸屬到當前 `activity_id`。
+6. 活動結束時，後端以 `activity_id` 保存結果摘要與 artifact 索引，而不是依賴房間清空才封存。
 
 ### 裝置監控
 
@@ -98,11 +99,12 @@
 1. 玩家加入 room 後，後端會先送 `assign_sequence`，再送 `config` event，讓該玩家取得目前 hub 狀態。
 2. 只有 Activity lifecycle 代表正式 app session / 一局遊戲；玩家進出 room 不再自動建立正式 session。
 3. Activity start 時會產生或使用指定 seed，並重新廣播 `config` event，內容包含 `activity_id`、`activity_context_path` 與 Activity seed。
-4. QA 題目、題序、計分、倒數與顯示規則屬於單場活動，放在 `activity_context.qa`；Room 只保留物理房間、設備分組與 runtime 同步狀態。
-5. 玩家作答時，透過 `/api/ws/client/:clientId` 送出 `qa` 訊息，payload 只包含 `qid` 與 `aid`。
-6. room runtime 會把答案寫入 `Answers[qid][device_id]`，同一玩家對同一題重送時會直接覆蓋舊答案。
-7. update loop 僅在 QA 狀態變更時廣播一次聚合後的 `qa` event，內容是該題目前所有玩家答案的完整 map。
-8. 活動結束時，room runtime 會把 QA answers、locked questions、lantern events 與當場 context 封存成 activity artifacts；當房間玩家數回到 0 時，不代表 Activity 結束。
+4. Room 可在 `operation_profile` 內保存固定 activity defaults 與固定批次動作，但正式 session 資料仍屬於 Activity。
+5. QA 題目、題序、計分、倒數與顯示規則屬於單場活動，放在 `activity_context.qa`；Room 只保留物理房間、設備分組、固定操作設定與 runtime 同步狀態。
+6. 玩家作答時，透過 `/api/ws/client/:clientId` 送出 `qa` 訊息，payload 只包含 `qid` 與 `aid`。
+7. room runtime 會把答案寫入 `Answers[qid][device_id]`，同一玩家對同一題重送時會直接覆蓋舊答案。
+8. update loop 僅在 QA 狀態變更時廣播一次聚合後的 `qa` event，內容是該題目前所有玩家答案的完整 map。
+9. 活動結束時，room runtime 會把 QA answers、locked questions、lantern events 與當場 context 封存成 activity artifacts；當房間玩家數回到 0 時，不代表 Activity 結束。
 
 ### Live View Popup Takeover
 
