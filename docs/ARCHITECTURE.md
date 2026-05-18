@@ -45,10 +45,11 @@
 
 1. 房間設定頁在 `Room.operation_profile` 保存單一可重複使用的 activity 預設與固定批次動作。
 2. 前端在房間控制頁通常不是維護多筆 draft/history，而是用 room 的 `operation_profile.activity_defaults` 建立 activity draft。
-3. 後端將 draft 保存到 `server/data/activities.json`，作為正式場次資料索引。
-4. 啟動活動時，後端會將 draft 轉成 running activity，並把 `activity_context` 當作 immutable snapshot 保存。
-5. room runtime 會保存目前活動狀態，並在收到 lantern、shot、qa、resume_qa 等事件時，把事件統計歸屬到當前 `activity_id`。
-6. 活動結束時，後端以 `activity_id` 保存結果摘要與 artifact 索引，而不是依賴房間清空才封存。
+3. 後端將 draft 保存到極簡 `server/data/activities.json`，只保留 activity 列舉、排序與篩選需要的 index 欄位。
+4. 每個 activity 另外保存到 `server/data/activities/<activity_id>/detail.json`，其中會重複包含 index 欄位，並補上 `activity_context`、`runtime_snapshot`、`result_summary` 與 `artifact_manifest`，方便單筆直接檢視。
+5. 啟動活動時，後端會將 draft 轉成 running activity，並把 `activity_context` 當作 immutable snapshot 保存到 detail。
+6. room runtime 會保存目前活動狀態，並在收到 lantern、shot、qa、resume_qa 等事件時，把事件統計歸屬到當前 `activity_id`。
+7. 活動結束時，後端會把 QA 與 lantern 詳細結果分別寫入 `qa.json`、`lantern.json`，再同步更新 detail 中的摘要與 artifact manifest。
 
 ### 裝置監控
 
@@ -152,8 +153,9 @@
 - [server/data/activities.json](../server/data/activities.json)
 - [server/data/scrcpy_config.json](../server/data/scrcpy_config.json)
 - [server/data/preferences.json](../server/data/preferences.json)
-- `server/data/lantern/<room_id>_<room_hash>.json`：deprecated lantern fallback，舊 room hash 流程的歷史資料
-- `server/data/activities/<activity_id>/*.json`：活動級 artifact 資料，預留給 lantern / shot / qa 等詳細事件檔案
+- `server/data/activities/<activity_id>/detail.json`：單筆 activity 的完整 metadata，包含 index 欄位副本
+- `server/data/activities/<activity_id>/qa.json`：活動結束時封存的 QA 詳細結果
+- `server/data/activities/<activity_id>/lantern.json`：活動結束時封存的 lantern 詳細結果
 
 ## Room Runtime
 

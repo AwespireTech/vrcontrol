@@ -123,8 +123,6 @@
 - `POST /api/control/assignseq/:roomId/:clientId/:seq`
 - `GET /api/control/assignseq/:roomId/:clientId/:seq`
 - `GET /api/control/roomlist`
-- `GET /api/control/lantern/newest`
-- `GET /api/control/lantern/:roomId/:roomHash`
 
 ### 簡化控制
 
@@ -267,7 +265,6 @@
 - `activity_id` 代表正式遊戲/session；沒有 running Activity 時可能省略。
 - `seed` 來自 running Activity，不再由玩家進出 room 自動建立。
 - `activity_context_path` 指向該場 Activity 的 immutable context；QA 題目、題序、計分與顯示規則應從該 context 取得。
-- `rh` / room hash 已 deprecated；接收方不應再將它視為正式 session id。
 
 #### Move Command
 
@@ -480,17 +477,16 @@
 
 - `GET /api/ws/control/:roomId` 會持續推送房間狀態 JSON。
 - 回傳內容包含 `room_id`、`current_activity_id`、`activity_name`、`activity_status`、`activity_started_at`、`activity_seed`、`player_count`、`players`。
-- `room_hash` 已 deprecated；目前場次請以 `current_activity_id` 判斷。
-- `GET /api/control/lantern/:roomId/:roomHash` 是 deprecated fallback；新流程請透過 Activity results/artifacts 查詢 lantern。
 
 ## Activity Context Sessions
 
 ### 目的與邊界
 
-- Activity 是正式的 app session / 一局遊戲 entity，使用 `activity_id` 作為主要識別，不以 `room_hash` 充當 business id。
+- Activity 是正式的 app session / 一局遊戲 entity，使用 `activity_id` 作為主要識別。
 - Room 仍負責設備分組與 WebSocket hub runtime；Activity 負責開始、執行中 seed/context、結果與 artifact 保存。
 - `activity_context` 是一場活動共用、且可由前端或參與設備讀取的 immutable snapshot，不是使用者偏好，也不是房間設定本身。
 - 控制頁第一版不再直接管理 activity 歷史；它通常會先讀取 room `operation_profile`，再建立 draft 並立即 start。
+- `server/data/activities.json` 只保留 activity index；完整單筆 metadata 會保存到 `server/data/activities/<activity_id>/detail.json`，其中也會重複包含 index 欄位。
 
 ### 建立活動草稿
 
@@ -577,6 +573,7 @@
 
 - 若活動期間有 QA runtime 狀態，結束活動時會封存 `qa` artifact，內容包含最終 `answers`、`question_locked`、`current_qid` 與當場 `qa_context` 快照。
 - 若活動期間有 lantern event，結束活動時會封存 `lantern` artifact；新接收方應以 `activity_id` 查詢 lantern 歷史。
+- `detail.json` 會同步保存 `activity_id`、`room_id`、`name`、`status`、`created_at`、`started_at`、`ended_at`，方便單筆直接檢視。
 - room runtime 仍負責即時 QA 聚合與廣播；歷史查詢以 activity result/artifact 為準。
 - 控制頁不再顯示這些歷史結果；需要查詢歷史時，請直接使用 activity API。
 

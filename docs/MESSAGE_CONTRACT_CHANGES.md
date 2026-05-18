@@ -43,7 +43,7 @@
 Breaking changes:
 
 - `seed` 的來源從 room runtime session 改為 running Activity。
-- `rh` deprecated；接收方不得再將 `rh` 視為正式 session id。
+- `rh` 已移除；接收方不得再將它視為正式 session id。
 - 沒有 running Activity 時，`config` 只代表 hub 狀態，可能只有 `room_id`，不一定有 `activity_id` 或 `seed`。
 - Activity start 時 server 會重新廣播 `config`，已連線玩家需用新的 `activity_id` / `seed` 更新場次狀態。
 
@@ -62,7 +62,6 @@ Breaking changes:
 
 新語意：
 
-- `room_hash` deprecated。
 - `current_activity_id` 是目前正式 session / game 的主 key。
 - `activity_seed` 是目前 running Activity 的 seed。
 - Room update 代表 hub 狀態與 current activity 狀態，不再代表玩家進出建立的 session 狀態。
@@ -73,12 +72,6 @@ Breaking changes:
 - 若需要 seed，改讀 `activity_seed` 或 activity API 回傳的 runtime snapshot。
 
 ### Lantern Results
-
-舊查詢：
-
-```http
-GET /api/control/lantern/:roomId/:roomHash
-```
 
 新查詢：
 
@@ -91,7 +84,7 @@ GET /api/activities/:activityId/results
 Breaking changes:
 
 - 新資料以 `activity_id` 保存為 activity artifact。
-- 舊 `room_id + room_hash` lantern endpoint 保留為 deprecated fallback，不再是新流程主路徑。
+- 舊 `room_id + room_hash` lantern endpoint 已移除。
 - 無 running Activity 時收到的 lantern event 只做即時廣播，不保存成 activity result。
 
 ### Player -> Server Events Without Running Activity
@@ -106,11 +99,31 @@ Breaking changes:
 ## Migration Checklist
 
 - [ ] 接收方改以 `activity_id` 作為正式 session id。
-- [ ] 接收方停止依賴 `config.rh`。
+- [ ] 接收方移除 `config.rh` 依賴。
 - [ ] 接收方處理沒有 running Activity 時的 hub-only `config`。
 - [ ] 接收方在 Activity start 的新 `config` 廣播後更新 seed/context。
 - [ ] lantern 歷史查詢改讀 Activity results/artifacts。
 - [ ] 控制端顯示目前場次改讀 `current_activity_id` / `activity_seed`。
+
+## 2026-05-18 Activity Storage Split
+
+### 背景
+
+- Activity 改為「極簡 index + 單筆 detail + artifact 分檔」的儲存結構。
+- 目前既有 `server/data/activities.json` 只視為測試資料，這次直接捨棄，不做 migration。
+
+### 新結構
+
+- `server/data/activities.json`：只保留 `activity_id`、`room_id`、`name`、`status`、`created_at`、`started_at`、`ended_at`。
+- `server/data/activities/<activity_id>/detail.json`：保存完整單筆 metadata，且重複包含上述 index 欄位。
+- `server/data/activities/<activity_id>/qa.json`：QA 詳細結果。
+- `server/data/activities/<activity_id>/lantern.json`：lantern 詳細結果。
+
+### Breaking changes
+
+- 直接讀取 `server/data/activities.json` 的工具，現在只能拿到極簡 index。
+- `detail.json` 內的 artifact 清單欄位為 `artifact_manifest`；對外 API 仍維持 `artifact_refs` 回應。
+- `activity_id` 生成格式改為 `ACTIVITY-{timestamp}`。
 
 ## 2026-05-18 Room Operation Profile
 

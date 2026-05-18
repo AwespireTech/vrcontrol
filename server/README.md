@@ -100,7 +100,7 @@ npm run dev
 - 玩家連線：`ws://localhost:8080/api/ws/client/<player_id>`
 - 房間控制：`ws://localhost:8080/api/ws/control/<roomId>`
 
-房間控制 WS 更新會包含目前的 `current_activity_id` 與 `activity_seed`。若需要讀取該局累積的 lantern 歷史資料，請用 Activity results/artifacts；`GET /api/control/lantern/:roomId/:roomHash` 僅作舊資料 fallback。
+房間控制 WS 更新會包含目前的 `current_activity_id` 與 `activity_seed`。若需要讀取該局累積的 lantern 歷史資料，請直接用 Activity results/artifacts。
 
 - 即時畫面 signaling：`ws://localhost:8080/api/ws/webrtc/<deviceId>`
 
@@ -167,8 +167,6 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 - `POST /api/control/assignseq/:roomId/:clientId/:seq`
 - `GET /api/control/assignseq/:roomId/:clientId/:seq`
 - `GET /api/control/roomlist`
-- `GET /api/control/lantern/newest`
-- `GET /api/control/lantern/:roomId/:roomHash`
 
 ### 螢幕觀看 / Live View
 
@@ -328,7 +326,6 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 - `activity_id` 代表正式遊戲/session；沒有 running Activity 時可能省略。
 - `seed` 來自 running Activity，不再由玩家進出 room 自動建立。
 - `activity_context_path` 指向該場 Activity 的 immutable context，QA 題目與規則請從該 activity context 取得。
-- `rh` / room hash 已 deprecated；接收方不應再將它視為正式 session id。
 
 #### Move Command
 
@@ -422,7 +419,7 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 ```
 
 這條 socket 目前只用於觀測房間狀態，不承接 controller -> server 命令。
-`room_hash` 與玩家側 `config.rh` 已 deprecated。若需要讀取該局累積的 lantern 歷史資料，請用 `current_activity_id` 查 Activity results/artifacts；`GET /api/control/lantern/:roomId/:roomHash` 只作舊資料 fallback。
+若需要讀取該局累積的 lantern 歷史資料，請用 `current_activity_id` 查 Activity results/artifacts。
 
 ### 控制端 Lantern API
 
