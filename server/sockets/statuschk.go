@@ -1,12 +1,12 @@
 package sockets
 
-func CheckSnapShot(r *Room) (bool) {
+func CheckSnapShot(r *Room) (SnapShot, bool) {
 	if r == nil {
 		panic("room is nil")
 	}
 
 	if len(r.Players) == 0 {
-		return false
+		return SnapShot{}, false
 	}
 
 	for player := range r.Players {
@@ -18,7 +18,7 @@ func CheckSnapShot(r *Room) (bool) {
 			continue
 		}
 
-		return false
+		return SnapShot{}, false
 	}
 
 	// Reset Flag
@@ -28,5 +28,7 @@ func CheckSnapShot(r *Room) (bool) {
 		}
 		player.WaitSnapShot = false
 	}
-	return true
+	return SnapShot{
+		Type: 1,
+	}, true
 }

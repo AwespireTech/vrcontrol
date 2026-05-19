@@ -108,10 +108,11 @@ func (p *Player) read() {
 			playStatus := playerMessage.PlayStatus
 			if playStatus.Status == model.PS_SnapShot {
 				p.WaitSnapShot = true
-				allReadySnapShot := CheckSnapShot(p.Room)
+				spshot, allReadySnapShot := CheckSnapShot(p.Room)
 				// Do Something Here
 				if allReadySnapShot{
 					log.Println("All Players Ready to Take A SnapShot")
+					p.Room.SnapShotControl <- spshot
 				}
 			} else {
 				p.Status = playStatus.Status
