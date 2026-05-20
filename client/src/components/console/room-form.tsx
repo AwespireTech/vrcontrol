@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
-import type { Room } from "@/services/api-types"
+import { useEffect, useState } from "react"
+import { actionApi } from "@/services/api"
+import type { Action, Room } from "@/services/api-types"
 import Button from "@/components/button"
 
 const DEFAULT_ACTIVITY_CONTEXT = {
@@ -31,7 +32,7 @@ function buildInitialOperationProfile(room?: Room) {
       null,
       2,
     ),
-    batchActionIds: JSON.stringify(profile?.batch_action_ids || [], null, 2),
+    batchActionIds: profile?.batch_action_ids || [],
     allowActivityNameOverride: profile?.allow_activity_name_override ?? true,
     allowSeedOverride: profile?.allow_seed_override ?? true,
   }
@@ -58,6 +59,24 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
   })
   const assignedSequences = room?.assigned_sequences || {}
   const [submitting, setSubmitting] = useState(false)
+  const [actions, setActions] = useState<Action[]>([])
+  const [actionsLoading, setActionsLoading] = useState(true)
+
+  useEffect(() => {
+    const loadActions = async () => {
+      try {
+        const actionsData = await actionApi.getAll()
+        setActions(actionsData)
+      } catch (error) {
+        console.error("Failed to load actions:", error)
+        setActions([])
+      } finally {
+        setActionsLoading(false)
+      }
+    }
+
+    void loadActions()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -89,21 +108,6 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
         return
       }
 
-      let batchActionIds: string[] = []
-      try {
-        const parsed = JSON.parse(formData.batchActionIds)
-        if (!Array.isArray(parsed) || parsed.some((item) => typeof item !== "string")) {
-          alert("固定批次動作必須是字串陣列，例如 [\"ACTION-1\"]")
-          setSubmitting(false)
-          return
-        }
-        batchActionIds = parsed
-      } catch {
-        alert("固定批次動作格式錯誤，請輸入有效的 JSON 陣列")
-        setSubmitting(false)
-        return
-      }
-
       const seedText = formData.activitySeed.trim()
       const parsedSeed = seedText === "" ? undefined : Number(seedText)
       if (seedText !== "" && !Number.isInteger(parsedSeed)) {
@@ -122,7 +126,7 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
             activity_context: activityContext,
             ...(parsedSeed !== undefined ? { seed: parsedSeed } : {}),
           },
-          batch_action_ids: batchActionIds,
+          batch_action_ids: formData.batchActionIds,
           allow_activity_name_override: formData.allowActivityNameOverride,
           allow_seed_override: formData.allowSeedOverride,
         },
@@ -148,6 +152,15 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
     setFormData((prev) => ({
       ...prev,
       [name]: checked,
+    }))
+  }
+
+  const toggleBatchActionId = (actionId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      batchActionIds: prev.batchActionIds.includes(actionId)
+        ? prev.batchActionIds.filter((id) => id !== actionId)
+        : [...prev.batchActionIds, actionId],
     }))
   }
 
@@ -240,18 +253,53 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
 
         <div>
           <label className="mb-2 block text-sm font-semibold text-foreground">
-            固定批次動作 IDs (JSON array)
+            固定批次動作
           </label>
-          <textarea
-            name="batchActionIds"
-            value={formData.batchActionIds}
-            onChange={handleChange}
-            rows={4}
-            className="ui-input w-full px-4 py-2 font-mono text-sm"
-            placeholder='["ACTION-001", "ACTION-002"]'
-          />
+          <div className="rounded-2xl border border-border/70 bg-background/60 p-3">
+            <div className="mb-3 text-xs text-foreground/50">
+              已選 {formData.batchActionIds.length} 個動作。控制頁會依這份清單顯示固定批次操作按鈕。
+            </div>
+
+            {actionsLoading ? (
+              <div className="text-sm text-foreground/60">讀取動作中…</div>
+            ) : actions.length === 0 ? (
+              <div className="text-sm text-foreground/60">尚無可選動作，請先到動作管理建立。</div>
+            ) : (
+              <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
+                {actions.map((action) => {
+                  const isSelected = formData.batchActionIds.includes(action.action_id)
+                  return (
+                    <label
+                      key={action.action_id}
+                      className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-3 transition ${
+                        isSelected
+                          ? "border-primary/60 bg-primary/10"
+                          : "border-border bg-surface/40 hover:bg-surface/70"
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleBatchActionId(action.action_id)}
+                        className="mt-1 h-4 w-4"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold text-foreground">{action.name}</div>
+                        <div className="mt-1 font-mono text-xs text-foreground/45">
+                          {action.action_id}
+                        </div>
+                        {action.description ? (
+                          <div className="mt-2 text-xs text-foreground/60">{action.description}</div>
+                        ) : null}
+                      </div>
+                    </label>
+                  )
+                })}
+              </div>
+            )}
+          </div>
           <p className="mt-1 text-xs text-foreground/50">
-            控制頁會依這份清單顯示固定批次操作按鈕，不再讓操作人員每次重新選 action。
+            不再手動輸入 action ID，改由這裡直接選擇要綁定在 room 的固定批次動作。
           </p>
         </div>
 

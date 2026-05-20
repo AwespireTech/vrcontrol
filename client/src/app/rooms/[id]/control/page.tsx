@@ -758,7 +758,15 @@ export default function RoomControlPage() {
         activity_context: roomProfile.activity_defaults.activity_context || DEFAULT_ACTIVITY_CONTEXT,
       })
       createdActivityId = created.activity_id
-      await activityApi.start(created.activity_id, seed !== undefined ? { seed } : undefined)
+      const started = await activityApi.start(created.activity_id, seed !== undefined ? { seed } : undefined)
+      setCurrentActivityMeta({
+        id: started.activity_id,
+        name: started.name,
+        status: started.status,
+        seed: started.runtime_snapshot?.seed,
+        startedAt: started.started_at,
+      })
+      await loadControlData()
     } catch (error) {
       if (createdActivityId) {
         try {
@@ -778,6 +786,7 @@ export default function RoomControlPage() {
     setActivityPending(`end:${activityId}`)
     try {
       await activityApi.end(activityId)
+      setCurrentActivityMeta({ id: "", name: "", status: "" })
       await loadControlData()
     } catch (error) {
       console.error("Failed to end activity:", error)
@@ -1061,16 +1070,19 @@ export default function RoomControlPage() {
                   </div>
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <Button
+                      type="button"
                       loading={activityPending === "start"}
                       disabled={activityPending !== "" || hasRunningActivity}
+                      className="ui-btn-md ui-btn-primary"
                       onClick={handleStartConfiguredActivity}
                     >
                       以目前設定開始活動
                     </Button>
                     <Button
+                      type="button"
                       loading={activityPending === `end:${currentActivityMeta.id}`}
                       disabled={activityPending !== "" || !hasRunningActivity}
-                      className="ui-btn-danger"
+                      className="ui-btn-md ui-btn-danger"
                       onClick={() => handleEndActivity(currentActivityMeta.id)}
                     >
                       結束目前活動
