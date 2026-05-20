@@ -21,9 +21,9 @@ type Player struct {
 	Room              *Room
 	Stage             int
 	ReadyToMove       bool
-	WaitToSync			  bool
-	Status						model.PlayStatusEnum
-	WaitSnapShot			bool
+	WaitToSync        bool
+	Status            model.PlayStatusEnum
+	WaitSnapShot      bool
 	InChannel         chan []byte
 	Sequence          int
 	LastUpdate        time.Time
@@ -110,7 +110,7 @@ func (p *Player) read() {
 				p.WaitSnapShot = true
 				spshot, allReadySnapShot := CheckSnapShot(p.Room)
 				// Do Something Here
-				if allReadySnapShot{
+				if allReadySnapShot {
 					log.Println("All Players Ready to Take A SnapShot")
 					p.Room.SnapShotControl <- spshot
 				}

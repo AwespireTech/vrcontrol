@@ -16,7 +16,7 @@ const (
 type PlayStatusEnum int
 
 const (
-	PS_Idle 		PlayStatusEnum = iota
+	PS_Idle PlayStatusEnum = iota
 	PS_Playing
 	PS_Pause
 	PS_Stop
@@ -32,7 +32,7 @@ type Vector3f struct {
 type PlayerMessage struct {
 	MessageType MessageType  `json:"message_type"`
 	Heartbeat   *Heartbeat   `json:"heartbeat,omitempty"`
-	PlayStatus  *PlayStatus	 `json:"play_status,omitempty"`
+	PlayStatus  *PlayStatus  `json:"play_status,omitempty"`
 	ShotEvent   *ShotEvent   `json:"shot_event,omitempty"`
 	Latern      *Lantern     `json:"lantern,omitempty"`
 	ReadyToMove *ReadyToMove `json:"ready_to_move,omitempty"`
@@ -57,8 +57,8 @@ type Heartbeat struct {
 }
 
 type PlayStatus struct {
-	Timestamp int64 		 			`json:"timestamp"`
-	Status		PlayStatusEnum 	`json:"status"`
+	Timestamp int64          `json:"timestamp"`
+	Status    PlayStatusEnum `json:"status"`
 }
 
 type ShotEvent struct {
@@ -90,7 +90,7 @@ type WaitToSync struct {
 }
 
 type QA struct {
-	Timestamp 	int64		`json:"timestamp"`
-	QuestionID 	string  `json:"qid"`
-	AnswerID   	string  `json:"aid"`
+	Timestamp  int64  `json:"timestamp"`
+	QuestionID string `json:"qid"`
+	AnswerID   string `json:"aid"`
 }

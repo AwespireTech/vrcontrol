@@ -9,14 +9,17 @@ Go + Gin 後端服務，提供 Quest 設備/房間/動作管理，以及 WebSock
 Quest 裝置控制需要 **ADB**，螢幕鏡像功能需要 **scrcpy**。兩者都必須可在系統 `PATH` 中找到。
 
 **官方下載**
+
 - Android Platform Tools (ADB)：https://developer.android.com/tools/releases/platform-tools
 - scrcpy：https://github.com/Genymobile/scrcpy/releases
 
 **Windows**
+
 - ADB：下載 Platform Tools → 解壓縮 → 將 `platform-tools` 目錄加入系統 `PATH`
 - scrcpy：下載 Windows release → 解壓縮 → 將 `scrcpy` 所在目錄加入 `PATH`
 
 **macOS**
+
 - ADB：`brew install android-platform-tools`
 - scrcpy：`brew install scrcpy`
 
@@ -24,10 +27,12 @@ Quest 裝置控制需要 **ADB**，螢幕鏡像功能需要 **scrcpy**。兩者�
 > 可嘗試：`xattr -dr com.apple.quarantine $(which scrcpy)`
 
 **Linux (Debian/Ubuntu)**
+
 - ADB：`sudo apt-get install android-tools-adb`
 - scrcpy：`sudo apt-get install scrcpy`
 
 > `scrcpy` 會開啟鏡像視窗，需在「有桌面環境」的機器上執行（macOS 桌面、Linux X11/Wayland）。
+>
 > - Linux headless（無 `$DISPLAY` / 無 Wayland session）通常無法正常啟動 scrcpy。
 > - Linux 若在 Wayland 下無法顯示視窗，請先確認已安裝/啟用 XWayland，或改用 X11 session 測試。
 > - 若你用 systemd/LaunchAgent 等方式啟動後端，請確認該服務的 `PATH` 包含 `adb`/`scrcpy`（macOS Homebrew 常見路徑：`/opt/homebrew/bin`）。
@@ -55,18 +60,21 @@ npm run dev
 ## 功能概覽
 
 ### 設備管理
+
 - ✅ 設備 CRUD
 - ✅ ADB 連接/斷開
 - ✅ 實時狀態監控（電量/溫度/延遲）
 - ✅ 批量操作
 
 ### 房間管理
+
 - ✅ 房間配置、設備分配
 - ✅ TCP Socket Server 管理
 - ✅ 動態端口分配（3000–3100）
 - ✅ 參數同步廣播
 
 ### 動作管理
+
 - ✅ 支援 8 種動作類型
   - `wake_up`, `sleep`, `launch_app`, `stop_app`, `restart_app`, `keep_awake`, `send_key`, `install_apk`
 - ✅ 批量執行
@@ -75,11 +83,13 @@ npm run dev
 > 注意：`keep_awake` 目前在後端尚未實作（`action_service.go` 未處理）。
 
 ### 網路監控
+
 - ✅ 後台定時監控
 - ✅ 自動狀態更新與重連
 - ✅ 併發 Ping 檢測
 
 ### 螢幕觀看
+
 - ✅ 外部 scrcpy 監看視窗
 - ✅ WebRTC 頁內即時畫面（live view）
 - ✅ WebRTC 外部 popup 視窗模式（前端路由 / popup takeover）
@@ -91,6 +101,7 @@ npm run dev
 - 房間控制：`ws://localhost:8080/api/ws/control/<roomId>`
 
 房間控制 WS 更新會包含 `room_hash`。若需要讀取該局累積的 lantern 歷史資料，可呼叫 `GET /api/control/lantern/:roomId/:roomHash`。
+
 - 即時畫面 signaling：`ws://localhost:8080/api/ws/webrtc/<deviceId>`
 
 ## API 概覽
@@ -98,6 +109,7 @@ npm run dev
 API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)）：
 
 ### 設備管理
+
 - `GET /api/devices`
 - `GET /api/devices/isolation`
 - `GET /api/devices/:id`
@@ -116,6 +128,7 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 - `POST /api/devices/batch/auto-reconnect/reset`
 
 ### 房間管理
+
 - `GET /api/rooms`
 - `GET /api/rooms/:id`
 - `POST /api/rooms`
@@ -126,12 +139,14 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 - `DELETE /api/rooms/:id/devices/:deviceId`
 
 ### 動作管理
+
 - `GET /api/actions`
 - `POST /api/actions`
 - `POST /api/actions/:id/execute`
 - `POST /api/actions/batch/execute`
 
 ### 監控服務
+
 - `GET /api/monitoring/status`
 - `POST /api/monitoring/start`
 - `POST /api/monitoring/stop`
@@ -139,12 +154,15 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 - `POST /api/monitoring/run-once`
 
 ### 控制
+
 - `POST /api/control/assignseq/:roomId/:clientId/:seq`
 - `GET /api/control/assignseq/:roomId/:clientId/:seq`
 - `GET /api/control/roomlist`
+- `GET /api/control/lantern/newest`
 - `GET /api/control/lantern/:roomId/:roomHash`
 
 ### 螢幕觀看 / Live View
+
 - `GET /api/scrcpy/system-info`
 - `POST /api/scrcpy/start/:id`
 - `POST /api/scrcpy/stop/:id`
@@ -167,66 +185,76 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 
 ## Socket 協議
 
-### 訊息格式
-所有訊息為 JSON，以 `\n` 分隔。
+### 傳輸方式
 
-**登入**（Client → Server）
+- 所有 room socket 訊息都是 WebSocket text frame JSON。
+- 玩家端與控制端使用不同路徑：`/api/ws/client/:clientId`、`/api/ws/control/:roomId`。
+
+### 玩家 Socket: Client -> Server
+
+#### Play Status
+
 ```json
 {
-	"type": "login",
-	"device_id": "device_001",
-	"device_name": "Quest 1"
+  "message_type": "play_status",
+  "play_status": {
+    "timestamp": 1716379200000,
+    "status": 1
+  }
 }
 ```
 
-**Ping**（Client → Server）
-```json
-{ "type": "ping" }
-```
+- `status` enum 目前為 `0=idle`、`1=playing`、`2=pause`、`3=stop`、`4=snapshot`。
+- 非 snapshot 狀態只會更新 room 內的玩家狀態，不會觸發額外廣播。
+- 當 `status=4` 時，後端會把玩家標記為已就緒 snapshot；等 room 內所有玩家都送出 snapshot 後，才會觸發資料快照。
 
-**Pong**（Server → Client）
+### Snapshot 行為
+
+- snapshot 協調目前由玩家主動送出 `play_status.status = 4` 來觸發。
+- 當所有玩家都 ready 後，room 會 flush 記憶體中的 lantern 與 QA 聚合資料。
+- 目前沒有額外的 snapshot response event；這是 room 內部控制流程。
+
+### 控制端 Lantern API
+
+- `GET /api/control/lantern/:roomId/:roomHash`：取得指定 room session 的 lantern 資料。
+- `GET /api/control/lantern/newest`：回傳 lantern 資料目錄中最新的檔名清單。
+- 目前 `GET /api/control/lantern/newest` 會固定回傳最新 2 筆檔名，格式如下：
+
 ```json
 {
-	"type": "pong",
-	"timestamp": "2026-01-06T10:30:00Z"
+  "data": ["room-a_1716379100.json", "room-b_1716379000.json"]
 }
 ```
 
-**Params Update**（Server → Client）
-```json
-{
-	"type": "params_update",
-	"data": {
-		"from": "device_001",
-		"data": {
-			"key1": "value1",
-			"key2": 123
-		},
-		"timestamp": 1704500000000
-	}
-}
-```
+### 目前限制
+
+- `play_status` 目前尚未被輸出到 control room update 或 REST API。
+- room 清空時的 lantern / QA flush 目前未自動執行，若需要立即落檔，應依賴 snapshot 協調流程。
 
 ## 基本使用流程
 
 ### 添加第一個設備
+
 1. 進入「設備管理」
 2. 點擊「+ 添加設備」
 3. 填寫設備名稱、IP、ADB 端口（預設 5555）
 4. 點擊「創建」
 
 ### 連接設備
+
 **前提：** 已開啟開發者模式與 ADB over WiFi，設備與伺服器同網段。
 
 1. 點擊「連接」
 2. 連線成功後狀態顯示「在線」
 
 ### 創建房間
+
 1. 進入「房間管理」
 2. 點擊「+ 創建房間」
 3. 添加設備並啟動 Socket Server
 
 ### 執行動作
+
 1. 進入「動作管理」
 2. 建立動作並設定 `params`
 3. 選擇設備後執行
@@ -234,36 +262,39 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 ## 常見動作範例
 
 ### 喚醒設備
+
 ```json
 {
-	"name": "喚醒所有設備",
-	"action_type": "wake_up",
-	"params": {}
+  "name": "喚醒所有設備",
+  "action_type": "wake_up",
+  "params": {}
 }
 ```
 
 ### 啟動應用
+
 ```json
 {
-	"name": "啟動 Beat Saber",
-	"action_type": "launch_app",
-	"params": {
-		"package": "com.beatgames.beatsaber",
-		"activity": ".MainActivity"
-	}
+  "name": "啟動 Beat Saber",
+  "action_type": "launch_app",
+  "params": {
+    "package": "com.beatgames.beatsaber",
+    "activity": ".MainActivity"
+  }
 }
 ```
 
 ### 安裝 APK
+
 ```json
 {
-	"name": "安裝應用",
-	"action_type": "install_apk",
-	"params": {
-		"apk_path": "/path/to/app.apk",
-		"replace": true,
-		"grant_permissions": true
-	}
+  "name": "安裝應用",
+  "action_type": "install_apk",
+  "params": {
+    "apk_path": "/path/to/app.apk",
+    "replace": true,
+    "grant_permissions": true
+  }
 }
 ```
 
@@ -280,15 +311,18 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 ## 故障排除
 
 ### 設備無法連接
+
 1. 確認 ADB over WiFi 啟用
 2. 確認設備與伺服器同網段
 3. 檢查防火牆與 5555 端口
 
 ### Socket Server 無法啟動
+
 1. 端口 3000–3100 是否被占用
 2. 權限不足或防火牆阻擋
 
 ### 監控狀態不更新
+
 1. 監控服務是否啟動
 2. 設備 IP 是否有效
 3. 網路連線是否正常

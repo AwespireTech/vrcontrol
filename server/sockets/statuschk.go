@@ -14,7 +14,7 @@ func CheckSnapShot(r *Room) (SnapShot, bool) {
 			continue
 		}
 
-		if player.WaitSnapShot{
+		if player.WaitSnapShot {
 			continue
 		}
 

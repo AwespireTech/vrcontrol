@@ -15,6 +15,7 @@
 ## 模組分層
 
 ### 後端（API 模組）
+
 - 路由註冊：[server/routes/api_routes.go](../server/routes/api_routes.go)
 - 控制器：server/controller
 - 服務層：server/service
@@ -25,6 +26,7 @@
 - WebRTC H264 發送：server/webrtc
 
 ### 前端
+
 - App 入口：[client/src/App.tsx](../client/src/App.tsx)
 - 頁面實作：client/src/app
 - 主要前端入口 URL：`/`（管理介面）
@@ -34,21 +36,39 @@
 ## 資料流
 
 ### 動作執行
+
 1. 前端建立動作（`params` 依規格填寫）
 2. 後端保存至 JSON 資料庫
 3. 執行時由後端讀取動作並透過 ADB 對設備下指令
 
 ### 裝置監控
+
 1. 監控服務定期 Ping 裝置 IP
 2. 狀態更新回寫至資料庫
 3. 前端定期拉取狀態並更新 UI
 
+### Room 播放狀態與 Snapshot
+
+1. 玩家透過 `/api/ws/client/:clientId` 傳送 `play_status` 訊息到 room runtime。
+2. 當 `status` 為 `idle/playing/pause/stop` 時，後端只更新該玩家在記憶體中的播放狀態。
+3. 當 `status` 為 `snapshot` 時，後端將該玩家標記為已就緒 snapshot，並用 `CheckSnapShot` 檢查當前 room 內所有玩家是否都已送出 snapshot。
+4. 當所有玩家都已就緒後，room 會透過 `SnapShotControl` 觸發一次資料快照流程，將目前記憶體中的 lantern 與 QA 聚合資料 flush 掉。
+5. 目前房間清空時的 lantern / QA flush 已不再自動觸發，snapshot 是新的主要切點。
+
+### Lantern 最新列表查詢
+
+1. 控制端可呼叫 `GET /api/control/lantern/newest` 取得 lantern 資料目錄中最新的檔名清單。
+2. 後端會依檔案修改時間排序後，回傳最新檔案名稱陣列。
+3. 目前控制器固定要求最新 2 筆，因此這條 API 現階段更像是「最近 session 快速入口」而不是完整分頁列表。
+
 ### Scrcpy 鏡像
+
 1. 前端呼叫 `/api/scrcpy/*`
 2. 後端檢查 scrcpy 是否安裝
 3. 啟動 scrcpy 子行程並維護 session 狀態
 
 ### WebRTC 即時畫面
+
 1. 前端在設備頁或房間控制頁開啟 `LiveStreamPlayer`。
 2. 前端透過 `/api/ws/webrtc/:deviceId` 建立 WebSocket signaling。
 3. 後端 `WebRTCStreamController` 啟動 `ScrcpyStreamService`，建立 scrcpy standalone server session。
@@ -58,6 +78,7 @@
 7. 瀏覽器端收到 track 後，由 `client/src/components/console/live-stream-player.tsx` 顯示畫面，並回報首幀與解碼診斷資訊。
 
 ### Live View Popup Takeover
+
 1. 使用者在設備頁或房間控制頁的 live-stream section 點擊「在新視窗開啟」。
 2. 前端透過 `window.open` 開啟 `/live-stream-popup`，popup 頁面載入後用 BroadcastChannel 對主頁送出 `popup-ready`。
 3. 主頁收到 `popup-ready` 後送出 `init`，後續在清單或 layout 變動時送出 `state-update`。
@@ -70,6 +91,7 @@
 ## Live View 主要模組
 
 ### 前端
+
 - [client/src/app/devices/page.tsx](../client/src/app/devices/page.tsx)：設備頁的 live-stream section、外部視窗接管狀態與單台開啟入口。
 - [client/src/app/rooms/[id]/control/page.tsx](../client/src/app/rooms/%5Bid%5D/control/page.tsx)：房間控制頁的 live-stream section、批次開啟入口與 popup takeover 流程。
 - [client/src/app/live-stream-popup/page.tsx](../client/src/app/live-stream-popup/page.tsx)：外部 live-stream 視窗頁面，承接 popup 顯示與同步狀態提示。
@@ -80,6 +102,7 @@
 - [client/src/services/api.ts](../client/src/services/api.ts)：`webrtcApi.getSignalUrl()` 與錯誤碼對應。
 
 ### 後端
+
 - [server/controller/webrtc_stream_controller.go](../server/controller/webrtc_stream_controller.go)：WebRTC signaling 入口、錯誤分類與 session lifecycle。
 - [server/service/scrcpy_stream_service.go](../server/service/scrcpy_stream_service.go)：將 device/config 轉成 live view stream session。
 - [server/scrcpy/stream_manager.go](../server/scrcpy/stream_manager.go)：scrcpy standalone 啟播、source probe、control socket、RESET_VIDEO 與 fallback。
@@ -88,7 +111,7 @@
 
 ## Scrcpy Config 與資料儲存
 
-- `server/data/scrcpy_config.json` 目前除了既有 bitrate / max_size / max_fps / window_* 等欄位外，另有 `video_codec_options`。
+- `server/data/scrcpy_config.json` 目前除了既有 bitrate / max*size / max_fps / window*\* 等欄位外，另有 `video_codec_options`。
 - `video_codec_options` 是 WebRTC live view 用於啟播診斷與 fallback 的額外編碼器選項，不影響既有外部 scrcpy 視窗啟動參數。
 - 預設建議維持空字串；只有在特定設備首幀等待過久時，才暫時用較積極的 codec options 做排障。
 
@@ -105,8 +128,10 @@
 
 - Socket room 的執行時狀態由 [server/sockets/room.go](../server/sockets/room.go) 維護。
 - 當房間從無玩家進入到有玩家時，會產生新的 `room_hash`，代表一局新的房間 session。
-- lantern 事件會先暫存在記憶體，等房間玩家數回到 0 時寫入 `server/data/lantern`。
+- lantern 事件會先暫存在記憶體，並可由 snapshot 協調流程主動 flush 到 `server/data/lantern`。
+- QA 聚合資料也會與 lantern 一起在 snapshot 流程中 flush/reset。
 - 控制端可先從 room update 取得 `room_hash`，再用 control API 查詢該局 lantern 歷史資料。
+- room 目前會記住玩家的 `play_status`，但這個狀態尚未被輸出到 room update payload。
 
 ## 已知限制
 
