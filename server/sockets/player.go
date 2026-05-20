@@ -22,6 +22,8 @@ type Player struct {
 	Stage             int
 	ReadyToMove       bool
 	WaitToSync        bool
+	Status            model.PlayStatusEnum
+	WaitSnapShot      bool
 	InChannel         chan []byte
 	Sequence          int
 	LastUpdate        time.Time
@@ -102,6 +104,19 @@ func (p *Player) read() {
 			p.DeiviceID = utils.NormalizeDeviceIDKey(heartbeat.DeviceID)
 			p.Message = heartbeat.Message
 			p.LastUpdate = utilities.TicksToDateTime(heartbeat.Timestamp)
+		case model.MessageTypePlayStatus:
+			playStatus := playerMessage.PlayStatus
+			if playStatus.Status == model.PS_SnapShot {
+				p.WaitSnapShot = true
+				spshot, allReadySnapShot := CheckSnapShot(p.Room)
+				// Do Something Here
+				if allReadySnapShot {
+					log.Println("All Players Ready to Take A SnapShot")
+					p.Room.SnapShotControl <- spshot
+				}
+			} else {
+				p.Status = playStatus.Status
+			}
 		case model.MessageTypeReadyToMove:
 			readyToMove := playerMessage.ReadyToMove
 			p.Stage = readyToMove.Stage

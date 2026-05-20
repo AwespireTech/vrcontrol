@@ -47,6 +47,20 @@
 2. 狀態更新回寫至資料庫
 3. 前端定期拉取狀態並更新 UI
 
+### Room 播放狀態與 Snapshot
+
+1. 玩家透過 `/api/ws/client/:clientId` 傳送 `play_status` 訊息到 room runtime。
+2. 當 `status` 為 `idle/playing/pause/stop` 時，後端只更新該玩家在記憶體中的播放狀態。
+3. 當 `status` 為 `snapshot` 時，後端將該玩家標記為已就緒 snapshot，並用 `CheckSnapShot` 檢查當前 room 內所有玩家是否都已送出 snapshot。
+4. 當所有玩家都已就緒後，room 會透過 `SnapShotControl` 觸發一次資料快照流程，將目前記憶體中的 lantern 與 QA 聚合資料 flush 掉。
+5. 目前房間清空時的 lantern / QA flush 已不再自動觸發，snapshot 是新的主要切點。
+
+### Lantern 最新列表查詢
+
+1. 控制端可呼叫 `GET /api/control/lantern/newest` 取得 lantern 資料目錄中最新的檔名清單。
+2. 後端會依檔案修改時間排序後，回傳最新檔案名稱陣列。
+3. 目前控制器固定要求最新 2 筆，因此這條 API 現階段更像是「最近 session 快速入口」而不是完整分頁列表。
+
 ### Scrcpy 鏡像
 
 1. 前端呼叫 `/api/scrcpy/*`
@@ -132,12 +146,14 @@
 - Socket room 的執行時狀態由 [server/sockets/room.go](../server/sockets/room.go) 維護。
 - 當房間從無玩家進入到有玩家時，會產生新的 `room_hash`，代表一局新的房間 session。
 - 同一時刻也會產生該局專用的 `seed`，並透過玩家 socket 的 `config` event 發給加入中的玩家。
-- lantern 事件會先暫存在記憶體，等房間玩家數回到 0 時寫入 `server/data/lantern`。
+- lantern 事件會先暫存在記憶體，並可由 snapshot 協調流程主動 flush 到 `server/data/lantern`。
 - QA 作答會先暫存在 room memory 的 `Answers` map，由 update loop 做 dirty-check 後再廣播聚合結果。
+- QA 聚合資料也會與 lantern 一起在 snapshot 流程中 flush/reset。
 - `QuestionLocked` 是 room 內部保護機制；若某題被標記 locked，後續玩家送來的答案會被忽略。
 - 控制端可先從 room update 取得 `room_hash`，再用 control API 查詢該局 lantern 歷史資料。
 - `MoveControl`、`SyncControl`、`PlayCommander` 是 room 內部協調 channel，分別對應章節移動、同步完成與播放狀態廣播。
 - room update 目前輸出 `ready_to_move`，但不輸出 `wait_to_sync` 旗標；同步等待狀態仍由 player socket 與 `sync_command` event 協調。
+- room 目前會記住玩家的 `play_status`，但這個狀態尚未被輸出到 room update payload。
 
 ## 已知限制
 

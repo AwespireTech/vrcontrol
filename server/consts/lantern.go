@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"vrcontrol/server/model"
 )
@@ -16,6 +17,41 @@ func SetLanternDataDir(dir string) {
 		return
 	}
 	lanternDataDir = dir
+}
+
+func LoadNewestLanternList(limit int) ([]string, error) {
+	entries, err := os.ReadDir(lanternDataDir)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var files []os.DirEntry
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			files = append(files, entry)
+		}
+	}
+
+	// Sort files by ModTime descending (newest first)
+	sort.Slice(files, func(i, j int) bool {
+		infoI, _ := files[i].Info()
+		infoJ, _ := files[j].Info()
+		return infoI.ModTime().After(infoJ.ModTime())
+	})
+
+	// Adjust limit if there are fewer files than requested
+	if len(files) < limit {
+		limit = len(files)
+	}
+
+	// Initialize the slice to hold the names
+	var fileNames []string
+	for i := 0; i < limit; i++ {
+		fileNames = append(fileNames, files[i].Name())
+	}
+
+	return fileNames, nil
 }
 
 func LoadAssignedLanternData(roomID string, roomHash string) map[string][]*model.LanternEventMessage {

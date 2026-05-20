@@ -158,6 +158,7 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 - `POST /api/control/assignseq/:roomId/:clientId/:seq`
 - `GET /api/control/assignseq/:roomId/:clientId/:seq`
 - `GET /api/control/roomlist`
+- `GET /api/control/lantern/newest`
 - `GET /api/control/lantern/:roomId/:roomHash`
 
 ### 螢幕觀看 / Live View
@@ -190,6 +191,45 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 - 玩家端與控制端使用不同路徑：`/api/ws/client/:clientId`、`/api/ws/control/:roomId`。
 
 ### 玩家 Socket: Client -> Server
+
+#### Play Status
+
+```json
+{
+  "message_type": "play_status",
+  "play_status": {
+    "timestamp": 1716379200000,
+    "status": 1
+  }
+}
+```
+
+- `status` enum 目前為 `0=idle`、`1=playing`、`2=pause`、`3=stop`、`4=snapshot`。
+- 非 snapshot 狀態只會更新 room 內的玩家狀態，不會觸發額外廣播。
+- 當 `status=4` 時，後端會把玩家標記為已就緒 snapshot；等 room 內所有玩家都送出 snapshot 後，才會觸發資料快照。
+
+### Snapshot 行為
+
+- snapshot 協調目前由玩家主動送出 `play_status.status = 4` 來觸發。
+- 當所有玩家都 ready 後，room 會 flush 記憶體中的 lantern 與 QA 聚合資料。
+- 目前沒有額外的 snapshot response event；這是 room 內部控制流程。
+
+### 控制端 Lantern API
+
+- `GET /api/control/lantern/:roomId/:roomHash`：取得指定 room session 的 lantern 資料。
+- `GET /api/control/lantern/newest`：回傳 lantern 資料目錄中最新的檔名清單。
+- 目前 `GET /api/control/lantern/newest` 會固定回傳最新 2 筆檔名，格式如下：
+
+```json
+{
+  "data": ["room-a_1716379100.json", "room-b_1716379000.json"]
+}
+```
+
+### 目前限制
+
+- `play_status` 目前尚未被輸出到 control room update 或 REST API。
+- room 清空時的 lantern / QA flush 目前未自動執行，若需要立即落檔，應依賴 snapshot 協調流程。
 
 #### Heartbeat
 
@@ -244,11 +284,20 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 }
 ```
 
+- `status` enum 目前為 `0=idle`、`1=playing`、`2=pause`、`3=stop`、`4=snapshot`。
+- 非 snapshot 狀態只會更新 room 內的玩家狀態，不會觸發額外廣播。
+- 當 `status=4` 時，後端會把玩家標記為已就緒 snapshot；等 room 內所有玩家都送出 snapshot 後，才會觸發資料快照。
 - `ready_to_move` 會進入 `MovementCheck`，符合條件時廣播 `move_command`。
 - `wait_to_sync` 會進入 `SyncCheck`，全員到齊時廣播 `sync_command`。
 - QA input 目前以 `qid`/`aid` 為準，不再使用舊的 `question_id`、`state_bool`、`state_int`。
 - 後端會依連線玩家身分覆蓋目前答案，因此 payload 內不需要 `device_id`。
 - `shot_event`、`lantern`、`resume_qa` 也走同一條 socket，由 room runtime 轉成 event 廣播。
+
+### Snapshot 行為
+
+- snapshot 協調目前由玩家主動送出 `play_status.status = 4` 來觸發。
+- 當所有玩家都 ready 後，room 會 flush 記憶體中的 lantern 與 QA 聚合資料。
+- 目前沒有額外的 snapshot response event；這是 room 內部控制流程。
 
 ### 玩家 Socket: Server -> Client
 
@@ -356,6 +405,23 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 
 這條 socket 目前只用於觀測房間狀態，不承接 controller -> server 命令。
 玩家側 `config.rh` 與控制端 room update 裡的 `room_hash` 對應同一局 session。若需要讀取該局累積的 lantern 歷史資料，可呼叫 `GET /api/control/lantern/:roomId/:roomHash`。
+
+### 控制端 Lantern API
+
+- `GET /api/control/lantern/:roomId/:roomHash`：取得指定 room session 的 lantern 資料。
+- `GET /api/control/lantern/newest`：回傳 lantern 資料目錄中最新的檔名清單。
+- 目前 `GET /api/control/lantern/newest` 會固定回傳最新 2 筆檔名，格式如下：
+
+```json
+{
+  "data": ["room-a_1716379100.json", "room-b_1716379000.json"]
+}
+```
+
+### 目前限制
+
+- `play_status` 目前尚未被輸出到 control room update 或 REST API。
+- room 清空時的 lantern / QA flush 目前未自動執行，若需要立即落檔，應依賴 snapshot 協調流程。
 
 ## 基本使用流程
 

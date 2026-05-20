@@ -77,6 +77,18 @@ func GetRoomList(c *gin.Context) {
 
 }
 
+func GetLanternListJson(c *gin.Context) {
+	// cnt := c.Param("Counts")
+
+	newestFiles, err := consts.LoadNewestLanternList(2)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err})
+		return
+	}
+
+	c.JSON(200, gin.H{"data": newestFiles})
+}
+
 func GetLanternJson(c *gin.Context) {
 	roomID := c.Param("roomId")
 	roomHash := c.Param("roomHash")

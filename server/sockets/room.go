@@ -20,6 +20,9 @@ const (
 	ControlSignalTypeSeqUpdate ControlSignalType = "seq_update"
 )
 
+type SnapShot struct {
+	Type int
+}
 type Movement struct {
 	Force            bool
 	DestinationStage int
@@ -43,6 +46,7 @@ type Room struct {
 	PlayerDetach     chan *Player
 	MoveControl      chan Movement
 	SyncControl      chan SyncChapter
+	SnapShotControl  chan SnapShot
 	PlayCommander    chan PlayCommander
 	Signals          chan ControlSignal
 	Players          map[*Player]bool
@@ -93,6 +97,7 @@ func NewRoom(roomID string) *Room {
 		Players:          make(map[*Player]bool),
 		MoveControl:      make(chan Movement),
 		SyncControl:      make(chan SyncChapter),
+		SnapShotControl:  make(chan SnapShot),
 		PlayCommander:    make(chan PlayCommander),
 		Signals:          make(chan ControlSignal),
 		Answers:          make(map[string]map[string]string),
@@ -165,8 +170,8 @@ func (r *Room) Run() {
 				log.Println("Player Unregistered: ", player.DeiviceID)
 				close(player.InChannel)
 				if len(r.Players) == 0 {
-					r.flushLanternData(lanternData)
-					r.flushQAData()
+					// r.flushLanternData(lanternData)
+					// r.flushQAData()
 					updater = false
 					updaterChannel <- struct{}{}
 					log.Println("Updater Stopped")
@@ -178,8 +183,8 @@ func (r *Room) Run() {
 				player.Room = nil
 				log.Println("Player Detached: ", player.DeiviceID)
 				if len(r.Players) == 0 {
-					r.flushLanternData(lanternData)
-					r.flushQAData()
+					// r.flushLanternData(lanternData)
+					// r.flushQAData()
 					updater = false
 					updaterChannel <- struct{}{}
 					log.Println("Updater Stopped")
@@ -204,6 +209,8 @@ func (r *Room) Run() {
 			case model.MessageTypeWaitToSync:
 				// Should be handled in Player
 				log.Panicln("WaitToSync should be handled in Player")
+			case model.MessageTypePlayStatus:
+				log.Panicln("PlayStatus should be handled in Player")
 			case model.MessageTypeShotEvent:
 				// Broadcast the shot event to all players
 				senderIDKey := utils.NormalizeDeviceIDKey(playerMessage.ShotEvent.DeviceID)
@@ -346,6 +353,13 @@ func (r *Room) Run() {
 						r.PlayerUnregister <- player
 					}
 				}
+			}
+		case spshot := <-r.SnapShotControl:
+			// spshot.Type TBD, but here only to trigger flush related function
+			if spshot.Type > 0 {
+				log.Println("Room Snap Shot lanternData & QAData")
+				r.flushLanternData(lanternData)
+				r.flushQAData()
 			}
 		case play := <-r.PlayCommander:
 			for player := range r.Players {
