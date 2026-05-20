@@ -62,14 +62,8 @@
 1. 玩家透過 `/api/ws/client/:clientId` 傳送 `play_status` 訊息到 room runtime。
 2. 當 `status` 為 `idle/playing/pause/stop` 時，後端只更新該玩家在記憶體中的播放狀態。
 3. 當 `status` 為 `snapshot` 時，後端將該玩家標記為已就緒 snapshot，並用 `CheckSnapShot` 檢查當前 room 內所有玩家是否都已送出 snapshot。
-4. 當所有玩家都已就緒後，room 會透過 `SnapShotControl` 觸發一次資料快照流程，將目前記憶體中的 lantern 與 QA 聚合資料 flush 掉。
-5. 目前房間清空時的 lantern / QA flush 已不再自動觸發，snapshot 是新的主要切點。
-
-### Lantern 最新列表查詢
-
-1. 控制端可呼叫 `GET /api/control/lantern/newest` 取得 lantern 資料目錄中最新的檔名清單。
-2. 後端會依檔案修改時間排序後，回傳最新檔案名稱陣列。
-3. 目前控制器固定要求最新 2 筆，因此這條 API 現階段更像是「最近 session 快速入口」而不是完整分頁列表。
+4. 當所有玩家都已就緒後，room 會透過 `SnapShotControl` acknowledgement 完成這次協調；running Activity 的 QA / lantern runtime data 會保留到 Activity end 時封存為 artifact。
+5. 若沒有 running Activity，snapshot 只會清空無歸屬的暫存資料，不會寫入 legacy room-hash storage。
 
 ### Scrcpy 鏡像
 

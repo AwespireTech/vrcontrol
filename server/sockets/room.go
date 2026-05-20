@@ -622,11 +622,13 @@ func (r *Room) Run() {
 				}
 			}
 		case spshot := <-r.SnapShotControl:
-			// spshot.Type TBD, but here only to trigger flush related function
+			// spshot.Type TBD, but here only acknowledges the snapshot coordination.
 			if spshot.Type > 0 {
-				log.Println("Room Snap Shot lanternData & QAData")
-				r.flushLanternData(lanternData)
-				r.flushQAData()
+				log.Println("Room Snap Shot acknowledged")
+				if !r.HasRunningActivity() {
+					r.flushQAData()
+					r.clearLanternData()
+				}
 			}
 		case play := <-r.PlayCommander:
 			for player := range r.Players {

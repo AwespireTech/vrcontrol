@@ -218,25 +218,18 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 ### Snapshot 行為
 
 - snapshot 協調目前由玩家主動送出 `play_status.status = 4` 來觸發。
-- 當所有玩家都 ready 後，room 會 flush 記憶體中的 lantern 與 QA 聚合資料。
+- 當所有玩家都 ready 後，room 會完成 snapshot acknowledgement；running Activity 的 lantern 與 QA 聚合資料會保留到 Activity end 時封存為 artifacts。
 - 目前沒有額外的 snapshot response event；這是 room 內部控制流程。
 
-### 控制端 Lantern API
+### Activity Results API
 
-- `GET /api/control/lantern/:roomId/:roomHash`：取得指定 room session 的 lantern 資料。
-- `GET /api/control/lantern/newest`：回傳 lantern 資料目錄中最新的檔名清單。
-- 目前 `GET /api/control/lantern/newest` 會固定回傳最新 2 筆檔名，格式如下：
-
-```json
-{
-  "data": ["room-a_1716379100.json", "room-b_1716379000.json"]
-}
-```
+- Lantern 與 QA 歷史資料請透過 `GET /api/activities/:activityId/results` 的 `artifact_refs` 查詢。
+- legacy room-hash-based lantern control API 已移除。
 
 ### 目前限制
 
 - `play_status` 目前尚未被輸出到 control room update 或 REST API。
-- room 清空時的 lantern / QA flush 目前未自動執行，若需要立即落檔，應依賴 snapshot 協調流程。
+- room 清空時的 lantern / QA runtime data 不會落到 legacy storage；正式封存點是 Activity end。
 
 #### Heartbeat
 
@@ -421,22 +414,15 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 這條 socket 目前只用於觀測房間狀態，不承接 controller -> server 命令。
 若需要讀取該局累積的 lantern 歷史資料，請用 `current_activity_id` 查 Activity results/artifacts。
 
-### 控制端 Lantern API
+### Activity Results API
 
-- `GET /api/control/lantern/:roomId/:roomHash`：取得指定 room session 的 lantern 資料。
-- `GET /api/control/lantern/newest`：回傳 lantern 資料目錄中最新的檔名清單。
-- 目前 `GET /api/control/lantern/newest` 會固定回傳最新 2 筆檔名，格式如下：
-
-```json
-{
-  "data": ["room-a_1716379100.json", "room-b_1716379000.json"]
-}
-```
+- Lantern 與 QA 歷史資料請透過 `GET /api/activities/:activityId/results` 的 `artifact_refs` 查詢。
+- legacy room-hash-based lantern control API 已移除。
 
 ### 目前限制
 
 - `play_status` 目前尚未被輸出到 control room update 或 REST API。
-- room 清空時的 lantern / QA flush 目前未自動執行，若需要立即落檔，應依賴 snapshot 協調流程。
+- room 清空時的 lantern / QA runtime data 不會落到 legacy storage；正式封存點是 Activity end。
 
 ## 基本使用流程
 
