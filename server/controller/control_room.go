@@ -2,7 +2,6 @@ package controller
 
 import (
 	"strings"
-	"vrcontrol/server/consts"
 	"vrcontrol/server/service"
 	"vrcontrol/server/sockets"
 	"vrcontrol/server/utils"
@@ -18,6 +17,7 @@ var StandbyPlayerMap map[string]*sockets.Player = make(map[string]*sockets.Playe
 var StandbyPlayerDisconnect = make(chan string)
 var roomServiceRef *service.RoomService
 var deviceServiceRef *service.DeviceService
+var activityServiceRef *service.ActivityService
 
 func SetRoomService(svc *service.RoomService) {
 	roomServiceRef = svc
@@ -26,6 +26,23 @@ func SetRoomService(svc *service.RoomService) {
 
 func SetDeviceService(svc *service.DeviceService) {
 	deviceServiceRef = svc
+}
+
+func SetActivityService(svc *service.ActivityService) {
+	activityServiceRef = svc
+	for _, room := range RoomList {
+		if room == nil {
+			continue
+		}
+		room.SetActivityService(svc)
+	}
+}
+
+func createRoomRuntime(roomID string) *sockets.Room {
+	room := sockets.NewRoom(roomID)
+	room.AssignedSequence = getAssignedSequences(roomID)
+	room.SetActivityService(activityServiceRef)
+	return room
 }
 
 func init() {
@@ -76,36 +93,6 @@ func GetRoomList(c *gin.Context) {
 	c.JSON(200, gin.H{"rooms": lis})
 
 }
-
-func GetLanternListJson(c *gin.Context) {
-	// cnt := c.Param("Counts")
-
-	newestFiles, err := consts.LoadNewestLanternList(2)
-	if err != nil {
-		c.JSON(400, gin.H{"error": err})
-		return
-	}
-
-	c.JSON(200, gin.H{"data": newestFiles})
-}
-
-func GetLanternJson(c *gin.Context) {
-	roomID := c.Param("roomId")
-	roomHash := c.Param("roomHash")
-
-	if roomID == "" {
-		c.JSON(400, gin.H{"error": "Room ID is required"})
-		return
-	}
-
-	if roomHash == "" {
-		c.JSON(400, gin.H{"error": "Room Hash is required"})
-		return
-	}
-
-	c.JSON(200, gin.H{"data": consts.LoadAssignedLanternData(roomID, roomHash)})
-}
-
 func updateAssignedSequence(roomId string, deviceId string, seq int) {
 	if roomServiceRef == nil {
 		return
@@ -182,8 +169,7 @@ func AssignConnectedPlayerToRoom(roomId, deviceId string) {
 		if len(RoomList) > MaxRoomCount {
 			return
 		}
-		room = sockets.NewRoom(roomId)
-		room.AssignedSequence = getAssignedSequences(roomId)
+		room = createRoomRuntime(roomId)
 		RoomList[roomId] = room
 		go room.Run()
 	}

@@ -20,9 +20,10 @@ type RoomService struct {
 
 // RoomPatch 房間局部更新（嚴格白名單）
 type RoomPatch struct {
-	Name        *string         `json:"name"`
-	Description *string         `json:"description"`
-	Parameters  *map[string]any `json:"parameters"`
+	Name             *string                     `json:"name"`
+	Description      *string                     `json:"description"`
+	Parameters       *map[string]any             `json:"parameters"`
+	OperationProfile *model.RoomOperationProfile `json:"operation_profile"`
 }
 
 // NewRoomService 創建新的房間服務
@@ -69,12 +70,14 @@ func (s *RoomService) CreateRoom(room *model.Room) error {
 	if room.AssignedSequences == nil {
 		room.AssignedSequences = make(map[string]int)
 	}
+	normalizeRoom(room)
 
 	return s.roomRepo.Create(room)
 }
 
 // UpdateRoom 更新房間
 func (s *RoomService) UpdateRoom(room *model.Room) error {
+	normalizeRoom(room)
 	return s.roomRepo.Update(room)
 }
 
@@ -94,6 +97,10 @@ func (s *RoomService) PatchRoom(roomID string, patch RoomPatch) (*model.Room, er
 	if patch.Parameters != nil {
 		existing.Parameters = *patch.Parameters
 	}
+	if patch.OperationProfile != nil {
+		existing.OperationProfile = *patch.OperationProfile
+	}
+	normalizeRoom(existing)
 
 	if err := s.roomRepo.Update(existing); err != nil {
 		return nil, err
@@ -240,6 +247,24 @@ func (s *RoomService) RemoveDeviceFromAllRooms(deviceID string) error {
 		}
 	}
 	return nil
+}
+
+func normalizeRoom(room *model.Room) {
+	if room == nil {
+		return
+	}
+	if room.Parameters == nil {
+		room.Parameters = make(map[string]any)
+	}
+	if room.AssignedSequences == nil {
+		room.AssignedSequences = make(map[string]int)
+	}
+	if room.OperationProfile.ActivityDefaults.ActivityContext == nil {
+		room.OperationProfile.ActivityDefaults.ActivityContext = make(map[string]any)
+	}
+	if room.OperationProfile.BatchActionIDs == nil {
+		room.OperationProfile.BatchActionIDs = []string{}
+	}
 }
 
 // BuildAssignedRoomMap 從 Room.DeviceIDs 建立 device_id -> room_id 對應

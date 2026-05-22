@@ -117,8 +117,101 @@ export interface Room {
   socket_port: number
   socket_running: boolean
   parameters: Record<string, unknown>
+  operation_profile: RoomOperationProfile
   created_at: string
   updated_at: string
+}
+
+export interface RoomActivityDefaults {
+  name: string
+  activity_context: Record<string, unknown>
+  seed?: number
+}
+
+export interface RoomOperationProfile {
+  activity_defaults: RoomActivityDefaults
+  batch_action_ids: string[]
+  allow_activity_name_override: boolean
+  allow_seed_override: boolean
+}
+
+export type ActivityStatus = "draft" | "running" | "ended" | "cancelled"
+
+export interface ActivityQAContext {
+  questionSetId?: string
+  questionOrder?: string[]
+  timeLimitSec?: number
+  allowRetry?: boolean
+  scoreMode?: string
+  display?: Record<string, unknown>
+  resumePolicy?: string
+  questions?: Record<string, unknown>[]
+  [key: string]: unknown
+}
+
+export interface ActivityContext {
+  qa?: ActivityQAContext
+  [key: string]: unknown
+}
+
+export interface ActivityQAResult {
+  activity_id: string
+  room_id: string
+  current_qid?: string
+  answers: Record<string, Record<string, string>>
+  question_locked?: Record<string, boolean>
+  qa_context?: ActivityQAContext
+  captured_at: string
+}
+
+export interface ActivityLanternResult {
+  activity_id: string
+  room_id: string
+  events: Record<string, unknown[]>
+  captured_at: string
+}
+
+export interface ActivityRuntimeInfo {
+  seed?: number
+  player_count: number
+  last_event_at?: string
+  last_updated_at?: string
+  context_version?: string
+  context_delivered: boolean
+}
+
+export interface ActivitySummary {
+  participant_count: number
+  event_counts?: Record<string, number>
+  duration_sec: number
+}
+
+export interface ActivityArtifactRef {
+  name: string
+  path: string
+  type?: string
+}
+
+export interface Activity {
+  activity_id: string
+  room_id: string
+  name: string
+  status: ActivityStatus
+  activity_context: ActivityContext
+  runtime_snapshot?: ActivityRuntimeInfo
+  result_summary?: ActivitySummary
+  artifact_refs?: ActivityArtifactRef[]
+  created_at: string
+  updated_at: string
+  started_at?: string
+  ended_at?: string
+}
+
+export interface ActivityResults {
+  activity_id: string
+  status: ActivityStatus
+  result_summary?: ActivitySummary
+  artifact_refs?: ActivityArtifactRef[]
 }
 
 // 動作類型
@@ -176,13 +269,7 @@ export interface MonitoringStatus {
 
 export type WebRTCSignalMessageType = "offer" | "answer" | "ice" | "close" | "error"
 
-export type WebRTCStreamStatus =
-  | "idle"
-  | "connecting"
-  | "live"
-  | "stalled"
-  | "error"
-  | "closed"
+export type WebRTCStreamStatus = "idle" | "connecting" | "live" | "stalled" | "error" | "closed"
 
 export type WebRTCStreamErrorCode =
   | "invalid_signal"

@@ -41,6 +41,16 @@
 2. 後端保存至 JSON 資料庫
 3. 執行時由後端讀取動作並透過 ADB 對設備下指令
 
+### Activity Context Sessions
+
+1. 房間設定頁在 `Room.operation_profile` 保存單一可重複使用的 activity 預設與固定批次動作。
+2. 前端在房間控制頁通常不是維護多筆 draft/history，而是用 room 的 `operation_profile.activity_defaults` 建立 activity draft。
+3. 後端將 draft 保存到極簡 `server/data/activities.json`，只保留 activity 列舉、排序與篩選需要的 index 欄位。
+4. 每個 activity 另外保存到 `server/data/activities/<activity_id>/detail.json`，其中會重複包含 index 欄位，並補上 `activity_context`、`runtime_snapshot`、`result_summary` 與 `artifact_manifest`，方便單筆直接檢視。
+5. 啟動活動時，後端會將 draft 轉成 running activity，並把 `activity_context` 當作 immutable snapshot 保存到 detail。
+6. room runtime 會保存目前活動狀態，並在收到 lantern、shot、qa、resume_qa 等事件時，把事件統計歸屬到當前 `activity_id`。
+7. 活動結束時，後端會把 QA 與 lantern 詳細結果分別寫入 `qa.json`、`lantern.json`，再同步更新 detail 中的摘要與 artifact manifest。
+
 ### 裝置監控
 
 1. 監控服務定期 Ping 裝置 IP
@@ -52,14 +62,8 @@
 1. 玩家透過 `/api/ws/client/:clientId` 傳送 `play_status` 訊息到 room runtime。
 2. 當 `status` 為 `idle/playing/pause/stop` 時，後端只更新該玩家在記憶體中的播放狀態。
 3. 當 `status` 為 `snapshot` 時，後端將該玩家標記為已就緒 snapshot，並用 `CheckSnapShot` 檢查當前 room 內所有玩家是否都已送出 snapshot。
-4. 當所有玩家都已就緒後，room 會透過 `SnapShotControl` 觸發一次資料快照流程，將目前記憶體中的 lantern 與 QA 聚合資料 flush 掉。
-5. 目前房間清空時的 lantern / QA flush 已不再自動觸發，snapshot 是新的主要切點。
-
-### Lantern 最新列表查詢
-
-1. 控制端可呼叫 `GET /api/control/lantern/newest` 取得 lantern 資料目錄中最新的檔名清單。
-2. 後端會依檔案修改時間排序後，回傳最新檔案名稱陣列。
-3. 目前控制器固定要求最新 2 筆，因此這條 API 現階段更像是「最近 session 快速入口」而不是完整分頁列表。
+4. 當所有玩家都已就緒後，room 會透過 `SnapShotControl` acknowledgement 完成這次協調；running Activity 的 QA / lantern runtime data 會保留到 Activity end 時封存為 artifact。
+5. 若沒有 running Activity，snapshot 只會清空無歸屬的暫存資料，不會寫入 legacy room-hash storage。
 
 ### Scrcpy 鏡像
 
@@ -82,17 +86,20 @@
 1. 玩家裝置透過 `/api/ws/client/:clientId` 連到 room runtime，持續送出 `heartbeat` 更新姿態、章節與狀態文字。
 2. 玩家送出 `ready_to_move` 後，後端在 `server/sockets/move.go` 執行 `MovementCheck`；當同步條件成立時，由 `MoveControl` 廣播 `move_command`。
 3. 玩家送出 `wait_to_sync` 後，後端執行 `SyncCheck`；當房內玩家都到達或超過指定章節時，由 `SyncControl` 廣播 `sync_command`。
-4. room runtime 也保留 `PlayCommander` channel，可對全房廣播 `play_command`，攜帶目前玩家數與 `isstart` 播放狀態。
+4. room runtime 也會在 Activity lifecycle 邊界對全房廣播 `play_command`，攜帶目前玩家數與 `isstart` 播放狀態。
 5. 控制端透過 `/api/ws/control/:roomId` 只讀取 room update，不直接經由這條 socket 下 room command。
 
-### 房間設定與 QA 聚合
+### Room Hub、Activity Session 與 QA 聚合
 
-1. 第一位玩家進入 room 時，`server/sockets/room.go` 會建立新的 `room_hash`，並為該局產生一個 `seed`。
-2. 玩家加入 room 後，後端會先送 `assign_sequence`，再送 `config` event，讓該玩家取得本局 `seed` 與 `room_hash`。
-3. 玩家作答時，透過 `/api/ws/client/:clientId` 送出 `qa` 訊息，payload 只包含 `qid` 與 `aid`。
-4. room runtime 會把答案寫入 `Answers[qid][device_id]`，同一玩家對同一題重送時會直接覆蓋舊答案。
-5. update loop 僅在 QA 狀態變更時廣播一次聚合後的 `qa` event，內容是該題目前所有玩家答案的完整 map。
-6. 當房間玩家數回到 0 時，room 會清空 QA 暫存狀態，下一局重新開始累積。
+1. 玩家加入 room 後，後端會先送 `assign_sequence`，再送 `config` event，讓該玩家取得目前 hub 狀態；若 room 已有 running Activity，會再補送一次 `play_command(true)` 讓 late join player 對齊播放狀態。
+2. 只有 Activity lifecycle 代表正式 app session / 一局遊戲；玩家進出 room 不再自動建立正式 session。
+3. Activity start 時會產生或使用指定 seed，並先重新廣播 `config` event，內容包含 `activity_id`、`activity_context_path` 與 Activity seed，接著再廣播 `play_command(true)`。
+4. Room 可在 `operation_profile` 內保存固定 activity defaults 與固定批次動作，但正式 session 資料仍屬於 Activity。
+5. QA 題目、題序、計分、倒數與顯示規則屬於單場活動，放在 `activity_context.qa`；Room 只保留物理房間、設備分組、固定操作設定與 runtime 同步狀態。
+6. 玩家作答時，透過 `/api/ws/client/:clientId` 送出 `qa` 訊息，payload 只包含 `qid` 與 `aid`。
+7. room runtime 會把答案寫入 `Answers[qid][device_id]`，同一玩家對同一題重送時會直接覆蓋舊答案。
+8. update loop 僅在 QA 狀態變更時廣播一次聚合後的 `qa` event，內容是該題目前所有玩家答案的完整 map。
+9. 活動結束時，room runtime 會先廣播 `play_command(false)`，再把 QA answers、locked questions、lantern events 與當場 context 封存成 activity artifacts，最後送出不帶 `activity_id` 的新 config；當房間玩家數回到 0 時，不代表 Activity 結束。
 
 ### Live View Popup Takeover
 
@@ -137,23 +144,35 @@
 - [server/data/devices.json](../server/data/devices.json)
 - [server/data/rooms.json](../server/data/rooms.json)
 - [server/data/actions.json](../server/data/actions.json)
+- [server/data/activities.json](../server/data/activities.json)
 - [server/data/scrcpy_config.json](../server/data/scrcpy_config.json)
 - [server/data/preferences.json](../server/data/preferences.json)
-- `server/data/lantern/<room_id>_<room_hash>.json`：房間單局的 lantern 事件歷史資料
+- `server/data/activities/<activity_id>/detail.json`：單筆 activity 的完整 metadata，包含 index 欄位副本
+- `server/data/activities/<activity_id>/qa.json`：活動結束時封存的 QA 詳細結果
+- `server/data/activities/<activity_id>/lantern.json`：活動結束時封存的 lantern 詳細結果
 
 ## Room Runtime
 
 - Socket room 的執行時狀態由 [server/sockets/room.go](../server/sockets/room.go) 維護。
-- 當房間從無玩家進入到有玩家時，會產生新的 `room_hash`，代表一局新的房間 session。
-- 同一時刻也會產生該局專用的 `seed`，並透過玩家 socket 的 `config` event 發給加入中的玩家。
-- lantern 事件會先暫存在記憶體，並可由 snapshot 協調流程主動 flush 到 `server/data/lantern`。
-- QA 作答會先暫存在 room memory 的 `Answers` map，由 update loop 做 dirty-check 後再廣播聚合結果。
-- QA 聚合資料也會與 lantern 一起在 snapshot 流程中 flush/reset。
+- Room runtime 是 device hub 的即時協調層，不再代表正式遊戲/session lifecycle。
+- Activity 才是正式 session；Activity start 會產生或使用指定 seed，並透過玩家 socket 的 `config` event 發給加入中的玩家。
+- lantern 事件會先暫存在記憶體，Activity 結束時寫入 activity `lantern` artifact。
+- QA 作答會先暫存在 room memory 的 `Answers` map，由 update loop 做 dirty-check 後再廣播聚合結果；活動結束時會另外封存為 activity `qa` artifact。
+- QA 聚合資料與 lantern runtime data 在封存後由 activity artifact 承接，Room 只負責清空暫存狀態。
 - `QuestionLocked` 是 room 內部保護機制；若某題被標記 locked，後續玩家送來的答案會被忽略。
-- 控制端可先從 room update 取得 `room_hash`，再用 control API 查詢該局 lantern 歷史資料。
+- 控制端應從 room update 取得 `current_activity_id`，再用 Activity results/artifacts 查詢該局 lantern 歷史資料。
 - `MoveControl`、`SyncControl`、`PlayCommander` 是 room 內部協調 channel，分別對應章節移動、同步完成與播放狀態廣播。
 - room update 目前輸出 `ready_to_move`，但不輸出 `wait_to_sync` 旗標；同步等待狀態仍由 player socket 與 `sync_command` event 協調。
 - room 目前會記住玩家的 `play_status`，但這個狀態尚未被輸出到 room update payload。
+
+## Activity Runtime
+
+- Room runtime 目前會額外維護 `currentActivityID`、活動開始時間、活動事件統計與共享 `activity_context` cache。
+- `activity_context` 代表整場活動共用、且可提供給參與設備讀取的共享上下文，不只是設定值。
+- Activity runtime snapshot 保存 Activity seed，作為該場遊戲/session 的隨機性來源。
+- 同一個 room 在同一時間只允許一個 running activity。
+- 活動狀態與 `activity_seed` 會透過 [server/sockets/control.go](../server/sockets/control.go) 推送到控制端房間更新 payload。
+- 第一版設備讀取 `activity_context` 以 REST API 為主；玩家 socket 的 `config` event 只提供 `activity_id` 與 `activity_context_path` 指標。若後續需要更即時同步，再擴充 WS 訊息型別。
 
 ## 已知限制
 

@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"vrcontrol/server/adb"
-	"vrcontrol/server/consts"
 	"vrcontrol/server/controller"
 	"vrcontrol/server/repository"
 	"vrcontrol/server/scrcpy"
@@ -16,8 +15,6 @@ import (
 
 // SetupRoutes 設置 API 路由
 func SetupRoutes(router *gin.Engine, dataDir string) {
-	consts.SetLanternDataDir(dataDir + "/lantern")
-
 	// 初始化 Managers
 	adbManager := adb.NewADBManager("", 30*time.Second)
 	pingManager := adb.NewPingManager(2 * time.Second)
@@ -28,6 +25,7 @@ func SetupRoutes(router *gin.Engine, dataDir string) {
 	deviceRepo := repository.NewDeviceRepository(dataDir + "/devices.json")
 	roomRepo := repository.NewRoomRepository(dataDir + "/rooms.json")
 	actionRepo := repository.NewActionRepository(dataDir + "/actions.json")
+	activityRepo := repository.NewActivityRepository(dataDir + "/activities.json")
 	scrcpyConfigRepo := repository.NewScrcpyConfigRepository(dataDir + "/scrcpy_config.json")
 	preferenceRepo := repository.NewPreferenceRepository(dataDir + "/preferences.json")
 
@@ -51,6 +49,12 @@ func SetupRoutes(router *gin.Engine, dataDir string) {
 		log.Printf("[API] 成功載入 %d 個動作\n", len(actionRepo.GetAll()))
 	}
 
+	if err := activityRepo.Load(); err != nil {
+		log.Printf("[API] 警告: 載入活動數據失敗 - %v\n", err)
+	} else {
+		log.Printf("[API] 成功載入 %d 個活動\n", len(activityRepo.GetAll()))
+	}
+
 	if err := scrcpyConfigRepo.Load(); err != nil {
 		log.Printf("[API] 警告: 載入 Scrcpy 配置失敗 - %v\n", err)
 	} else {
@@ -70,6 +74,7 @@ func SetupRoutes(router *gin.Engine, dataDir string) {
 	deviceService := service.NewDeviceService(deviceRepo, adbManager, pingManager)
 	roomService := service.NewRoomService(roomRepo, deviceRepo)
 	actionService := service.NewActionService(actionRepo, deviceRepo, adbManager)
+	activityService := service.NewActivityService(activityRepo, dataDir+"/activities")
 	monitoringService := service.NewMonitoringService(deviceRepo, pingManager, adbManager, preferenceRepo)
 	scrcpyService := service.NewScrcpyService(scrcpyManager, deviceRepo, scrcpyConfigRepo)
 	scrcpyStreamService := service.NewScrcpyStreamService(scrcpyStreamManager, deviceRepo, scrcpyConfigRepo)
@@ -92,6 +97,7 @@ func SetupRoutes(router *gin.Engine, dataDir string) {
 	deviceController := controller.NewDeviceController(deviceService, roomService)
 	roomController := controller.NewRoomController(roomService)
 	actionController := controller.NewActionController(actionService)
+	activityController := controller.NewActivityController(activityService, roomService)
 	monitoringController := controller.NewMonitoringController(monitoringService)
 	scrcpyController := controller.NewScrcpyController(scrcpyService)
 	scrcpyStreamController := controller.NewScrcpyStreamController(scrcpyStreamService)
@@ -99,6 +105,7 @@ func SetupRoutes(router *gin.Engine, dataDir string) {
 	preferenceController := controller.NewPreferenceController(preferenceService)
 	controller.SetRoomService(roomService)
 	controller.SetDeviceService(deviceService)
+	controller.SetActivityService(activityService)
 
 	// API 路由群組
 	api := router.Group("/api")
@@ -157,6 +164,20 @@ func SetupRoutes(router *gin.Engine, dataDir string) {
 			rooms.DELETE("/:id", roomController.DeleteRoom)
 			rooms.POST("/:id/devices/:deviceId", roomController.AddDevice)
 			rooms.DELETE("/:id/devices/:deviceId", roomController.RemoveDevice)
+			rooms.POST("/:id/activities", activityController.CreateDraft)
+			rooms.GET("/:id/activities", activityController.ListByRoom)
+		}
+
+		activities := api.Group("/activities")
+		{
+			activities.GET("", activityController.ListActivities)
+			activities.GET("/:activityId", activityController.GetActivity)
+			activities.POST("/:activityId/start", activityController.StartActivity)
+			activities.POST("/:activityId/end", activityController.EndActivity)
+			activities.POST("/:activityId/cancel", activityController.CancelActivity)
+			activities.GET("/:activityId/results", activityController.GetResults)
+			activities.GET("/:activityId/lantern", activityController.GetLantern)
+			activities.GET("/:activityId/context", activityController.GetContext)
 		}
 
 		// 動作管理路由
