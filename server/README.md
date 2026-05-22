@@ -355,6 +355,9 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 }
 ```
 
+- Activity start 成功後，server 會先廣播 `config`，再廣播 `play_command`，其中 `isstart=true`。
+- Activity end 時，server 會先廣播 `play_command`，其中 `isstart=false`，再送出清空後的 `config`。
+
 #### QA 聚合結果
 
 ```json
@@ -383,7 +386,7 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 }
 ```
 
-- `play_command` payload 已在 room runtime 中定義；目前這個 repository 尚未暴露對外 API 來觸發播放/停止廣播。
+- `play_command` payload 已在 room runtime 中定義；目前沒有獨立對外 API 來手動觸發播放/停止廣播，主要由 Activity start/end lifecycle 自動送出。
 - room 仍會送出既有的 `shot_event`、`lantern`、`resume_qa` 等 event。
 
 ### 控制端 Socket: Server -> Controller

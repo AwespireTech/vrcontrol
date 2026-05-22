@@ -86,20 +86,20 @@
 1. 玩家裝置透過 `/api/ws/client/:clientId` 連到 room runtime，持續送出 `heartbeat` 更新姿態、章節與狀態文字。
 2. 玩家送出 `ready_to_move` 後，後端在 `server/sockets/move.go` 執行 `MovementCheck`；當同步條件成立時，由 `MoveControl` 廣播 `move_command`。
 3. 玩家送出 `wait_to_sync` 後，後端執行 `SyncCheck`；當房內玩家都到達或超過指定章節時，由 `SyncControl` 廣播 `sync_command`。
-4. room runtime 也保留 `PlayCommander` channel，可對全房廣播 `play_command`，攜帶目前玩家數與 `isstart` 播放狀態。
+4. room runtime 也會在 Activity lifecycle 邊界對全房廣播 `play_command`，攜帶目前玩家數與 `isstart` 播放狀態。
 5. 控制端透過 `/api/ws/control/:roomId` 只讀取 room update，不直接經由這條 socket 下 room command。
 
 ### Room Hub、Activity Session 與 QA 聚合
 
 1. 玩家加入 room 後，後端會先送 `assign_sequence`，再送 `config` event，讓該玩家取得目前 hub 狀態。
 2. 只有 Activity lifecycle 代表正式 app session / 一局遊戲；玩家進出 room 不再自動建立正式 session。
-3. Activity start 時會產生或使用指定 seed，並重新廣播 `config` event，內容包含 `activity_id`、`activity_context_path` 與 Activity seed。
+3. Activity start 時會產生或使用指定 seed，並先重新廣播 `config` event，內容包含 `activity_id`、`activity_context_path` 與 Activity seed，接著再廣播 `play_command(true)`。
 4. Room 可在 `operation_profile` 內保存固定 activity defaults 與固定批次動作，但正式 session 資料仍屬於 Activity。
 5. QA 題目、題序、計分、倒數與顯示規則屬於單場活動，放在 `activity_context.qa`；Room 只保留物理房間、設備分組、固定操作設定與 runtime 同步狀態。
 6. 玩家作答時，透過 `/api/ws/client/:clientId` 送出 `qa` 訊息，payload 只包含 `qid` 與 `aid`。
 7. room runtime 會把答案寫入 `Answers[qid][device_id]`，同一玩家對同一題重送時會直接覆蓋舊答案。
 8. update loop 僅在 QA 狀態變更時廣播一次聚合後的 `qa` event，內容是該題目前所有玩家答案的完整 map。
-9. 活動結束時，room runtime 會把 QA answers、locked questions、lantern events 與當場 context 封存成 activity artifacts；當房間玩家數回到 0 時，不代表 Activity 結束。
+9. 活動結束時，room runtime 會先廣播 `play_command(false)`，再把 QA answers、locked questions、lantern events 與當場 context 封存成 activity artifacts，最後送出不帶 `activity_id` 的新 config；當房間玩家數回到 0 時，不代表 Activity 結束。
 
 ### Live View Popup Takeover
 

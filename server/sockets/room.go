@@ -149,6 +149,7 @@ func (r *Room) StartActivity(activity *model.Activity) error {
 	}
 	r.refreshActivityParticipants()
 	r.BroadcastConfig()
+	r.BroadcastPlayCommand(true)
 	return nil
 }
 
@@ -156,6 +157,7 @@ func (r *Room) EndActivity() *model.ActivitySummary {
 	if r.CurrentActivity == nil {
 		return nil
 	}
+	r.BroadcastPlayCommand(false)
 	summary := r.BuildActivitySummary()
 	r.CurrentActivity = nil
 	r.flushQAData()
@@ -369,6 +371,43 @@ func (r *Room) sendConfigToPlayer(player *Player) bool {
 func (r *Room) BroadcastConfig() {
 	for player := range r.Players {
 		if r.sendConfigToPlayer(player) {
+			continue
+		}
+		r.PlayerUnregister <- player
+	}
+}
+
+func (r *Room) buildPlayCommandMessage(isStart bool) model.EventMessage {
+	return model.EventMessage{
+		EventType: model.EventPlayCommand,
+		PlayCommand: &model.PlayCommandMessage{
+			PlayerCount: len(r.Players),
+			IsStart:     isStart,
+		},
+	}
+}
+
+func (r *Room) sendPlayCommandToPlayer(player *Player, isStart bool) bool {
+	if player == nil {
+		return false
+	}
+	message, err := json.Marshal(r.buildPlayCommandMessage(isStart))
+	if err != nil {
+		log.Println("Error Marshalling Event Message: ", err)
+		return false
+	}
+	select {
+	case player.InChannel <- message:
+		return true
+	default:
+		log.Println("Player Channel is full, disconnecting player")
+		return false
+	}
+}
+
+func (r *Room) BroadcastPlayCommand(isStart bool) {
+	for player := range r.Players {
+		if r.sendPlayCommandToPlayer(player, isStart) {
 			continue
 		}
 		r.PlayerUnregister <- player

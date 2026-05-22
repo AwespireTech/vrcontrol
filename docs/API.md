@@ -265,6 +265,8 @@
 - `activity_id` 代表正式遊戲/session；沒有 running Activity 時可能省略。
 - `seed` 來自 running Activity，不再由玩家進出 room 自動建立。
 - `activity_context_path` 指向該場 Activity 的 immutable context；QA 題目、題序、計分與顯示規則應從該 context 取得。
+- Activity start 時，server 會先廣播這個 `config`，再送出 `play_command.isstart = true`。
+- Activity end 時，server 會先送出 `play_command.isstart = false`，再廣播不帶 `activity_id` 的新 `config`。
 
 #### Move Command
 
@@ -304,7 +306,8 @@
 ```
 
 - `isstart=true` 代表開始播放；`false` 代表停止播放。
-- 目前 repository 內已定義這個 room event payload 與廣播流程，但尚未提供對外 REST 端點來觸發它。
+- 這個 event 目前由 Activity lifecycle 觸發，不提供獨立的 REST API 來手動廣播。
+- Start ordering 固定為 `config` -> `play_command(true)`；End ordering 固定為 `play_command(false)` -> cleared `config`。
 
 #### QA 聚合結果
 
@@ -535,7 +538,7 @@
 ```
 
 - `seed` 可選；未提供時後端會在 Activity start 時產生。
-- Activity start 後，server 會透過玩家 socket `config` event 廣播 `activity_id`、`activity_context_path` 與 Activity seed。
+- Activity start 後，server 會先透過玩家 socket `config` event 廣播 `activity_id`、`activity_context_path` 與 Activity seed，再送出 `play_command(true)`。
 
 ### 取得活動結果
 
