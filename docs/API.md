@@ -75,12 +75,47 @@
 
 ### 活動管理
 
+- `GET /api/activities`
 - `GET /api/activities/:activityId`
 - `POST /api/activities/:activityId/start`
 - `POST /api/activities/:activityId/end`
 - `POST /api/activities/:activityId/cancel`
 - `GET /api/activities/:activityId/results`
+- `GET /api/activities/:activityId/lantern`
 - `GET /api/activities/:activityId/context`
+
+`GET /api/activities` 支援常見列表 query：
+
+- `limit`：分頁大小，預設 `50`，最大 `200`
+- `offset`：分頁位移，預設 `0`
+- `sort_by`：`created_at`、`started_at`、`ended_at`、`name`，預設 `created_at`
+- `order`：`asc` 或 `desc`，預設 `desc`
+- `status`：`draft`、`running`、`ended`、`cancelled`
+- `room_id`：以 room 篩選
+- `created_before`、`created_after`、`started_before`、`started_after`：RFC3339 時間篩選
+
+回應格式：
+
+```json
+{
+  "success": true,
+  "data": {
+    "items": [],
+    "total": 0,
+    "limit": 50,
+    "offset": 0,
+    "sort_by": "created_at",
+    "order": "desc",
+    "filters": {
+      "status": "running"
+    }
+  }
+}
+```
+
+`GET /api/activities/:activityId/results` 維持作為聚合摘要入口，回 `result_summary` 與 `artifact_refs`。
+
+`GET /api/activities/:activityId/lantern` 則直接回傳 lantern artifact payload；若 activity 沒有 lantern artifact，回 `404`。
 
 ### 動作管理
 
