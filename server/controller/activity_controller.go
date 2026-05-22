@@ -1,7 +1,11 @@
 package controller
 
 import (
+	"errors"
 	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
 	"vrcontrol/server/model"
 	"vrcontrol/server/service"
@@ -54,6 +58,20 @@ func (c *ActivityController) CreateDraft(ctx *gin.Context) {
 func (c *ActivityController) ListByRoom(ctx *gin.Context) {
 	roomID := ctx.Param("id")
 	ctx.JSON(http.StatusOK, gin.H{"success": true, "data": c.activityService.ListActivitiesByRoom(roomID)})
+}
+
+func (c *ActivityController) ListActivities(ctx *gin.Context) {
+	query, err := parseActivityListQuery(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"success": false, "error": err.Error()})
+		return
+	}
+	result, err := c.activityService.QueryActivities(query)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{"success": true, "data": result})
 }
 
 func (c *ActivityController) GetActivity(ctx *gin.Context) {
@@ -198,6 +216,20 @@ func (c *ActivityController) GetResults(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"success": true, "data": gin.H{"activity_id": activity.ActivityID, "status": activity.Status, "result_summary": activity.ResultSummary, "artifact_refs": activity.ArtifactRefs}})
 }
 
+func (c *ActivityController) GetLantern(ctx *gin.Context) {
+	activityID := ctx.Param("activityId")
+	lantern, err := c.activityService.GetLanternResult(activityID)
+	if err != nil {
+		if errors.Is(err, service.ErrActivityArtifactNotFound) || strings.Contains(err.Error(), "activity not found") {
+			ctx.JSON(http.StatusNotFound, gin.H{"success": false, "error": err.Error()})
+			return
+		}
+		ctx.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": err.Error()})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{"success": true, "data": lantern})
+}
+
 func (c *ActivityController) GetContext(ctx *gin.Context) {
 	activityContext, err := c.activityService.GetActivityContext(ctx.Param("activityId"))
 	if err != nil {
@@ -205,4 +237,77 @@ func (c *ActivityController) GetContext(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{"success": true, "data": activityContext})
+}
+
+func parseActivityListQuery(ctx *gin.Context) (service.ActivityListQuery, error) {
+	query := service.ActivityListQuery{}
+	var err error
+	if value := strings.TrimSpace(ctx.Query("limit")); value != "" {
+		query.Limit, err = strconv.Atoi(value)
+		if err != nil || query.Limit < 0 {
+			return service.ActivityListQuery{}, errors.New("limit must be a non-negative integer")
+		}
+	}
+	if value := strings.TrimSpace(ctx.Query("offset")); value != "" {
+		query.Offset, err = strconv.Atoi(value)
+		if err != nil || query.Offset < 0 {
+			return service.ActivityListQuery{}, errors.New("offset must be a non-negative integer")
+		}
+	}
+	query.SortBy = strings.TrimSpace(ctx.Query("sort_by"))
+	if query.SortBy != "" && !isValidActivitySortBy(query.SortBy) {
+		return service.ActivityListQuery{}, errors.New("sort_by must be one of created_at, started_at, ended_at, name")
+	}
+	query.Order = strings.TrimSpace(ctx.Query("order"))
+	if query.Order != "" && !isValidActivitySortOrder(query.Order) {
+		return service.ActivityListQuery{}, errors.New("order must be asc or desc")
+	}
+	query.Status = strings.TrimSpace(ctx.Query("status"))
+	if query.Status != "" && !model.IsValidActivityStatus(model.ActivityStatus(query.Status)) {
+		return service.ActivityListQuery{}, errors.New("status must be one of draft, running, ended, cancelled")
+	}
+	query.RoomID = strings.TrimSpace(ctx.Query("room_id"))
+	if query.CreatedBefore, err = parseOptionalRFC3339(ctx.Query("created_before")); err != nil {
+		return service.ActivityListQuery{}, errors.New("created_before must be RFC3339 timestamp")
+	}
+	if query.CreatedAfter, err = parseOptionalRFC3339(ctx.Query("created_after")); err != nil {
+		return service.ActivityListQuery{}, errors.New("created_after must be RFC3339 timestamp")
+	}
+	if query.StartedBefore, err = parseOptionalRFC3339(ctx.Query("started_before")); err != nil {
+		return service.ActivityListQuery{}, errors.New("started_before must be RFC3339 timestamp")
+	}
+	if query.StartedAfter, err = parseOptionalRFC3339(ctx.Query("started_after")); err != nil {
+		return service.ActivityListQuery{}, errors.New("started_after must be RFC3339 timestamp")
+	}
+	return query, nil
+}
+
+func parseOptionalRFC3339(value string) (*time.Time, error) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil, nil
+	}
+	parsed, err := time.Parse(time.RFC3339, trimmed)
+	if err != nil {
+		return nil, err
+	}
+	return &parsed, nil
+}
+
+func isValidActivitySortBy(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "created_at", "started_at", "ended_at", "name":
+		return true
+	default:
+		return false
+	}
+}
+
+func isValidActivitySortOrder(value string) bool {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "asc", "desc":
+		return true
+	default:
+		return false
+	}
 }

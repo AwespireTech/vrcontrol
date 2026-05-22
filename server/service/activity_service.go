@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -15,9 +16,34 @@ import (
 	"vrcontrol/server/repository"
 )
 
+var ErrActivityArtifactNotFound = errors.New("activity artifact not found")
+
 type ActivityDraftPatch struct {
 	Name            *string                `json:"name"`
 	ActivityContext *model.ActivityContext `json:"activity_context"`
+}
+
+type ActivityListQuery struct {
+	Limit         int
+	Offset        int
+	SortBy        string
+	Order         string
+	Status        string
+	RoomID        string
+	CreatedBefore *time.Time
+	CreatedAfter  *time.Time
+	StartedBefore *time.Time
+	StartedAfter  *time.Time
+}
+
+type ActivityListResult struct {
+	Items   []*model.Activity
+	Total   int
+	Limit   int
+	Offset  int
+	SortBy  string
+	Order   string
+	Filters map[string]string
 }
 
 // ActivityService 管理活動生命週期與結果封存。
@@ -34,6 +60,15 @@ func NewActivityService(activityRepo *repository.ActivityRepository, artifactRoo
 }
 
 func (s *ActivityService) ListActivities() []*model.Activity {
+	result, err := s.QueryActivities(ActivityListQuery{})
+	if err != nil {
+		log.Printf("[activity] failed to list activities: %v", err)
+		return []*model.Activity{}
+	}
+	return result.Items
+}
+
+func (s *ActivityService) QueryActivities(query ActivityListQuery) (*ActivityListResult, error) {
 	indices := s.activityRepo.GetAll()
 	activities := make([]*model.Activity, 0, len(indices))
 	for _, index := range indices {
@@ -44,40 +79,41 @@ func (s *ActivityService) ListActivities() []*model.Activity {
 		}
 		activities = append(activities, activity)
 	}
-	sort.SliceStable(activities, func(i, j int) bool {
-		left := activities[i]
-		right := activities[j]
-		if left == nil || right == nil {
-			return left != nil
-		}
-		if left.CreatedAt.Equal(right.CreatedAt) {
-			return strings.ToLower(left.Name) < strings.ToLower(right.Name)
-		}
-		return left.CreatedAt.After(right.CreatedAt)
-	})
-	return activities
+	filtered := filterActivities(activities, query)
+	normalizedSortBy := normalizeActivitySortBy(query.SortBy)
+	normalizedOrder := normalizeActivitySortOrder(query.Order)
+	sortActivities(filtered, normalizedSortBy, normalizedOrder)
+
+	total := len(filtered)
+	limit := normalizeActivityLimit(query.Limit)
+	offset := normalizeActivityOffset(query.Offset, total)
+	end := offset + limit
+	if end > total {
+		end = total
+	}
+	paged := make([]*model.Activity, 0, end-offset)
+	if offset < total {
+		paged = append(paged, filtered[offset:end]...)
+	}
+
+	return &ActivityListResult{
+		Items:   paged,
+		Total:   total,
+		Limit:   limit,
+		Offset:  offset,
+		SortBy:  normalizedSortBy,
+		Order:   normalizedOrder,
+		Filters: buildActivityListFilters(query),
+	}, nil
 }
 
 func (s *ActivityService) ListActivitiesByRoom(roomID string) []*model.Activity {
-	indices := s.activityRepo.GetByRoomID(roomID)
-	activities := make([]*model.Activity, 0, len(indices))
-	for _, index := range indices {
-		activity, err := s.composeActivity(index)
-		if err != nil {
-			log.Printf("[activity] failed to load detail for %s: %v", index.ActivityID, err)
-			activity = buildActivityFromIndexAndDetail(index, nil)
-		}
-		activities = append(activities, activity)
+	result, err := s.QueryActivities(ActivityListQuery{RoomID: roomID})
+	if err != nil {
+		log.Printf("[activity] failed to list activities by room %s: %v", roomID, err)
+		return []*model.Activity{}
 	}
-	sort.SliceStable(activities, func(i, j int) bool {
-		left := activities[i]
-		right := activities[j]
-		if left.CreatedAt.Equal(right.CreatedAt) {
-			return left.ActivityID < right.ActivityID
-		}
-		return left.CreatedAt.After(right.CreatedAt)
-	})
-	return activities
+	return result.Items
 }
 
 func (s *ActivityService) GetActivity(activityID string) (*model.Activity, error) {
@@ -94,6 +130,21 @@ func (s *ActivityService) GetActivityContext(activityID string) (model.ActivityC
 		return nil, err
 	}
 	return cloneActivityContext(activity.ActivityContext), nil
+}
+
+func (s *ActivityService) GetLanternResult(activityID string) (*model.ActivityLanternResult, error) {
+	if _, err := s.GetActivity(activityID); err != nil {
+		return nil, err
+	}
+	content, err := s.loadArtifact(activityID, "lantern")
+	if err != nil {
+		return nil, err
+	}
+	var lantern model.ActivityLanternResult
+	if err := json.Unmarshal(content, &lantern); err != nil {
+		return nil, err
+	}
+	return &lantern, nil
 }
 
 func (s *ActivityService) CreateDraft(activity *model.Activity) error {
@@ -385,6 +436,24 @@ func (s *ActivityService) loadDetail(activityID string) (*model.ActivityDetail, 
 	return &detail, nil
 }
 
+func (s *ActivityService) loadArtifact(activityID string, name string) ([]byte, error) {
+	if s.artifactRoot == "" {
+		return nil, fmt.Errorf("artifact root is not configured")
+	}
+	path := filepath.Join(s.artifactRoot, activityID, name+".json")
+	content, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, fmt.Errorf("%w: %s for activity %s", ErrActivityArtifactNotFound, name, activityID)
+		}
+		return nil, err
+	}
+	if len(content) == 0 {
+		return nil, fmt.Errorf("%w: %s for activity %s", ErrActivityArtifactNotFound, name, activityID)
+	}
+	return content, nil
+}
+
 func (s *ActivityService) saveDetail(activity *model.Activity) error {
 	if s.artifactRoot == "" {
 		return fmt.Errorf("artifact root is not configured")
@@ -554,4 +623,169 @@ func cloneSummary(summary *model.ActivitySummary) *model.ActivitySummary {
 		}
 	}
 	return cloned
+}
+
+func normalizeActivityLimit(limit int) int {
+	if limit <= 0 {
+		return 50
+	}
+	if limit > 200 {
+		return 200
+	}
+	return limit
+}
+
+func normalizeActivityOffset(offset int, total int) int {
+	if offset <= 0 {
+		return 0
+	}
+	if offset > total {
+		return total
+	}
+	return offset
+}
+
+func normalizeActivitySortBy(sortBy string) string {
+	switch strings.ToLower(strings.TrimSpace(sortBy)) {
+	case "name":
+		return "name"
+	case "started_at":
+		return "started_at"
+	case "ended_at":
+		return "ended_at"
+	default:
+		return "created_at"
+	}
+}
+
+func normalizeActivitySortOrder(order string) string {
+	if strings.EqualFold(strings.TrimSpace(order), "asc") {
+		return "asc"
+	}
+	return "desc"
+}
+
+func buildActivityListFilters(query ActivityListQuery) map[string]string {
+	filters := make(map[string]string)
+	if query.Status != "" {
+		filters["status"] = query.Status
+	}
+	if query.RoomID != "" {
+		filters["room_id"] = query.RoomID
+	}
+	if query.CreatedBefore != nil {
+		filters["created_before"] = query.CreatedBefore.Format(time.RFC3339)
+	}
+	if query.CreatedAfter != nil {
+		filters["created_after"] = query.CreatedAfter.Format(time.RFC3339)
+	}
+	if query.StartedBefore != nil {
+		filters["started_before"] = query.StartedBefore.Format(time.RFC3339)
+	}
+	if query.StartedAfter != nil {
+		filters["started_after"] = query.StartedAfter.Format(time.RFC3339)
+	}
+	return filters
+}
+
+func filterActivities(activities []*model.Activity, query ActivityListQuery) []*model.Activity {
+	filtered := make([]*model.Activity, 0, len(activities))
+	for _, activity := range activities {
+		if activity == nil {
+			continue
+		}
+		if query.Status != "" && !strings.EqualFold(string(activity.Status), query.Status) {
+			continue
+		}
+		if query.RoomID != "" && activity.RoomID != query.RoomID {
+			continue
+		}
+		if query.CreatedBefore != nil && activity.CreatedAt.After(*query.CreatedBefore) {
+			continue
+		}
+		if query.CreatedAfter != nil && activity.CreatedAt.Before(*query.CreatedAfter) {
+			continue
+		}
+		if query.StartedBefore != nil {
+			if activity.StartedAt == nil || activity.StartedAt.After(*query.StartedBefore) {
+				continue
+			}
+		}
+		if query.StartedAfter != nil {
+			if activity.StartedAt == nil || activity.StartedAt.Before(*query.StartedAfter) {
+				continue
+			}
+		}
+		filtered = append(filtered, activity)
+	}
+	return filtered
+}
+
+func sortActivities(activities []*model.Activity, sortBy string, order string) {
+	sort.SliceStable(activities, func(i, j int) bool {
+		left := activities[i]
+		right := activities[j]
+		comparison := compareActivities(left, right, sortBy)
+		if comparison == 0 {
+			comparison = compareActivities(left, right, "created_at")
+		}
+		if comparison == 0 && left != nil && right != nil {
+			comparison = strings.Compare(left.ActivityID, right.ActivityID)
+		}
+		if order == "asc" {
+			return comparison < 0
+		}
+		return comparison > 0
+	})
+}
+
+func compareActivities(left *model.Activity, right *model.Activity, sortBy string) int {
+	if left == nil || right == nil {
+		switch {
+		case left == nil && right == nil:
+			return 0
+		case left == nil:
+			return -1
+		default:
+			return 1
+		}
+	}
+	switch sortBy {
+	case "name":
+		return strings.Compare(strings.ToLower(left.Name), strings.ToLower(right.Name))
+	case "started_at":
+		return compareOptionalTimes(left.StartedAt, right.StartedAt)
+	case "ended_at":
+		return compareOptionalTimes(left.EndedAt, right.EndedAt)
+	default:
+		switch {
+		case left.CreatedAt.Before(right.CreatedAt):
+			return -1
+		case left.CreatedAt.After(right.CreatedAt):
+			return 1
+		default:
+			return 0
+		}
+	}
+}
+
+func compareOptionalTimes(left *time.Time, right *time.Time) int {
+	if left == nil || right == nil {
+		switch {
+		case left == nil && right == nil:
+			return 0
+		case left == nil:
+			return -1
+		default:
+			return 1
+		}
+	}
+	switch {
+	case left.Before(*right):
+		return -1
+	case left.After(*right):
+		return 1
+	default:
+		return 0
+	}
 }

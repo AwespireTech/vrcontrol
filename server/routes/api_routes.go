@@ -170,11 +170,13 @@ func SetupRoutes(router *gin.Engine, dataDir string) {
 
 		activities := api.Group("/activities")
 		{
+			activities.GET("", activityController.ListActivities)
 			activities.GET("/:activityId", activityController.GetActivity)
 			activities.POST("/:activityId/start", activityController.StartActivity)
 			activities.POST("/:activityId/end", activityController.EndActivity)
 			activities.POST("/:activityId/cancel", activityController.CancelActivity)
 			activities.GET("/:activityId/results", activityController.GetResults)
+			activities.GET("/:activityId/lantern", activityController.GetLantern)
 			activities.GET("/:activityId/context", activityController.GetContext)
 		}
 
