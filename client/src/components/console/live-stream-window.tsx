@@ -28,7 +28,6 @@ export default function LiveStreamWindow({
   onToggleMinimized,
   children,
 }: LiveStreamWindowProps) {
-  const [dragging, setDragging] = useState(false)
   const [resizing, setResizing] = useState(false)
   const dragPointerOffsetRef = useRef({ x: 0, y: 0 })
   const windowStateRef = useRef(windowState)
@@ -79,7 +78,6 @@ export default function LiveStreamWindow({
   )
 
   const handlePointerUp = useCallback(() => {
-    setDragging(false)
     setResizing(false)
     draggingRef.current = false
     resizingRef.current = false
@@ -107,7 +105,6 @@ export default function LiveStreamWindow({
 
     event.preventDefault()
     onFocus(windowState.deviceId)
-    setDragging(true)
     setResizing(false)
     draggingRef.current = true
     resizingRef.current = false
@@ -126,7 +123,6 @@ export default function LiveStreamWindow({
     event.stopPropagation()
     onFocus(windowState.deviceId)
     setResizing(true)
-    setDragging(false)
     resizingRef.current = true
     draggingRef.current = false
     activePointerIdRef.current = event.pointerId
