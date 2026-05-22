@@ -267,6 +267,7 @@
 - `activity_context_path` 指向該場 Activity 的 immutable context；QA 題目、題序、計分與顯示規則應從該 context 取得。
 - Activity start 時，server 會先廣播這個 `config`，再送出 `play_command.isstart = true`。
 - Activity end 時，server 會先送出 `play_command.isstart = false`，再廣播不帶 `activity_id` 的新 `config`。
+- 若玩家在 room 已有 running Activity 時中途加入，server 也會先送 `config`，再補送一次 `play_command.isstart = true`，讓 late join client 對齊目前播放狀態。
 
 #### Move Command
 
@@ -308,6 +309,7 @@
 - `isstart=true` 代表開始播放；`false` 代表停止播放。
 - 這個 event 目前由 Activity lifecycle 觸發，不提供獨立的 REST API 來手動廣播。
 - Start ordering 固定為 `config` -> `play_command(true)`；End ordering 固定為 `play_command(false)` -> cleared `config`。
+- 若是 late join player，收到的第一個 `play_command(true)` 代表「補同步到目前已開始的 Activity」，不代表重新開始一場新的 Activity。
 
 #### QA 聚合結果
 

@@ -377,6 +377,16 @@ func (r *Room) BroadcastConfig() {
 	}
 }
 
+func (r *Room) sendCurrentActivityStateToPlayer(player *Player) bool {
+	if !r.sendConfigToPlayer(player) {
+		return false
+	}
+	if r.HasRunningActivity() {
+		return r.sendPlayCommandToPlayer(player, true)
+	}
+	return true
+}
+
 func (r *Room) buildPlayCommandMessage(isStart bool) model.EventMessage {
 	return model.EventMessage{
 		EventType: model.EventPlayCommand,
@@ -457,7 +467,7 @@ func (r *Room) Run() {
 					r.PlayerUnregister <- seqUpdate.Player
 				}
 			}
-			if !r.sendConfigToPlayer(player) {
+			if !r.sendCurrentActivityStateToPlayer(player) {
 				r.PlayerUnregister <- player
 			}
 		case player := <-r.PlayerUnregister:

@@ -319,6 +319,7 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 - `activity_id` 代表正式遊戲/session；沒有 running Activity 時可能省略。
 - `seed` 來自 running Activity，不再由玩家進出 room 自動建立。
 - `activity_context_path` 指向該場 Activity 的 immutable context，QA 題目與規則請從該 activity context 取得。
+- 若玩家在已有 running Activity 時中途加入，server 會在 `config` 之後補送一次 `play_command(true)`，讓 late join client 對齊當前播放狀態。
 
 #### Move Command
 
@@ -357,6 +358,7 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 
 - Activity start 成功後，server 會先廣播 `config`，再廣播 `play_command`，其中 `isstart=true`。
 - Activity end 時，server 會先廣播 `play_command`，其中 `isstart=false`，再送出清空後的 `config`。
+- 若是 late join player，收到的 `play_command(true)` 代表補同步到目前 running Activity，而不是重新觸發一次新的 start 流程。
 
 #### QA 聚合結果
 

@@ -91,7 +91,7 @@
 
 ### Room Hub、Activity Session 與 QA 聚合
 
-1. 玩家加入 room 後，後端會先送 `assign_sequence`，再送 `config` event，讓該玩家取得目前 hub 狀態。
+1. 玩家加入 room 後，後端會先送 `assign_sequence`，再送 `config` event，讓該玩家取得目前 hub 狀態；若 room 已有 running Activity，會再補送一次 `play_command(true)` 讓 late join player 對齊播放狀態。
 2. 只有 Activity lifecycle 代表正式 app session / 一局遊戲；玩家進出 room 不再自動建立正式 session。
 3. Activity start 時會產生或使用指定 seed，並先重新廣播 `config` event，內容包含 `activity_id`、`activity_context_path` 與 Activity seed，接著再廣播 `play_command(true)`。
 4. Room 可在 `operation_profile` 內保存固定 activity defaults 與固定批次動作，但正式 session 資料仍屬於 Activity。
