@@ -72,7 +72,7 @@ export default function AppLayout() {
   }
 
   return (
-    <div className="relative -m-10 min-h-screen bg-background text-foreground">
+    <div className="console-shell relative -m-10 min-h-screen overflow-x-clip bg-bg-canvas text-text-primary">
       <AppSidebar
         collapsed={collapsed}
         dragging={dragging}
@@ -85,7 +85,7 @@ export default function AppLayout() {
         className={`relative box-border min-h-screen w-full ${dragging ? "" : "transition-[padding] duration-200"}`}
         style={{ paddingLeft: collapsed ? SIDEBAR_COLLAPSED_WIDTH : sidebarWidth }}
       >
-        <div className="min-h-screen w-full">
+        <div className="min-h-screen w-full bg-transparent">
           <Outlet />
         </div>
       </div>

@@ -11,9 +11,9 @@ type PageShellProps = {
 
 const maxWidthMap = {
   sm: "max-w-2xl",
-  md: "max-w-4xl",
+  md: "max-w-5xl",
   lg: "max-w-6xl",
-  xl: "max-w-7xl",
+  xl: "max-w-[1400px]",
 }
 
 export default function PageShell({
@@ -25,21 +25,19 @@ export default function PageShell({
   maxWidth = "lg",
 }: PageShellProps) {
   return (
-    <div className="min-h-screen bg-background px-6 py-8">
-      <div className={`mx-auto flex w-full flex-col gap-8 ${maxWidthMap[maxWidth]}`}>
-        <header className="surface-card p-6 shadow-[0_18px_40px_-30px_rgba(0,0,0,0.8)]">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="console-page">
+      <div className={`console-page__inner ${maxWidthMap[maxWidth]}`}>
+        <header className="console-page__header">
+          <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
             <div>
-              <div className="text-xs uppercase tracking-[0.28em] text-foreground/50">
-                {eyebrow}
-              </div>
-              <h1 className="mt-2 text-3xl font-bold text-foreground">{title}</h1>
-              {subtitle ? <p className="mt-2 text-sm text-foreground/70">{subtitle}</p> : null}
+              <div className="console-page__eyebrow">{eyebrow}</div>
+              <h1 className="console-page__title mt-3">{title}</h1>
+              {subtitle ? <p className="console-page__subtitle mt-3">{subtitle}</p> : null}
             </div>
-            {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+            {actions ? <div className="console-toolbar xl:justify-end">{actions}</div> : null}
           </div>
         </header>
-        {children}
+        <div className="flex flex-col gap-6">{children}</div>
       </div>
     </div>
   )
