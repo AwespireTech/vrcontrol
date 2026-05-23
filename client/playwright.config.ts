@@ -3,10 +3,7 @@ import { fileURLToPath } from "node:url"
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || "http://127.0.0.1:4173"
 const configDir = fileURLToPath(new URL(".", import.meta.url))
-const devServerCommand =
-  process.platform === "win32"
-    ? "npm.cmd run dev -- --host 127.0.0.1 --port 4173"
-    : "npm run dev -- --host 127.0.0.1 --port 4173"
+const devServerCommand = "node ../node_modules/vite/bin/vite.js --host 127.0.0.1 --port 4173"
 
 export default defineConfig({
   testDir: "./tests/e2e",
