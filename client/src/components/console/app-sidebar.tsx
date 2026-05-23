@@ -1,5 +1,5 @@
-import { useMemo } from "react"
-import { useLocation } from "react-router-dom"
+import { useEffect, useMemo, useState } from "react"
+import { Link, useLocation } from "react-router-dom"
 import type { IconType } from "react-icons"
 import {
   LuBookOpenText,
@@ -13,6 +13,8 @@ import {
   LuSmartphone,
 } from "react-icons/lu"
 import SidebarNavItem from "@/components/console/sidebar-nav-item"
+import { roomApi } from "@/services/api"
+import type { Room } from "@/services/api-types"
 
 type NavItem = {
   label: string
@@ -74,8 +76,34 @@ export default function AppSidebar({
 }: SidebarProps) {
   const location = useLocation()
   const sections = useMemo(buildSections, [])
+  const [rooms, setRooms] = useState<Room[]>([])
 
   const sidebarWidth = collapsed ? collapsedWidth : width
+
+  useEffect(() => {
+    let active = true
+
+    void roomApi
+      .getAll()
+      .then((data) => {
+        if (!active) {
+          return
+        }
+
+        setRooms(data)
+      })
+      .catch((error) => {
+        console.error("Failed to load sidebar rooms:", error)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const roomControlItems = useMemo(() => {
+    return [...rooms].sort((left, right) => left.name.localeCompare(right.name))
+  }, [rooms])
 
   const isItemActive = (item: NavItem) => {
     if (!item.to) return false
@@ -114,17 +142,41 @@ export default function AppSidebar({
               {section.items.map((item) => {
                 const active = isItemActive(item)
                 return (
-                  <SidebarNavItem
-                    key={item.label}
-                    label={item.label}
-                    caption={item.caption}
-                    to={item.to || "/"}
-                    icon={item.icon}
-                    active={active}
-                    collapsed={collapsed}
-                    disabled={item.disabled}
-                    badge={item.badge}
-                  />
+                  <div key={item.label} className="space-y-2">
+                    <SidebarNavItem
+                      label={item.label}
+                      caption={item.caption}
+                      to={item.to || "/"}
+                      icon={item.icon}
+                      active={active}
+                      collapsed={collapsed}
+                      disabled={item.disabled}
+                      badge={item.badge}
+                    />
+                    {!collapsed && item.label === "Groups" && roomControlItems.length > 0 ? (
+                      <div className="ml-5 space-y-1.5 border-l border-border-subtle/70 pl-3">
+                        {roomControlItems.map((room) => {
+                          const roomActive = location.pathname === `/rooms/${room.room_id}/control`
+                          return (
+                            <Link
+                              key={room.room_id}
+                              to={`/rooms/${room.room_id}/control`}
+                              className={`flex items-center justify-between rounded-[14px] px-3 py-2 text-sm transition ${
+                                roomActive
+                                  ? "bg-bg-panel text-text-primary shadow-panel"
+                                  : "text-text-secondary hover:bg-bg-panel/70 hover:text-text-primary"
+                              }`}
+                            >
+                              <span className="truncate">{room.name}</span>
+                              <span className="text-[11px] uppercase tracking-[0.14em] text-text-quiet">
+                                Ctrl
+                              </span>
+                            </Link>
+                          )
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
                 )
               })}
             </div>

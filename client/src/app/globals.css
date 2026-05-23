@@ -335,6 +335,26 @@
     @apply rounded-[12px] border-border-subtle/80 bg-[#202635]/96 shadow-none;
   }
 
+  .console-control-panel {
+    @apply overflow-hidden rounded-[12px] border border-border-subtle/80 bg-[#202635]/96 text-text-primary shadow-none;
+  }
+
+  .console-control-panel--padded {
+    @apply p-4 md:p-5;
+  }
+
+  .console-control-panel__toolbar {
+    @apply flex items-center justify-between border-b border-border-subtle/70 px-5 py-3;
+  }
+
+  .console-control-panel__title {
+    @apply text-[15px] font-semibold text-text-primary;
+  }
+
+  .console-control-panel__inner {
+    @apply rounded-[12px] border border-border-subtle/75 bg-bg-panel/55;
+  }
+
   .console-list-toolbar {
     @apply flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle/80 bg-bg-panel/70 px-5 py-4;
   }
