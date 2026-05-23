@@ -183,8 +183,112 @@
     @apply relative font-display text-4xl font-bold tracking-[-0.04em] text-text-primary md:text-5xl;
   }
 
+  .console-page__title--compact {
+    @apply text-[2.15rem] tracking-[-0.045em] md:text-[2.6rem];
+  }
+
   .console-page__subtitle {
     @apply relative max-w-3xl text-sm leading-6 text-text-secondary md:text-base;
+  }
+
+  .console-page__subtitle--compact {
+    @apply text-[13px] leading-5 md:text-sm;
+  }
+
+  .console-stat-card {
+    @apply rounded-[18px] border border-border-subtle/90 bg-bg-surface/96 px-6 py-5 text-text-primary shadow-panel;
+  }
+
+  .console-stat-card__label {
+    @apply text-sm font-medium text-text-secondary;
+  }
+
+  .console-stat-card__body {
+    @apply mt-5 flex items-center gap-4;
+  }
+
+  .console-stat-card__icon {
+    @apply flex h-14 w-14 items-center justify-center rounded-[18px] text-text-primary;
+  }
+
+  .console-stat-card__icon--primary {
+    @apply bg-msg-primary/12;
+  }
+
+  .console-stat-card__icon--default {
+    @apply bg-bg-panel/80;
+  }
+
+  .console-stat-card__value {
+    @apply font-display text-5xl font-bold tracking-[-0.05em] text-text-primary;
+  }
+
+  .console-link-card {
+    @apply block rounded-[18px] border border-border-accent bg-bg-shell/82 px-6 py-5 text-text-primary shadow-panel transition duration-200 hover:border-border-accent/80 hover:bg-bg-panel/90;
+  }
+
+  .console-link-card__layout {
+    @apply flex h-full flex-col justify-between gap-6;
+  }
+
+  .console-link-card__header {
+    @apply flex items-start gap-4;
+  }
+
+  .console-link-card__icon {
+    @apply flex h-[52px] w-[52px] items-center justify-center rounded-[18px] bg-msg-primary/14 text-msg-primary;
+  }
+
+  .console-link-card__title {
+    @apply text-xl font-semibold leading-tight text-msg-primary;
+  }
+
+  .console-link-card__subtitle {
+    @apply mt-1 text-lg font-semibold tracking-[-0.03em] text-msg-primary;
+  }
+
+  .console-link-card__footer {
+    @apply flex items-end justify-between gap-4;
+  }
+
+  .console-link-card__description {
+    @apply max-w-xs text-sm leading-7 text-text-secondary;
+  }
+
+  .console-link-card__arrow {
+    @apply h-5 w-5 shrink-0 text-msg-primary transition duration-200 group-hover:translate-x-1;
+  }
+
+  .console-sidebar-item {
+    @apply flex items-center rounded-[18px] border text-sm transition duration-200;
+  }
+
+  .console-sidebar-item--collapsed {
+    @apply mx-auto min-h-14 w-14 justify-center px-0 py-3;
+  }
+
+  .console-sidebar-item--expanded {
+    @apply min-h-13 gap-3.5 px-4 py-3;
+  }
+
+  .console-sidebar-item--active {
+    @apply border-transparent bg-bg-elevated text-text-primary shadow-[inset_0_0_0_1px_rgba(109,125,228,0.24)] shadow-active;
+  }
+
+  .console-sidebar-item--idle {
+    @apply border-transparent text-text-secondary hover:bg-bg-panel/86 hover:text-text-primary;
+  }
+
+  .console-sidebar-item__icon {
+    @apply flex items-center justify-center text-current transition group-hover:text-text-primary;
+  }
+
+  .console-sidebar-item__label-wrap {
+    @apply flex-1 overflow-hidden transition-all duration-200;
+  }
+
+  .console-sidebar-item__text {
+    @apply block whitespace-nowrap font-semibold leading-none text-current;
   }
 
   .console-toolbar {
@@ -207,8 +311,16 @@
     @apply font-display text-2xl font-semibold tracking-[-0.03em] text-text-primary;
   }
 
+  .console-section__title--compact {
+    @apply text-[1.55rem] leading-none;
+  }
+
   .console-section__description {
     @apply text-sm text-text-secondary;
+  }
+
+  .console-section__description--compact {
+    @apply text-[13px];
   }
 
   .console-list-shell {
@@ -217,6 +329,10 @@
 
   .console-list-shell--ghost {
     @apply bg-bg-shell/76;
+  }
+
+  .console-list-shell--compact {
+    @apply rounded-[12px] border-border-subtle/80 bg-[#202635]/96 shadow-none;
   }
 
   .console-list-toolbar {
@@ -231,8 +347,16 @@
     @apply grid items-center gap-3 border-b border-border-subtle/80 bg-bg-panel/90 px-5 py-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted;
   }
 
+  .console-list-header--compact {
+    @apply grid-cols-12 gap-4 bg-[#22293a] px-5 py-3 tracking-[0.08em] text-[#8f9bbc];
+  }
+
   .console-list-row {
     @apply grid items-start gap-3 border-b border-border-subtle/70 px-5 py-4 transition duration-150 last:border-b-0 hover:bg-bg-panel/55;
+  }
+
+  .console-list-row--compact {
+    @apply gap-4 px-5 py-3 hover:bg-[#252c3d]/55;
   }
 
   .console-list-title {
@@ -241,6 +365,78 @@
 
   .console-list-meta {
     @apply text-xs text-text-muted;
+  }
+
+  .console-table-title {
+    @apply text-[15px] font-semibold text-text-primary;
+  }
+
+  .console-meta {
+    @apply text-[11px] leading-[1.45] text-[#7f89a6];
+  }
+
+  .console-link-muted {
+    @apply text-left transition hover:opacity-90;
+  }
+
+  .console-field {
+    @apply flex flex-col;
+  }
+
+  .console-field__label {
+    @apply mb-1.5 block text-[11px] font-semibold tracking-[0.08em] text-text-muted;
+  }
+
+  .console-control--compact {
+    @apply h-10 w-full rounded-[10px] border border-[#5161a7]/70 bg-[#181f2d] px-3 text-sm text-text-primary focus:border-[#7186f5] focus:outline-none focus:ring-2 focus:ring-msg-primary/20;
+  }
+
+  .console-control--select {
+    @apply pr-8;
+  }
+
+  .console-status-stack {
+    @apply space-y-1.5;
+  }
+
+  .console-status-line {
+    @apply flex items-center gap-2 text-xs leading-none;
+  }
+
+  .console-status-label {
+    @apply inline-block w-8 text-[11px] font-semibold tracking-[0.08em] text-[#93a0c4];
+  }
+
+  .console-status-badge {
+    @apply min-w-[54px] justify-center rounded-[6px] px-2 py-0.5 text-[11px] leading-4;
+  }
+
+  .console-action-stack {
+    @apply grid grid-cols-[minmax(0,1fr)_24px] gap-x-3;
+  }
+
+  .console-action-stack__controls {
+    @apply space-y-1.5;
+  }
+
+  .console-action-stack__icons {
+    @apply flex flex-col items-center gap-1.5 pt-1;
+  }
+
+  .console-icon-button {
+    @apply flex h-6 w-6 items-center justify-center rounded-[6px] text-[#a4aecb] transition hover:bg-[#2a3145] hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .console-icon-button--danger {
+    @apply text-[#ff8080] hover:bg-[#392233] hover:text-[#ff9b9b];
+  }
+
+  .console-button-pill {
+    @apply h-9 w-full justify-center rounded-full px-3 text-sm font-medium;
+  }
+
+  .console-inline-status {
+    @apply flex items-center gap-2;
   }
 
   .console-list-actions {
@@ -287,6 +483,19 @@
   .console-status-chip--warning {
     @apply border-msg-warning/20 bg-msg-warning/15 text-[#ffd468];
   }
+
+  .devices-alert-shell {
+    @apply rounded-[12px] border border-msg-warning/35 bg-[#1d2331]/95 px-4 py-3.5 md:px-4.5;
+  }
+
+  .devices-alert-heading {
+    @apply mb-2.5 flex items-center gap-2 text-sm font-semibold text-msg-warning;
+  }
+
+  .devices-alert-grid {
+    @apply grid gap-3 rounded-[12px] border border-border-subtle/75 bg-[#202738]/88 px-4 py-3.5 md:grid-cols-[minmax(0,1.15fr)_minmax(180px,1fr)_minmax(150px,0.85fr)_auto] md:items-end;
+  }
+
 }
 
 .live-stream-section__header {

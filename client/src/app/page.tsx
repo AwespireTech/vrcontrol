@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
-import { LuArrowRight, LuHouse, LuSmartphone } from "react-icons/lu"
+import { LuHouse, LuSmartphone } from "react-icons/lu"
 import { deviceApi, roomApi } from "@/services/api"
 import type { Device, Room } from "@/services/api-types"
 import PageShell from "@/components/console/page-shell"
+import DashboardLinkCard from "@/components/console/dashboard-link-card"
+import DashboardStatCard from "@/components/console/dashboard-stat-card"
 
 export default function DashboardPage() {
   const [devices, setDevices] = useState<Device[]>([])
@@ -64,68 +65,35 @@ export default function DashboardPage() {
       eyebrow=""
       maxWidth="md"
       headerVariant="plain"
+      titleVariant="compact"
     >
       <div className="max-w-[900px] space-y-5">
         <section className="console-section">
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-            {summaryCards.map((item) => {
-              const Icon = item.icon
-
-              return (
-                <div key={item.label} className="surface-card rounded-[18px] bg-bg-surface/96 px-6 py-5">
-                  <p className="text-sm font-medium text-text-secondary">{item.label}</p>
-                  <div className="mt-5 flex items-center gap-4">
-                    <div
-                      className={`flex h-14 w-14 items-center justify-center rounded-[18px] ${
-                        item.tone === "primary"
-                          ? "bg-msg-primary/12 text-text-primary"
-                          : "bg-bg-panel/80 text-text-primary"
-                      }`}
-                    >
-                      <Icon className="h-7 w-7" />
-                    </div>
-                    <p className="font-display text-5xl font-bold tracking-[-0.05em] text-text-primary">
-                      {item.value}
-                    </p>
-                  </div>
-                </div>
-              )
-            })}
+            {summaryCards.map((item) => (
+              <DashboardStatCard
+                key={item.label}
+                label={item.label}
+                value={item.value}
+                icon={item.icon}
+                tone={item.tone}
+              />
+            ))}
           </div>
         </section>
 
         <section className="console-section">
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-            {managementCards.map((item) => {
-              const Icon = item.icon
-
-              return (
-                <Link
-                  key={item.title}
-                  to={item.to}
-                  className="surface-card surface-card-hover group block rounded-[18px] border border-border-accent bg-bg-shell/82 px-6 py-5"
-                >
-                  <div className="flex h-full flex-col justify-between gap-6">
-                    <div className="flex items-start gap-4">
-                      <div className="flex h-[52px] w-[52px] items-center justify-center rounded-[18px] bg-msg-primary/14 text-msg-primary">
-                        <Icon className="h-6 w-6" />
-                      </div>
-                      <div>
-                        <p className="text-xl font-semibold leading-tight text-msg-primary">{item.title}</p>
-                        <p className="mt-1 text-lg font-semibold tracking-[-0.03em] text-msg-primary">
-                          {item.subtitle}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-end justify-between gap-4">
-                      <p className="max-w-xs text-sm leading-7 text-text-secondary">{item.description}</p>
-                      <LuArrowRight className="h-5 w-5 shrink-0 text-msg-primary transition duration-200 group-hover:translate-x-1" />
-                    </div>
-                  </div>
-                </Link>
-              )
-            })}
+            {managementCards.map((item) => (
+              <DashboardLinkCard
+                key={item.title}
+                to={item.to}
+                title={item.title}
+                subtitle={item.subtitle}
+                description={item.description}
+                icon={item.icon}
+              />
+            ))}
           </div>
         </section>
       </div>

@@ -1,5 +1,5 @@
 import { useMemo } from "react"
-import { Link, useLocation } from "react-router-dom"
+import { useLocation } from "react-router-dom"
 import type { IconType } from "react-icons"
 import {
   LuBookOpenText,
@@ -12,6 +12,7 @@ import {
   LuSparkles,
   LuSmartphone,
 } from "react-icons/lu"
+import SidebarNavItem from "@/components/console/sidebar-nav-item"
 
 type NavItem = {
   label: string
@@ -82,21 +83,6 @@ export default function AppSidebar({
     return location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)
   }
 
-  const getItemClass = (active: boolean) =>
-    `group flex items-center rounded-[18px] border text-sm transition duration-200 ${
-      collapsed
-        ? "mx-auto min-h-14 w-14 justify-center px-0 py-3"
-        : "min-h-13 gap-3.5 px-4 py-3"
-    } ${
-      active
-        ? "border-transparent bg-bg-elevated text-text-primary shadow-[inset_0_0_0_1px_rgba(109,125,228,0.24)] shadow-active"
-        : "border-transparent text-text-secondary hover:bg-bg-panel/86 hover:text-text-primary"
-    }`
-
-  const labelClass = `flex-1 overflow-hidden transition-all duration-200 ${
-    collapsed ? "max-w-0 opacity-0" : "max-w-[220px] opacity-100"
-  }`
-
   return (
     <aside
       className={`fixed left-0 top-0 z-20 flex h-screen flex-col border-r border-border-subtle/85 bg-bg-rail/96 text-text-primary backdrop-blur ${
@@ -127,44 +113,18 @@ export default function AppSidebar({
             <div className="space-y-1.5">
               {section.items.map((item) => {
                 const active = isItemActive(item)
-                const sharedClass = getItemClass(active)
-                const Icon = item.icon
-                const combinedLabel = `${item.label} ${item.caption}`
-
-                if (item.disabled) {
-                  return (
-                    <div key={item.label} className={`${sharedClass} cursor-not-allowed overflow-hidden opacity-70`}>
-                      <span className="flex items-center justify-center text-current transition group-hover:text-text-primary">
-                        <Icon className="h-[18px] w-[18px]" />
-                      </span>
-                      <span className={labelClass}>
-                        <span className="flex items-center justify-between gap-3">
-                          <span className="block whitespace-nowrap font-semibold leading-none text-text-primary">
-                            {combinedLabel}
-                          </span>
-                          {item.badge ? <span className="ui-badge ui-badge-muted">{item.badge}</span> : null}
-                        </span>
-                      </span>
-                    </div>
-                  )
-                }
-
                 return (
-                  <Link
+                  <SidebarNavItem
                     key={item.label}
+                    label={item.label}
+                    caption={item.caption}
                     to={item.to || "/"}
-                    className={`${sharedClass} overflow-hidden`}
-                    title={collapsed ? `${item.label} ${item.caption}` : item.label}
-                  >
-                    <span className="flex items-center justify-center text-current transition group-hover:text-text-primary">
-                      <Icon className="h-[18px] w-[18px]" />
-                    </span>
-                    <span className={labelClass}>
-                      <span className="block whitespace-nowrap font-semibold leading-none text-current">
-                        {combinedLabel}
-                      </span>
-                    </span>
-                  </Link>
+                    icon={item.icon}
+                    active={active}
+                    collapsed={collapsed}
+                    disabled={item.disabled}
+                    badge={item.badge}
+                  />
                 )
               })}
             </div>
