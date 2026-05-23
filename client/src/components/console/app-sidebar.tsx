@@ -83,10 +83,14 @@ export default function AppSidebar({
   }
 
   const getItemClass = (active: boolean) =>
-    `group flex min-h-14 items-center gap-3 rounded-2xl px-3 py-2.5 text-sm transition duration-200 ${
+    `group flex items-center rounded-[18px] border text-sm transition duration-200 ${
+      collapsed
+        ? "mx-auto min-h-14 w-14 justify-center px-0 py-3"
+        : "min-h-13 gap-3.5 px-4 py-3"
+    } ${
       active
-        ? "bg-msg-primary/16 text-text-primary shadow-[inset_0_0_0_1px_rgba(109,125,228,0.36)] shadow-active"
-        : "text-text-secondary hover:bg-bg-panel/86 hover:text-text-primary"
+        ? "border-transparent bg-bg-elevated text-text-primary shadow-[inset_0_0_0_1px_rgba(109,125,228,0.24)] shadow-active"
+        : "border-transparent text-text-secondary hover:bg-bg-panel/86 hover:text-text-primary"
     }`
 
   const labelClass = `flex-1 overflow-hidden transition-all duration-200 ${
@@ -95,75 +99,48 @@ export default function AppSidebar({
 
   return (
     <aside
-      className={`fixed left-0 top-0 z-20 flex h-screen flex-col border-r border-border-subtle/85 bg-bg-shell/94 text-text-primary backdrop-blur ${
+      className={`fixed left-0 top-0 z-20 flex h-screen flex-col border-r border-border-subtle/85 bg-bg-rail/96 text-text-primary backdrop-blur ${
         dragging ? "" : "transition-[width] duration-200"
       }`}
       style={{ width: sidebarWidth }}
       aria-label="主導覽"
     >
-      <div className="flex h-16 items-center justify-start px-4 pt-2">
-        <button
-          type="button"
-          onClick={onToggleCollapsed}
-          className="group flex h-10 w-10 items-center justify-center rounded-full border border-transparent bg-transparent text-text-secondary transition hover:border-border-subtle hover:bg-bg-panel/85 hover:text-text-primary"
-          aria-label={collapsed ? "展開側邊欄" : "收合側邊欄"}
-          title={collapsed ? "展開側邊欄" : "收合側邊欄"}
-        >
-          {collapsed ? <LuPanelLeftOpen className="h-4 w-4" /> : <LuPanelLeftClose className="h-4 w-4" />}
-        </button>
+      <div className={`flex items-center ${collapsed ? "justify-center px-3 pt-4" : "justify-start px-5 pt-4"}`}>
+        {!collapsed ? (
+          <div className="font-display text-[2.1rem] font-semibold tracking-[-0.06em] text-msg-primary">
+            AweLink XR
+          </div>
+        ) : (
+          <div className="flex h-12 w-12 items-center justify-center rounded-[18px] border border-border-subtle/80 bg-bg-panel/90 font-display text-sm font-semibold tracking-[0.16em] text-msg-primary shadow-panel">
+            XR
+          </div>
+        )}
       </div>
 
-      <div className="flex items-center gap-3 px-4 pb-6 pt-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-[18px] border border-border-subtle/90 bg-bg-panel/90 text-base font-semibold tracking-[0.18em] text-msg-primary shadow-panel">
-            VR
-          </div>
-          <div
-            className={`overflow-hidden transition-[opacity,width] duration-200 ${
-              collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
-            }`}
-          >
-            <div className="whitespace-nowrap text-xs uppercase leading-none tracking-[0.26em] text-text-muted">
-              VR Control
-            </div>
-            <div className="mt-1 whitespace-nowrap font-display text-[1.65rem] font-semibold leading-none tracking-[-0.05em] text-msg-primary">
-              Console
-            </div>
-          </div>
-        </div>
+      <div className={`${collapsed ? "h-5" : "px-5 pb-5 pt-2"}`}>
+        {!collapsed ? <div className="text-sm text-text-secondary">VR console control center</div> : null}
       </div>
 
-      <nav className="flex-1 space-y-5 overflow-y-auto px-3 pb-6">
+      <nav className={`flex-1 overflow-y-auto ${collapsed ? "px-3 pb-4 pt-2" : "px-3 pb-6 pt-2"}`}>
         {sections.map((section) => (
-          <div key={section.label} className="space-y-2">
-            <div
-              className={`px-3 text-[10px] font-semibold uppercase tracking-[0.28em] text-text-quiet transition-opacity duration-200 ${
-                collapsed ? "opacity-0" : "opacity-100"
-              }`}
-            >
-              {section.label}
-            </div>
+          <div key={section.label} className={`${collapsed ? "space-y-2" : "space-y-2.5"} ${section.label === "System" ? (collapsed ? "mt-4" : "mt-6") : ""}`}>
             <div className="space-y-1.5">
               {section.items.map((item) => {
                 const active = isItemActive(item)
                 const sharedClass = getItemClass(active)
                 const Icon = item.icon
+                const combinedLabel = `${item.label} ${item.caption}`
 
                 if (item.disabled) {
                   return (
                     <div key={item.label} className={`${sharedClass} cursor-not-allowed overflow-hidden opacity-70`}>
-                      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-bg-panel/80 text-text-secondary transition group-hover:text-text-primary">
+                      <span className="flex items-center justify-center text-current transition group-hover:text-text-primary">
                         <Icon className="h-[18px] w-[18px]" />
                       </span>
                       <span className={labelClass}>
                         <span className="flex items-center justify-between gap-3">
-                          <span>
-                            <span className="block whitespace-nowrap font-semibold leading-none text-text-primary">
-                              {item.label}
-                            </span>
-                            <span className="mt-1 block whitespace-nowrap text-[11px] leading-none text-text-muted">
-                              {item.caption}
-                            </span>
+                          <span className="block whitespace-nowrap font-semibold leading-none text-text-primary">
+                            {combinedLabel}
                           </span>
                           {item.badge ? <span className="ui-badge ui-badge-muted">{item.badge}</span> : null}
                         </span>
@@ -179,19 +156,12 @@ export default function AppSidebar({
                     className={`${sharedClass} overflow-hidden`}
                     title={collapsed ? `${item.label} ${item.caption}` : item.label}
                   >
-                    <span
-                      className={`flex h-9 w-9 items-center justify-center rounded-xl transition ${
-                        active ? "bg-msg-primary/14 text-msg-primary" : "bg-bg-panel/75 text-text-secondary group-hover:text-text-primary"
-                      }`}
-                    >
+                    <span className="flex items-center justify-center text-current transition group-hover:text-text-primary">
                       <Icon className="h-[18px] w-[18px]" />
                     </span>
                     <span className={labelClass}>
                       <span className="block whitespace-nowrap font-semibold leading-none text-current">
-                        {item.label}
-                      </span>
-                      <span className="mt-1 block whitespace-nowrap text-[11px] leading-none text-text-muted">
-                        {item.caption}
+                        {combinedLabel}
                       </span>
                     </span>
                   </Link>
@@ -202,22 +172,19 @@ export default function AppSidebar({
         ))}
       </nav>
 
-      <div
-        className={`px-4 pb-6 transition-[opacity,height] duration-200 ${
-          collapsed ? "h-0 overflow-hidden opacity-0" : "opacity-100"
-        }`}
-      >
-        <div className="rounded-[22px] border border-border-subtle/85 bg-bg-panel/82 p-4 shadow-panel">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.28em] text-text-muted">
-            Phase 1
-          </div>
-          <div className="mt-2 font-display text-lg font-semibold tracking-[-0.03em] text-text-primary">
-            Shared System
-          </div>
-          <p className="mt-2 text-sm leading-6 text-text-secondary">
-            先完成共用視覺骨架，再逐步套用到各頁面。
-          </p>
-        </div>
+      <div className={`border-t border-border-subtle/70 ${collapsed ? "px-3 py-4" : "px-5 py-4"}`}>
+        <button
+          type="button"
+          onClick={onToggleCollapsed}
+          className={`group flex items-center rounded-full border border-border-subtle/70 bg-bg-panel/78 text-text-secondary transition hover:border-border-subtle hover:bg-bg-shell hover:text-text-primary ${
+            collapsed ? "mx-auto h-12 w-12 justify-center" : "h-11 gap-2.5 px-4"
+          }`}
+          aria-label={collapsed ? "展開側邊欄" : "收合側邊欄"}
+          title={collapsed ? "展開側邊欄" : "收合側邊欄"}
+        >
+          {collapsed ? <LuPanelLeftOpen className="h-4 w-4" /> : <LuPanelLeftClose className="h-4 w-4" />}
+          {!collapsed ? <span className="text-sm font-medium">收合導覽</span> : null}
+        </button>
       </div>
 
       <div

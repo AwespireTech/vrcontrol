@@ -7,6 +7,7 @@ type PageShellProps = {
   actions?: ReactNode
   children: ReactNode
   maxWidth?: "sm" | "md" | "lg" | "xl"
+  headerVariant?: "card" | "plain"
 }
 
 const maxWidthMap = {
@@ -23,16 +24,24 @@ export default function PageShell({
   actions,
   children,
   maxWidth = "lg",
+  headerVariant = "card",
 }: PageShellProps) {
+  const headerClassName =
+    headerVariant === "plain"
+      ? "relative flex flex-col gap-4 px-1 py-2 xl:flex-row xl:items-end xl:justify-between"
+      : "console-page__header"
+
+  const contentClassName = "relative flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between"
+
   return (
     <div className="console-page">
       <div className={`console-page__inner ${maxWidthMap[maxWidth]}`}>
-        <header className="console-page__header">
-          <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+        <header className={headerClassName}>
+          <div className={contentClassName}>
             <div>
-              <div className="console-page__eyebrow">{eyebrow}</div>
-              <h1 className="console-page__title mt-3">{title}</h1>
-              {subtitle ? <p className="console-page__subtitle mt-3">{subtitle}</p> : null}
+              {eyebrow ? <div className="console-page__eyebrow">{eyebrow}</div> : null}
+              <h1 className={eyebrow ? "console-page__title mt-3" : "console-page__title"}>{title}</h1>
+              {subtitle ? <p className="console-page__subtitle mt-2">{subtitle}</p> : null}
             </div>
             {actions ? <div className="console-toolbar xl:justify-end">{actions}</div> : null}
           </div>

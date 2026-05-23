@@ -5,7 +5,7 @@ import AppSidebar from "./app-sidebar"
 
 const SIDEBAR_MIN_WIDTH = 220
 const SIDEBAR_MAX_WIDTH = 420
-const SIDEBAR_COLLAPSED_WIDTH = 68
+const SIDEBAR_COLLAPSED_WIDTH = 88
 const SMALL_SCREEN_QUERY = "(max-width: 1024px)"
 
 export default function AppLayout() {
