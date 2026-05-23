@@ -35,7 +35,7 @@ const buildSections = (): NavSection[] => [
     items: [
       { label: "Dashboard", caption: "總覽", to: "/", icon: LuLayoutDashboard, exact: true },
       { label: "Devices", caption: "裝置", to: "/devices", icon: LuSmartphone },
-      { label: "Groups", caption: "群組 / 房間", to: "/rooms", icon: LuHouse },
+      { label: "Groups", caption: "群組", to: "/rooms", icon: LuHouse },
       { label: "Actions", caption: "動作", to: "/actions", icon: LuSparkles },
       { label: "Monitor", caption: "監控", to: "/monitoring", icon: LuMonitorPlay },
     ],

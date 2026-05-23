@@ -415,8 +415,16 @@
     @apply grid grid-cols-[minmax(0,1fr)_24px] gap-x-3;
   }
 
+  .console-action-stack--fit {
+    @apply grid-cols-[132px_20px] justify-between gap-x-4;
+  }
+
   .console-action-stack__controls {
     @apply space-y-1.5;
+  }
+
+  .console-action-stack__controls--fit {
+    @apply items-start;
   }
 
   .console-action-stack__icons {
@@ -433,6 +441,10 @@
 
   .console-button-pill {
     @apply h-9 w-full justify-center rounded-full px-3 text-sm font-medium;
+  }
+
+  .console-button-pill--fit {
+    @apply h-8 w-auto min-w-[128px] px-4 text-[12px] whitespace-nowrap;
   }
 
   .console-inline-status {
