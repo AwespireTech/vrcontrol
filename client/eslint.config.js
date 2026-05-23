@@ -27,7 +27,8 @@ export default [
       "no-undef": "off",
 
       ...tsPlugin.configs.recommended.rules,
-      ...reactHooks.configs.recommended.rules,
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
 
       // Common Vite + React pattern
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],

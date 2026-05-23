@@ -163,7 +163,7 @@ export default function RoomMinimap({
                       role="button"
                       tabIndex={0}
                       aria-pressed={isSelected}
-                      className="cursor-pointer outline-none"
+                      className="cursor-pointer outline-hidden"
                       onClick={() => onSelectDevice?.(marker.deviceId)}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
