@@ -32,27 +32,20 @@ func (c *ScrcpyStreamController) Stream(ctx *gin.Context) {
 	}
 	defer conn.Close()
 
-	session, err := c.streamService.StartStream(deviceID)
+	subscription, err := c.streamService.SubscribeStream(deviceID)
 	if err != nil {
 		_ = conn.WriteMessage(websocket.TextMessage, []byte("start_failed"))
 		return
 	}
-	defer session.Stop()
+	defer subscription.Close()
 
-	if headerBytes, err := json.Marshal(session.Header); err == nil {
+	if headerBytes, err := json.Marshal(subscription.Header); err == nil {
 		_ = conn.WriteMessage(websocket.TextMessage, headerBytes)
 	}
 
-	buf := make([]byte, 64*1024)
-	for {
-		n, readErr := session.Read(buf)
-		if n > 0 {
-			_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
-			if err := conn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
-				break
-			}
-		}
-		if readErr != nil {
+	for accessUnit := range subscription.Units {
+		_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+		if err := conn.WriteMessage(websocket.BinaryMessage, accessUnit.Data); err != nil {
 			break
 		}
 	}

@@ -10,13 +10,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	"vrcontrol/server/scrcpy"
 	"vrcontrol/server/service"
-	questwebrtc "vrcontrol/server/webrtc"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	pion "github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v3/pkg/media"
 )
 
 type WebRTCStreamController struct {
@@ -114,13 +113,13 @@ func (c *WebRTCStreamController) Stream(ctx *gin.Context) {
 				})
 			})
 
-			sessionData, err := c.streamService.StartStream(deviceID)
+			subscription, err := c.streamService.SubscribeStream(deviceID)
 			if err != nil {
 				sendSignal(signalMessage{Type: "error", Error: classifyStreamError(err)})
 				setCleanup(func() {})
 				continue
 			}
-			session = &webrtcSession{session: sessionData}
+			session = &webrtcSession{subscription: subscription}
 
 			pc, err = newPeerConnection(deviceID, session, sendSignal)
 			if err != nil {
@@ -194,11 +193,29 @@ func (c *WebRTCStreamController) Stream(ctx *gin.Context) {
 			streamCtx, cancelFn := context.WithCancel(context.Background())
 			cancel = cancelFn
 			go func() {
-				fps := session.session.Header.FPS
-				if err := questwebrtc.StreamH264(streamCtx, session.session, session.track, fps); err != nil && streamCtx.Err() == nil {
-					classified := classifyStreamError(err)
-					log.Printf("[WebRTC] stream error for %s: %v (%s)", deviceID, err, classified)
-					sendSignal(signalMessage{Type: "error", Error: classified})
+				for {
+					select {
+					case <-streamCtx.Done():
+						return
+					case accessUnit, ok := <-session.subscription.Units:
+						if !ok {
+							if err := session.subscription.Err(); err != nil && streamCtx.Err() == nil {
+								classified := classifyStreamError(err)
+								log.Printf("[WebRTC] stream error for %s: %v (%s)", deviceID, err, classified)
+								sendSignal(signalMessage{Type: "error", Error: classified})
+							}
+							return
+						}
+
+						if err := session.track.WriteSample(media.Sample{Data: accessUnit.Data, Duration: accessUnit.Duration}); err != nil {
+							if streamCtx.Err() == nil {
+								classified := classifyStreamError(err)
+								log.Printf("[WebRTC] track write error for %s: %v (%s)", deviceID, err, classified)
+								sendSignal(signalMessage{Type: "error", Error: classified})
+							}
+							return
+						}
+					}
 				}
 			}()
 
@@ -255,17 +272,17 @@ func classifyStreamError(err error) string {
 }
 
 type webrtcSession struct {
-	session             *scrcpy.StreamSession
+	subscription        *service.StreamSubscription
 	track               *pion.TrackLocalStaticSample
 	sender              *pion.RTPSender
 	localCandidateCount *atomic.Int32
 }
 
 func (s *webrtcSession) Stop() {
-	if s == nil || s.session == nil {
+	if s == nil || s.subscription == nil {
 		return
 	}
-	s.session.Stop()
+	s.subscription.Close()
 }
 
 func newPeerConnection(deviceID string, session *webrtcSession, sendSignal func(signalMessage)) (*pion.PeerConnection, error) {
