@@ -1,14 +1,28 @@
 const palette = {
-  background: "#282c34",
-  foreground: "#ededed",
-  surface: "#1f2937",
-  primary: "#60a5fa",
-  accent: "#9e74ff",
-  muted: "#4b5563",
-  border: "#94a3b8",
+  "bg-canvas": "#0b0e14",
+  "bg-rail": "#1a1f2c",
+  "bg-surface": "#252b3b",
+  "msg-primary": "#5c7cff",
+  "msg-danger": "#ff3b3b",
+  "msg-warning": "#ffb800",
+  "msg-accent": "#8a2be2",
+  "text-primary": "#e1e4eb",
+  "text-secondary": "#9da5b4",
+  "text-muted": "#5c6370",
+  "border-subtle": "#3b4357",
+  "border-strong": "#5c6370",
   success: "#22c55e",
-  danger: "#ef4444",
-  warning: "#f59e0b",
+
+  // Transitional aliases for existing class usage.
+  background: "#0b0e14",
+  foreground: "#e1e4eb",
+  surface: "#252b3b",
+  primary: "#5c7cff",
+  accent: "#8a2be2",
+  muted: "#5c6370",
+  border: "#3b4357",
+  danger: "#ff3b3b",
+  warning: "#ffb800",
 }
 
 /** @type {import('tailwindcss').Config} */
@@ -17,6 +31,18 @@ module.exports = {
   theme: {
     extend: {
       colors: {
+        "bg-canvas": palette["bg-canvas"],
+        "bg-rail": palette["bg-rail"],
+        "bg-surface": palette["bg-surface"],
+        "msg-primary": palette["msg-primary"],
+        "msg-danger": palette["msg-danger"],
+        "msg-warning": palette["msg-warning"],
+        "msg-accent": palette["msg-accent"],
+        "text-primary": palette["text-primary"],
+        "text-secondary": palette["text-secondary"],
+        "text-muted": palette["text-muted"],
+        "border-subtle": palette["border-subtle"],
+        "border-strong": palette["border-strong"],
         background: palette.background,
         foreground: palette.foreground,
         surface: palette.surface,
