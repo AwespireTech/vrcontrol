@@ -5,6 +5,7 @@ import {
   type Device,
   type IsolationDevice,
   type Room,
+  type ScrcpyConfig,
   type ScrcpySession,
   type ScrcpySystemInfo,
   type USBDevice,
@@ -174,6 +175,24 @@ export const mockScrcpySystemInfo: ScrcpySystemInfo = {
   version: "",
   path: "",
   error_message: "scrcpy not installed in test environment",
+}
+
+export const mockScrcpyConfig: ScrcpyConfig = {
+  bitrate: "8M",
+  max_size: 1920,
+  max_fps: 60,
+  video_codec_options: "",
+  window_width: undefined,
+  window_height: undefined,
+  window_x: undefined,
+  window_y: undefined,
+  stay_awake: true,
+  show_touches: false,
+  fullscreen: false,
+  always_on_top: false,
+  turn_screen_off: false,
+  enable_audio: false,
+  render_driver: "",
 }
 
 export const mockScrcpySessions: ScrcpySession[] = []

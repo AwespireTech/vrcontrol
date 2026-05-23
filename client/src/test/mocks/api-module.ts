@@ -10,6 +10,7 @@ import {
   mockIsolationDevices,
   mockPreference,
   mockRooms,
+  mockScrcpyConfig,
   mockScrcpySessions,
   mockScrcpySystemInfo,
   mockUsbDevices,
@@ -102,17 +103,24 @@ const actionApi = {
 
 const monitoringApi = {
   getStatus: (async () => ({ running: true }) satisfies MonitoringStatus) satisfies AsyncValue<MonitoringStatus>,
+  start: voidAsync,
+  stop: voidAsync,
+  setInterval: voidAsync,
+  runOnce: voidAsync,
 }
 
 const scrcpyApi = {
   getSystemInfo: (async () => mockScrcpySystemInfo) satisfies AsyncValue<typeof mockScrcpySystemInfo>,
+  getConfig: (async () => mockScrcpyConfig) satisfies AsyncValue<typeof mockScrcpyConfig>,
   getSessions: (async () => mockScrcpySessions) satisfies AsyncValue<typeof mockScrcpySessions>,
   refreshSessions: (async () => mockScrcpySessions) satisfies AsyncValue<typeof mockScrcpySessions>,
   stop: voidAsync,
+  updateConfig: voidAsync,
 }
 
 const preferenceApi = {
   get: (async () => mockPreference) satisfies AsyncValue<UserPreference>,
+  update: async (preference: Partial<UserPreference>) => ({ ...mockPreference, ...preference }),
 }
 
 export function createApiModuleMock(overrides: ApiModuleMockOverrides = {}) {

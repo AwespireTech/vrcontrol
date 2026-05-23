@@ -24,4 +24,14 @@ test("captures current UI across the main console routes", async ({ page }, test
   await expect(page.getByRole("heading", { name: "動作管理" })).toBeVisible()
   await expect(page.getByText("啟動 Home App")).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath("actions-current.png"), fullPage: true })
+
+  await page.goto("/monitoring")
+  await expect(page.getByRole("heading", { name: "監控中心" })).toBeVisible()
+  await expect(page.getByText("Quest 3 Demo")).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath("monitoring-current.png"), fullPage: true })
+
+  await page.goto("/settings")
+  await expect(page.getByRole("heading", { name: "系統設定" })).toBeVisible()
+  await expect(page.getByText("Scrcpy 螢幕鏡像")).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath("settings-current.png"), fullPage: true })
 })
