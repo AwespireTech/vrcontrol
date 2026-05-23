@@ -1,167 +1,60 @@
-import { useEffect, useState, useRef, useCallback } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { getDisplayName } from "@/lib/utils/device"
-import { actionApi, deviceApi, roomApi, scrcpyApi, preferenceApi } from "@/services/api"
 import {
-  ACTION_TYPES,
+  LuCircleAlert,
+  LuPencilLine,
+  LuTrash2,
+  LuUsb,
+} from "react-icons/lu"
+import { getDisplayName } from "@/lib/utils/device"
+import { deviceApi, preferenceApi, roomApi } from "@/services/api"
+import {
   DEVICE_STATUS,
-  type Action,
   type Device,
   type IsolationDevice,
   type USBDevice,
-  ScrcpySession,
-  ScrcpySystemInfo,
-  UserPreference,
+  type UserPreference,
 } from "@/services/api-types"
 import PageShell from "@/components/console/page-shell"
-import LiveStreamStage from "@/components/console/live-stream-stage"
-import type { LiveStreamLayout } from "@/components/console/live-stream-stage"
+import ListShell from "@/components/console/list-shell"
+import ConsoleField from "@/components/console/console-field"
+import ConsoleListRow from "@/components/console/console-list-row"
+import IconActionButton from "@/components/console/icon-action-button"
 import Button from "@/components/button"
 import {
   DEFAULT_BATCH_SIZE,
   DEFAULT_MAX_CONCURRENCY,
   DEFAULT_POLL_INTERVAL_SECONDS,
-  LIVE_VIEW_MAX_STREAMS,
 } from "@/environment"
-import LiveStreamTakeoverPlaceholder from "@/components/console/live-stream-takeover-placeholder"
-import {
-  createLiveStreamPopupChannel,
-  LIVE_STREAM_POPUP_BLOCKED_MESSAGE,
-  openLiveStreamPopupWindow,
-  postLiveStreamPopupMessage,
-  subscribeLiveStreamPopupChannel,
-  type LiveStreamPopupState,
-} from "@/lib/utils/live-stream-popup"
-import {
-  closeLiveStreamWindow,
-  openOrFocusLiveStreamWindow,
-  type LiveStreamWindowState,
-} from "@/lib/utils/live-stream-windows"
 
 type StatusErrorType = "idle" | "ok" | "timeout" | "adb-error"
+type IsolationDraft = { alias: string; roomId: string }
 
 export default function DevicesPage() {
   const navigate = useNavigate()
   const [devices, setDevices] = useState<Device[]>([])
   const [rooms, setRooms] = useState<Array<{ room_id: string; name: string }>>([])
   const [roomNameMap, setRoomNameMap] = useState<Map<string, string>>(new Map())
-  const [actions, setActions] = useState<Action[]>([])
-  const [selectedActionIds, setSelectedActionIds] = useState<Record<string, string>>({})
-  const [actionRunningIds, setActionRunningIds] = useState<Record<string, boolean>>({})
   const [isolationDevices, setIsolationDevices] = useState<IsolationDevice[]>([])
   const [usbDevices, setUSBDevices] = useState<USBDevice[]>([])
-  const [isolationDrafts, setIsolationDrafts] = useState<Record<string, { alias: string }>>({})
+  const [isolationDrafts, setIsolationDrafts] = useState<Record<string, IsolationDraft>>({})
   const [loading, setLoading] = useState(true)
   const [countdown, setCountdown] = useState(DEFAULT_POLL_INTERVAL_SECONDS)
   const [roomUpdatingIds, setRoomUpdatingIds] = useState<Record<string, boolean>>({})
   const [deviceActionPending, setDeviceActionPending] = useState<
-    Record<string, "connect" | "disconnect" | "monitor" | "delete" | "execute">
+    Record<string, "connect" | "disconnect" | "delete">
   >({})
   const [isolationPending, setIsolationPending] = useState<Record<string, "create" | "update">>({})
   const [usbActionPending, setUSBActionPending] = useState<Record<string, boolean>>({})
-  const [scrcpyStopPending, setScrcpyStopPending] = useState<Record<string, boolean>>({})
-  const [refreshScrcpyPending, setRefreshScrcpyPending] = useState(false)
-  const [liveWindows, setLiveWindows] = useState<LiveStreamWindowState[]>([])
-  const [liveStreamLayout, setLiveStreamLayout] = useState<LiveStreamLayout>("stack")
-  const [popupTakeoverActive, setPopupTakeoverActive] = useState(false)
-  const popupChannelRef = useRef<BroadcastChannel | null>(null)
-
-  // Scrcpy 相關狀態
-  const [scrcpySystemInfo, setScrcpySystemInfo] = useState<ScrcpySystemInfo | null>(null)
-  const [scrcpySessions, setScrcpySessions] = useState<ScrcpySession[]>([])
-
-  // 使用者偏好與狀態錯誤追蹤
   const [preference, setPreference] = useState<UserPreference | null>(null)
   const [statusErrors, setStatusErrors] = useState<Record<string, StatusErrorType>>({})
 
-  // 輪詢控制
   const statusIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-
-  // 避免 useCallback 依賴 devices 導致輪詢 interval 反覆重設
   const devicesRef = useRef<Device[]>([])
+
   useEffect(() => {
     devicesRef.current = devices
   }, [devices])
-
-  const buildLiveStreamPopupState = useCallback((): LiveStreamPopupState => {
-    return {
-      source: "devices",
-      layout: liveStreamLayout,
-      takeoverActive: popupTakeoverActive,
-      streams: popupTakeoverActive
-        ? liveWindows.map((entry) => ({
-            deviceId: entry.deviceId,
-            title: entry.title,
-            subtitle: entry.subtitle,
-          }))
-        : [],
-      timestamp: Date.now(),
-    }
-  }, [liveStreamLayout, liveWindows, popupTakeoverActive])
-
-  useEffect(() => {
-    const channel = createLiveStreamPopupChannel()
-    popupChannelRef.current = channel
-
-    const unsubscribe = subscribeLiveStreamPopupChannel(channel, (message) => {
-      if (message.type === "popup-ready") {
-        if (message.source && message.source !== "devices") {
-          return
-        }
-
-        postLiveStreamPopupMessage(channel, {
-          type: "init",
-          payload: buildLiveStreamPopupState(),
-        })
-        return
-      }
-
-      if (message.type === "takeover-requested") {
-        if (message.source && message.source !== "devices") {
-          return
-        }
-
-        setPopupTakeoverActive(true)
-        return
-      }
-
-      if (message.type === "popup-closing") {
-        if (message.source && message.source !== "devices") {
-          return
-        }
-
-        setPopupTakeoverActive(false)
-      }
-    })
-
-    return () => {
-      unsubscribe()
-      channel?.close()
-    }
-  }, [buildLiveStreamPopupState])
-
-  useEffect(() => {
-    postLiveStreamPopupMessage(popupChannelRef.current, {
-      type: "state-update",
-      payload: buildLiveStreamPopupState(),
-    })
-  }, [buildLiveStreamPopupState])
-
-  useEffect(() => {
-    const handlePageHide = () => {
-      postLiveStreamPopupMessage(popupChannelRef.current, {
-        type: "source-unavailable",
-        source: "devices",
-        timestamp: Date.now(),
-      })
-    }
-
-    window.addEventListener("pagehide", handlePageHide)
-
-    return () => {
-      window.removeEventListener("pagehide", handlePageHide)
-    }
-  }, [])
 
   const loadDevices = useCallback(async () => {
     try {
@@ -186,9 +79,13 @@ export default function DevicesPage() {
       setIsolationDrafts((prev) => {
         const next = { ...prev }
         isolationData.forEach((entry) => {
+          const matchedDevice = devicesData.find(
+            (device) => device.device_id === getDeviceIdFromClient(entry.client_id),
+          )
           if (!next[entry.client_id]) {
             next[entry.client_id] = {
-              alias: entry.client_id,
+              alias: matchedDevice ? getDisplayName(matchedDevice) : entry.client_id,
+              roomId: matchedDevice?.room_id || "",
             }
           }
         })
@@ -205,8 +102,8 @@ export default function DevicesPage() {
     if (!preference) return
 
     const onlineDeviceIds = devicesRef.current
-      .filter((d) => d.status === "online")
-      .map((d) => d.device_id)
+      .filter((device) => device.status === DEVICE_STATUS.ONLINE)
+      .map((device) => device.device_id)
 
     if (onlineDeviceIds.length === 0) return
 
@@ -220,39 +117,39 @@ export default function DevicesPage() {
         ? preference.max_concurrency
         : DEFAULT_MAX_CONCURRENCY
 
-    for (let i = 0; i < onlineDeviceIds.length; i += batchSize) {
-      const batchIds = onlineDeviceIds.slice(i, i + batchSize)
+    for (let index = 0; index < onlineDeviceIds.length; index += batchSize) {
+      const batchIds = onlineDeviceIds.slice(index, index + batchSize)
 
       try {
         const result = await deviceApi.getStatusBatch(batchIds, maxWorkers)
 
         if (result.success && result.results) {
           setDevices((prevDevices) => {
-            const newDevices = [...prevDevices]
+            const nextDevices = [...prevDevices]
             result.results.forEach((statusResult) => {
-              const deviceIndex = newDevices.findIndex(
-                (d) => d.device_id === statusResult.device_id,
+              const deviceIndex = nextDevices.findIndex(
+                (device) => device.device_id === statusResult.device_id,
               )
-              if (deviceIndex >= 0) {
-                if (statusResult.error) {
-                  // 分類錯誤：含 timeout 為超時，其他為 ADB 錯誤
-                  const errorType = statusResult.error.toLowerCase().includes("timeout")
-                    ? "timeout"
-                    : "adb-error"
-                  setStatusErrors((prev) => ({ ...prev, [statusResult.device_id]: errorType }))
-                } else {
-                  // 成功獲取狀態
-                  newDevices[deviceIndex] = {
-                    ...newDevices[deviceIndex],
-                    battery: statusResult.battery,
-                    temperature: statusResult.temperature,
-                    is_charging: statusResult.is_charging,
-                  }
-                  setStatusErrors((prev) => ({ ...prev, [statusResult.device_id]: "ok" }))
-                }
+              if (deviceIndex < 0) return
+
+              if (statusResult.error) {
+                const errorType = statusResult.error.toLowerCase().includes("timeout")
+                  ? "timeout"
+                  : "adb-error"
+                setStatusErrors((prev) => ({ ...prev, [statusResult.device_id]: errorType }))
+                return
               }
+
+              nextDevices[deviceIndex] = {
+                ...nextDevices[deviceIndex],
+                battery: statusResult.battery,
+                temperature: statusResult.temperature,
+                is_charging: statusResult.is_charging,
+              }
+              setStatusErrors((prev) => ({ ...prev, [statusResult.device_id]: "ok" }))
             })
-            return newDevices
+
+            return nextDevices
           })
         }
       } catch (error) {
@@ -261,33 +158,13 @@ export default function DevicesPage() {
     }
   }, [preference])
 
-  const loadScrcpyInfo = useCallback(async () => {
-    try {
-      const info = await scrcpyApi.getSystemInfo()
-      setScrcpySystemInfo(info)
-
-      if (info.installed) {
-        const sessions = await scrcpyApi.getSessions()
-        setScrcpySessions(sessions)
-      }
-    } catch (error) {
-      console.error("Failed to load scrcpy info:", error)
-    }
-  }, [])
-
-  const refreshPageData = useCallback(async () => {
-    await Promise.all([loadDevices(), loadScrcpyInfo()])
-  }, [loadDevices, loadScrcpyInfo])
-
   useEffect(() => {
     const init = async () => {
-      // 載入偏好設定
       try {
         const pref = await preferenceApi.get()
         setPreference(pref)
       } catch (error) {
         console.error("Failed to load preference:", error)
-        // 使用預設值
         setPreference({
           poll_interval_sec: DEFAULT_POLL_INTERVAL_SECONDS,
           batch_size: DEFAULT_BATCH_SIZE,
@@ -298,32 +175,18 @@ export default function DevicesPage() {
         })
       }
 
-      // 載入設備列表
       await loadDevices()
-      await loadActions()
-      await loadScrcpyInfo()
     }
 
     init()
-  }, [loadDevices, loadScrcpyInfo])
+  }, [loadDevices])
 
-  const loadActions = async () => {
-    try {
-      const actionsData = await actionApi.getAll()
-      setActions(actionsData)
-    } catch (error) {
-      console.error("Failed to load actions:", error)
-    }
-  }
-
-  // 當設備列表或偏好設定更新時，執行一次狀態更新
   useEffect(() => {
     if (devices.length > 0 && preference) {
       refreshOnlineStatuses()
     }
   }, [devices.length, preference, refreshOnlineStatuses])
 
-  // 設定輪詢和可見性監聽
   useEffect(() => {
     if (!preference) return
 
@@ -332,30 +195,27 @@ export default function DevicesPage() {
         ? preference.poll_interval_sec
         : DEFAULT_POLL_INTERVAL_SECONDS
 
-    // Option B：每次進入頁面（mount）就重置倒數
     setCountdown(pollIntervalSeconds)
 
-    // 設定狀態輪詢（使用偏好設定的間隔）
     if (statusIntervalRef.current) {
       clearInterval(statusIntervalRef.current)
     }
+
     statusIntervalRef.current = setInterval(() => {
-      if (!document.hidden) {
-        refreshOnlineStatuses()
-        refreshPageData()
-        setCountdown(pollIntervalSeconds)
-      }
+      if (document.hidden) return
+      refreshOnlineStatuses()
+      loadDevices()
+      setCountdown(pollIntervalSeconds)
     }, pollIntervalSeconds * 1000)
 
     const handleVisibilityChange = () => {
       if (document.hidden) return
-      refreshPageData()
+      loadDevices()
       setCountdown(pollIntervalSeconds)
     }
 
     document.addEventListener("visibilitychange", handleVisibilityChange)
 
-    // 倒數計時器（UI 顯示用）
     const countdownInterval = setInterval(() => {
       if (document.hidden) return
       setCountdown((prev) => (prev > 0 ? prev - 1 : 0))
@@ -366,14 +226,19 @@ export default function DevicesPage() {
       clearInterval(countdownInterval)
       document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
-  }, [preference, refreshOnlineStatuses, refreshPageData])
+  }, [loadDevices, preference, refreshOnlineStatuses])
+
+  const sortedRooms = useMemo(
+    () => rooms.slice().sort((left, right) => left.name.localeCompare(right.name)),
+    [rooms],
+  )
 
   const getStatusText = (status: Device["status"]) => {
     switch (status) {
       case DEVICE_STATUS.ONLINE:
-        return "在線"
+        return "已連線"
       case DEVICE_STATUS.OFFLINE:
-        return "離線"
+        return "未連線"
       case DEVICE_STATUS.CONNECTING:
         return "連線中"
       case DEVICE_STATUS.ERROR:
@@ -393,8 +258,6 @@ export default function DevicesPage() {
         return "ui-badge-warning"
       case DEVICE_STATUS.ERROR:
         return "ui-badge-danger"
-      case DEVICE_STATUS.OFFLINE:
-      case DEVICE_STATUS.DISCONNECTED:
       default:
         return "ui-badge-muted"
     }
@@ -408,7 +271,6 @@ export default function DevicesPage() {
 
   const getWsStatusBadgeClass = (status?: Device["ws_status"]) => {
     if (status === "connected") return "ui-badge-success"
-    if (status === "disconnected") return "ui-badge-muted"
     return "ui-badge-muted"
   }
 
@@ -417,53 +279,60 @@ export default function DevicesPage() {
     return device.tcpip_port ? `已啟用 (${device.tcpip_port})` : "已啟用"
   }
 
-  const getActionTypeText = (type: string) => {
-    switch (type) {
-      case ACTION_TYPES.WAKE_UP:
-        return "喚醒"
-      case ACTION_TYPES.SLEEP:
-        return "休眠"
-      case ACTION_TYPES.LAUNCH_APP:
-        return "啟動應用"
-      case ACTION_TYPES.STOP_APP:
-        return "停止應用"
-      case ACTION_TYPES.RESTART_APP:
-        return "重啟應用"
-      case ACTION_TYPES.KEEP_AWAKE:
-        return "保持喚醒"
-      case ACTION_TYPES.SEND_KEY:
-        return "發送按鍵"
-      case ACTION_TYPES.INSTALL_APK:
-        return "安裝 APK"
-      default:
-        return type
-    }
-  }
-
   const isValidClientId = (clientId: string) => /^[0-9A-Za-z]{8}$/.test(clientId)
 
   const getDeviceIdFromClient = (clientId: string) => `DEV-${clientId.toUpperCase()}`
 
-  const handleIsolationDraftChange = (clientId: string, value: string) => {
+  const handleIsolationDraftChange = (
+    clientId: string,
+    field: keyof IsolationDraft,
+    value: string,
+  ) => {
     setIsolationDrafts((prev) => ({
       ...prev,
       [clientId]: {
-        alias: value,
+        ...(prev[clientId] || { alias: clientId, roomId: "" }),
+        [field]: value,
       },
     }))
   }
 
+  const syncDeviceRoomAssignment = useCallback(
+    async (deviceId: string, currentRoomId: string, nextRoomId: string) => {
+      if (nextRoomId === currentRoomId) return
+
+      if (nextRoomId === "") {
+        if (currentRoomId) {
+          await roomApi.removeDevice(currentRoomId, deviceId)
+        }
+        return
+      }
+
+      if (currentRoomId && currentRoomId !== nextRoomId) {
+        await roomApi.removeDevice(currentRoomId, deviceId)
+      }
+      await roomApi.addDevice(nextRoomId, deviceId)
+    },
+    [],
+  )
+
   const handleCreateFromIsolation = async (entry: IsolationDevice) => {
     if (!entry.valid || !isValidClientId(entry.client_id)) return
     if (isolationPending[entry.client_id]) return
+
     const draft = isolationDrafts[entry.client_id]
     setIsolationPending((prev) => ({ ...prev, [entry.client_id]: "create" }))
     try {
-      await deviceApi.create({
+      const createdDevice = await deviceApi.create({
         device_id: entry.client_id,
         alias: draft?.alias || entry.client_id,
         ip: entry.ip,
       })
+
+      if (draft?.roomId) {
+        await syncDeviceRoomAssignment(createdDevice.device_id, "", draft.roomId)
+      }
+
       await loadDevices()
       alert("設備建立成功")
     } catch (error) {
@@ -481,12 +350,18 @@ export default function DevicesPage() {
   const handleUpdateFromIsolation = async (entry: IsolationDevice) => {
     if (!entry.valid || !isValidClientId(entry.client_id)) return
     if (isolationPending[entry.client_id]) return
+
     const deviceId = getDeviceIdFromClient(entry.client_id)
+    const draft = isolationDrafts[entry.client_id]
     setIsolationPending((prev) => ({ ...prev, [entry.client_id]: "update" }))
     try {
-      await deviceApi.patch(deviceId, {
-        ip: entry.ip,
-      })
+      await deviceApi.patch(deviceId, { ip: entry.ip })
+
+      const matchedDevice = devicesRef.current.find((device) => device.device_id === deviceId)
+      if (matchedDevice) {
+        await syncDeviceRoomAssignment(deviceId, matchedDevice.room_id || "", draft?.roomId || "")
+      }
+
       await loadDevices()
       alert("設備資訊更新成功")
     } catch (error) {
@@ -530,71 +405,23 @@ export default function DevicesPage() {
       case "max_retries_exhausted":
         return "自動重連已達上限"
       case "adb_not_found":
-        return "找不到 ADB（請確認已安裝並加入 PATH）"
+        return "找不到 ADB"
       case "adb_connect_failed":
-        return "ADB 連線失敗（重試後停止）"
+        return "ADB 連線失敗"
       case "unknown":
-        return "未知錯誤（重試後停止）"
+        return "未知錯誤"
       default:
         return ""
     }
   }
 
-  const renderStatusValue = (status: StatusErrorType, value?: number | string, unit?: string) => {
-    if (status === "idle") return <span className="text-foreground/50">-</span>
-    if (status === "timeout") {
-      return (
-        <span className="text-foreground/50" title="狀態查詢逾時">
-          ?
-        </span>
-      )
-    }
-    if (status === "adb-error") {
-      return (
-        <span className="text-foreground/50" title="ADB 查詢失敗">
-          X
-        </span>
-      )
-    }
-    if (value === undefined || value === null) return <span className="text-foreground/50">-</span>
-    return (
-      <span className="text-foreground">
-        {value}
-        {unit ?? ""}
-      </span>
-    )
-  }
-
   const handleConnect = async (deviceId: string) => {
     if (deviceActionPending[deviceId]) return
+
     setDeviceActionPending((prev) => ({ ...prev, [deviceId]: "connect" }))
     try {
       await deviceApi.connect(deviceId)
       await loadDevices()
-
-      // 連線成功後立即查詢狀態
-      try {
-        const status = await deviceApi.getStatus(deviceId)
-        setDevices((prevDevices) =>
-          prevDevices.map((d) =>
-            d.device_id === deviceId
-              ? {
-                  ...d,
-                  battery: status.battery,
-                  temperature: status.temperature,
-                  is_charging: status.is_charging,
-                }
-              : d,
-          ),
-        )
-        setStatusErrors((prev) => ({ ...prev, [deviceId]: "ok" }))
-      } catch (statusError: unknown) {
-        console.error("Failed to get device status after connect:", statusError)
-        const message = statusError instanceof Error ? statusError.message : String(statusError)
-        // 分類錯誤
-        const errorType = message.toLowerCase().includes("timeout") ? "timeout" : "adb-error"
-        setStatusErrors((prev) => ({ ...prev, [deviceId]: errorType }))
-      }
     } catch (error) {
       console.error("Failed to connect device:", error)
       alert("連線失敗，請稍後再試")
@@ -609,13 +436,14 @@ export default function DevicesPage() {
 
   const handleDisconnect = async (deviceId: string) => {
     if (deviceActionPending[deviceId]) return
+
     setDeviceActionPending((prev) => ({ ...prev, [deviceId]: "disconnect" }))
     try {
       await deviceApi.disconnect(deviceId)
       await loadDevices()
     } catch (error) {
       console.error("Failed to disconnect device:", error)
-      alert("斷開失敗，請稍後再試")
+      alert("中斷失敗，請稍後再試")
     } finally {
       setDeviceActionPending((prev) => {
         const next = { ...prev }
@@ -631,16 +459,7 @@ export default function DevicesPage() {
 
     setRoomUpdatingIds((prev) => ({ ...prev, [device.device_id]: true }))
     try {
-      if (nextRoomId === "") {
-        if (currentRoomId) {
-          await roomApi.removeDevice(currentRoomId, device.device_id)
-        }
-      } else {
-        if (currentRoomId && currentRoomId !== nextRoomId) {
-          await roomApi.removeDevice(currentRoomId, device.device_id)
-        }
-        await roomApi.addDevice(nextRoomId, device.device_id)
-      }
+      await syncDeviceRoomAssignment(device.device_id, currentRoomId, nextRoomId)
       await loadDevices()
     } catch (error) {
       console.error("Failed to assign room:", error)
@@ -650,36 +469,10 @@ export default function DevicesPage() {
     }
   }
 
-  const handleExecuteAction = async (deviceId: string) => {
-    const actionId = selectedActionIds[deviceId]
-    if (!actionId) return
-    if (deviceActionPending[deviceId]) return
-
-    setDeviceActionPending((prev) => ({ ...prev, [deviceId]: "execute" }))
-    setActionRunningIds((prev) => ({ ...prev, [deviceId]: true }))
-    try {
-      const result = await actionApi.executeBatch({
-        action_id: actionId,
-        device_ids: [deviceId],
-        max_workers: 1,
-      })
-      alert(`執行完成：成功 ${result.success_count}、失敗 ${result.failed_count}`)
-    } catch (error) {
-      console.error("Failed to execute action:", error)
-      alert("執行動作失敗，請稍後再試")
-    } finally {
-      setActionRunningIds((prev) => ({ ...prev, [deviceId]: false }))
-      setDeviceActionPending((prev) => {
-        const next = { ...prev }
-        delete next[deviceId]
-        return next
-      })
-    }
-  }
-
   const handleDelete = async (deviceId: string) => {
     if (!confirm("確定要刪除這個設備嗎？")) return
     if (deviceActionPending[deviceId]) return
+
     setDeviceActionPending((prev) => ({ ...prev, [deviceId]: "delete" }))
     try {
       await deviceApi.delete(deviceId)
@@ -696,117 +489,6 @@ export default function DevicesPage() {
     }
   }
 
-  const handleMonitor = async (deviceId: string) => {
-    if (!scrcpySystemInfo?.installed) {
-      alert("Scrcpy 尚未安裝，請先安裝 Scrcpy")
-      return
-    }
-
-    if (deviceActionPending[deviceId]) return
-    setDeviceActionPending((prev) => ({ ...prev, [deviceId]: "monitor" }))
-
-    try {
-      await scrcpyApi.start(deviceId)
-      alert("已啟動監看視窗")
-      await loadScrcpyInfo()
-    } catch (error: unknown) {
-      console.error("Failed to start scrcpy:", error)
-      const message = error instanceof Error ? error.message : ""
-      alert(message || "啟動監看失敗，請稍後再試")
-    } finally {
-      setDeviceActionPending((prev) => {
-        const next = { ...prev }
-        delete next[deviceId]
-        return next
-      })
-    }
-  }
-
-  const handleOpenLiveStream = (deviceId: string) => {
-    const device = devices.find((entry) => entry.device_id === deviceId)
-    if (!device) {
-      alert("找不到設備資料，請重新整理後再試")
-      return
-    }
-
-    if (device.status !== DEVICE_STATUS.ONLINE) {
-      alert("設備需處於在線狀態才能開啟即時畫面")
-      return
-    }
-
-    let reachedLimit = false
-    setLiveWindows((prev) => {
-      const result = openOrFocusLiveStreamWindow(
-        prev,
-        {
-          deviceId: device.device_id,
-          title: getDisplayName(device),
-          subtitle: `${device.ip}:${device.port}`,
-        },
-        { width: window.innerWidth, height: window.innerHeight },
-        LIVE_VIEW_MAX_STREAMS,
-      )
-      reachedLimit = result.reachedLimit
-      return result.windows
-    })
-
-    if (reachedLimit) {
-      alert(`即時畫面初版最多同時開啟 ${LIVE_VIEW_MAX_STREAMS} 台設備`)
-    }
-  }
-
-  const handleCloseLiveStream = (deviceId: string) => {
-    setLiveWindows((prev) => closeLiveStreamWindow(prev, deviceId))
-  }
-
-  const handleOpenLiveStreamPopup = () => {
-    const popup = openLiveStreamPopupWindow({
-      source: "devices",
-      layout: liveStreamLayout,
-    })
-
-    if (!popup) {
-      alert(LIVE_STREAM_POPUP_BLOCKED_MESSAGE)
-    }
-  }
-
-  const handleReturnLiveStreamInline = () => {
-    setPopupTakeoverActive(false)
-    postLiveStreamPopupMessage(popupChannelRef.current, {
-      type: "takeover-released",
-      source: "devices",
-      timestamp: Date.now(),
-    })
-  }
-
-  const handleStopScrcpy = async (deviceId: string) => {
-    if (scrcpyStopPending[deviceId]) return
-    setScrcpyStopPending((prev) => ({ ...prev, [deviceId]: true }))
-    try {
-      await scrcpyApi.stop(deviceId)
-      alert("已停止監看")
-      await loadScrcpyInfo()
-    } catch (error) {
-      console.error("Failed to stop scrcpy:", error)
-      alert("停止監看失敗，請稍後再試")
-    } finally {
-      setScrcpyStopPending((prev) => ({ ...prev, [deviceId]: false }))
-    }
-  }
-
-  const handleRefreshSessions = async () => {
-    if (refreshScrcpyPending) return
-    setRefreshScrcpyPending(true)
-    try {
-      const sessions = await scrcpyApi.refreshSessions()
-      setScrcpySessions(sessions)
-    } catch (error) {
-      console.error("Failed to refresh sessions:", error)
-    } finally {
-      setRefreshScrcpyPending(false)
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -817,495 +499,94 @@ export default function DevicesPage() {
 
   return (
     <PageShell
-      title="設備管理"
+      title="Devices 裝置"
       subtitle={`下次更新 ${countdown} 秒`}
-      actions={
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => navigate("/devices/new")}
-            className="ui-btn ui-btn-md ui-btn-primary"
-          >
-            + 建立設備
-          </button>
-        </div>
-      }
+      eyebrow=""
+      maxWidth="lg"
+      headerVariant="plain"
+      titleVariant="compact"
     >
-      {devices.length === 0 ? (
-        <div className="surface-card p-10 text-center text-foreground/70">尚無設備</div>
-      ) : (
-        <div className="surface-card overflow-hidden">
-          <div className="grid grid-cols-12 gap-3 border-b border-border bg-surface/50 px-4 py-3 text-xs text-foreground/60">
-            <div className="col-span-2">設備</div>
-            <div className="col-span-2">連線</div>
-            <div className="col-span-1">電量 / 溫度</div>
-            <div className="col-span-2">房間</div>
-            <div className="col-span-2">動作</div>
-            <div className="col-span-3 text-right">操作</div>
+      {isolationDevices.length > 0 ? (
+        <section className="devices-alert-shell">
+          <div className="devices-alert-heading">
+            <LuCircleAlert className="h-4 w-4" />
+            <div className="text-[13px]">偵測到新裝置</div>
           </div>
-          {devices.map((device) => {
-            const isOnline = device.status === DEVICE_STATUS.ONLINE
-            const isConnecting = device.status === DEVICE_STATUS.CONNECTING
-            const statusErrorType = statusErrors[device.device_id] || "idle"
-            const disabledReasonText = getAutoReconnectDisabledReasonText(
-              device.auto_reconnect_disabled_reason,
-            )
-            const isActionReady = isOnline && !actionRunningIds[device.device_id]
-            const pendingAction = deviceActionPending[device.device_id]
-            const isDevicePending = !!pendingAction
 
-            return (
-              <div
-                key={device.device_id}
-                className="grid grid-cols-12 items-start gap-3 border-b border-border px-4 py-3 transition-colors last:border-b-0 hover:bg-surface/40"
-              >
-                <div className="col-span-2">
-                  <div className="font-semibold text-foreground">{getDisplayName(device)}</div>
-                  <div className="font-mono text-xs text-foreground/60">
-                    {device.ip}:{device.port}
-                  </div>
-                  <div className="font-mono text-xs text-foreground/50">{device.device_id}</div>
-                  {disabledReasonText ? (
-                    <div className="mt-1 text-xs text-warning">
-                      {disabledReasonText}
-                      {device.auto_reconnect_last_error ? (
-                        <span
-                          className="ml-2 text-foreground/60"
-                          title={device.auto_reconnect_last_error}
-                        >
-                          （詳情）
-                        </span>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-                <div className="col-span-2">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="w-9 text-[11px] uppercase tracking-wide text-foreground/50">
-                        ADB
-                      </span>
-                      <span className={`ui-badge ${getAdbStatusBadgeClass(device.status)}`}>
-                        {getStatusText(device.status)}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-9 text-[11px] uppercase tracking-wide text-foreground/50">
-                        WS
-                      </span>
-                      <span className={`ui-badge ${getWsStatusBadgeClass(device.ws_status)}`}>
-                        {getWsStatusText(device.ws_status)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="col-span-1 text-xs text-foreground/70">
-                  <div>電量：{renderStatusValue(statusErrorType, device.battery, "%")}</div>
-                  <div>溫度：{renderStatusValue(statusErrorType, device.temperature, "°C")}</div>
-                </div>
-                <div className="col-span-2 text-xs text-foreground/70">
-                  {device.room_id ? (
-                    <button
-                      onClick={() => navigate(`/rooms/${device.room_id}/control`)}
-                      className="group cursor-pointer text-left"
-                    >
-                      <div className="font-semibold text-foreground group-hover:underline">
-                        {roomNameMap.get(device.room_id) || device.room_id}
-                      </div>
-                      <div className="font-mono text-[11px] text-foreground/50 group-hover:text-foreground/70">
-                        {device.room_id}
-                      </div>
-                    </button>
-                  ) : (
-                    <div className="font-semibold text-foreground/60">未指派</div>
-                  )}
-                  <select
-                    value={device.room_id || ""}
-                    onChange={(e) => handleAssignRoom(device, e.target.value)}
-                    disabled={roomUpdatingIds[device.device_id]}
-                    className="ui-select mt-2 w-11/12 px-2 py-1 text-[11px]"
-                  >
-                    <option value="">未指派</option>
-                    {rooms
-                      .slice()
-                      .sort((a, b) => a.name.localeCompare(b.name))
-                      .map((room) => (
-                        <option key={room.room_id} value={room.room_id}>
-                          {room.name} · {room.room_id}
-                        </option>
-                      ))}
-                  </select>
-                </div>
-                <div className="col-span-2">
-                  <div className="mt-1 flex items-center gap-2">
-                    <select
-                      value={selectedActionIds[device.device_id] || ""}
-                      onChange={(e) =>
-                        setSelectedActionIds((prev) => ({
-                          ...prev,
-                          [device.device_id]: e.target.value,
-                        }))
-                      }
-                      disabled={!isOnline}
-                      className="ui-select w-2/3 px-2 py-1 text-[11px]"
-                    >
-                      <option value="">選擇動作</option>
-                      {actions
-                        .slice()
-                        .sort((a, b) => a.name.localeCompare(b.name))
-                        .map((action) => (
-                          <option key={action.action_id} value={action.action_id}>
-                            {action.name} · {getActionTypeText(action.action_type)}
-                          </option>
-                        ))}
-                    </select>
-                    <Button
-                      onClick={() => handleExecuteAction(device.device_id)}
-                      disabled={
-                        !isActionReady || !selectedActionIds[device.device_id] || isDevicePending
-                      }
-                      loading={pendingAction === "execute"}
-                      className="ui-btn-xs ui-btn-primary"
-                    >
-                      執行
-                    </Button>
-                  </div>
-                </div>
-                <div className="col-span-3 flex flex-wrap items-start justify-end gap-2">
-                  {!isOnline && !isConnecting && (
-                    <Button
-                      onClick={() => handleConnect(device.device_id)}
-                      className="ui-btn-xs ui-btn-primary"
-                      loading={pendingAction === "connect"}
-                      disabled={isDevicePending}
-                    >
-                      連線
-                    </Button>
-                  )}
-                  {isOnline && (
-                    <>
-                      <Button
-                        onClick={() => handleDisconnect(device.device_id)}
-                        className="ui-btn-xs ui-btn-danger"
-                        loading={pendingAction === "disconnect"}
-                        disabled={isDevicePending}
-                      >
-                        斷開
-                      </Button>
-                    </>
-                  )}
-                  {isOnline && (
-                    <Button
-                      onClick={() => handleMonitor(device.device_id)}
-                      disabled={!scrcpySystemInfo?.installed || isDevicePending}
-                      loading={pendingAction === "monitor"}
-                      className={`ui-btn-xs ${
-                        scrcpySystemInfo?.installed
-                          ? "ui-btn-accent"
-                          : "cursor-not-allowed bg-muted/50 text-foreground/50"
-                      }`}
-                      title={scrcpySystemInfo?.installed ? "啟動螢幕監看" : "Scrcpy 未安裝"}
-                    >
-                      監看
-                    </Button>
-                  )}
-                  {isOnline && (
-                    <Button
-                      onClick={() => handleOpenLiveStream(device.device_id)}
-                      disabled={isDevicePending}
-                      className="ui-btn-xs ui-btn-outline"
-                      title="在頁面中開啟即時畫面"
-                    >
-                      即時畫面
-                    </Button>
-                  )}
-                  <button
-                    onClick={() => navigate(`/devices/${device.device_id}`)}
-                    className="ui-btn ui-btn-xs ui-btn-muted"
-                  >
-                    編輯
-                  </button>
-                  <Button
-                    onClick={() => handleDelete(device.device_id)}
-                    className="ui-btn-xs ui-btn-danger"
-                    loading={pendingAction === "delete"}
-                    disabled={isDevicePending}
-                  >
-                    刪除
-                  </Button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      <div className="surface-card p-4 md:p-6">
-        <div className="live-stream-section__header">
-          <div>
-            <h2 className="text-xl font-bold text-foreground">即時串流</h2>
-            <p className="text-sm text-foreground/60">
-              目前採頁面內顯示，可在堆疊與網格版型間切換，方便比對多台設備畫面。
-            </p>
-          </div>
-          <div className="live-stream-section__toolbar">
-            <span className="ui-badge ui-badge-primary">
-              {liveWindows.length} / {LIVE_VIEW_MAX_STREAMS}
-            </span>
-            <div className="live-stream-layout-toggle" role="group" aria-label="即時串流排版">
-              <button
-                type="button"
-                onClick={() => setLiveStreamLayout("stack")}
-                className={`ui-btn ui-btn-xs ${
-                  liveStreamLayout === "stack" ? "ui-btn-primary" : "ui-btn-muted"
-                }`}
-              >
-                堆疊
-              </button>
-              <button
-                type="button"
-                onClick={() => setLiveStreamLayout("grid")}
-                className={`ui-btn ui-btn-xs ${
-                  liveStreamLayout === "grid" ? "ui-btn-primary" : "ui-btn-muted"
-                }`}
-              >
-                網格
-              </button>
-            </div>
-            <button
-              type="button"
-              onClick={handleOpenLiveStreamPopup}
-              className="ui-btn ui-btn-xs ui-btn-outline"
-            >
-              在新視窗開啟
-            </button>
-            <button
-              type="button"
-              onClick={() => setLiveWindows([])}
-              className="ui-btn ui-btn-xs ui-btn-muted"
-              disabled={liveWindows.length === 0}
-            >
-              全部關閉
-            </button>
-          </div>
-        </div>
-
-        {popupTakeoverActive ? (
-          <LiveStreamTakeoverPlaceholder
-            description="外部視窗已接管設備管理頁的即時串流。你仍可在本頁開啟或關閉設備，變更會同步到外部視窗。"
-            onFocusPopup={handleOpenLiveStreamPopup}
-            onReturnInline={handleReturnLiveStreamInline}
-          />
-        ) : liveWindows.length > 0 ? (
-          <LiveStreamStage
-            windows={liveWindows}
-            layout={liveStreamLayout}
-            onClose={handleCloseLiveStream}
-          />
-        ) : (
-          <div className="live-stream-empty-state">
-            從設備列點擊「即時畫面」後，串流會顯示在這裡。
-          </div>
-        )}
-      </div>
-
-      {usbDevices.length > 0 && (
-        <div className="surface-card p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-foreground">USB 連線裝置</h2>
-            <span className="text-xs text-foreground/60">{usbDevices.length} 台</span>
-          </div>
-          <div className="surface-card overflow-hidden">
-            <div className="grid grid-cols-12 gap-3 border-b border-border bg-surface/50 px-4 py-3 text-xs text-foreground/60">
-              <div className="col-span-5">裝置序列號</div>
-              <div className="col-span-3">型號 / IP</div>
-              <div className="col-span-2">TCPIP 模式</div>
-              <div className="col-span-2 text-right">操作</div>
-            </div>
-            {usbDevices.map((device) => (
-              <div
-                key={device.serial}
-                className="grid grid-cols-12 items-center gap-3 border-b border-border px-4 py-3 transition-colors last:border-b-0 hover:bg-surface/40"
-              >
-                <div className="col-span-5">
-                  <div className="font-mono text-sm text-foreground">{device.serial}</div>
-                  <div className="text-xs text-foreground/50">{device.connection_type.toUpperCase()}</div>
-                </div>
-                <div className="col-span-3 text-sm text-foreground/70">
-                  <div>{device.model || "—"}</div>
-                  <div className="font-mono text-xs text-foreground/50">IP: {device.ip || "—"}</div>
-                </div>
-                <div className="col-span-2">
-                  <span
-                    className={`ui-badge ${device.tcpip_enabled ? "ui-badge-success" : "ui-badge-muted"}`}
-                  >
-                    {getUSBTcpipStatusText(device)}
-                  </span>
-                </div>
-                <div className="col-span-2 flex justify-end">
-                  <Button
-                    onClick={() => handleEnableUSBTCPIP(device.serial)}
-                    className="ui-btn-xs ui-btn-primary"
-                    loading={!!usbActionPending[device.serial]}
-                    disabled={device.tcpip_enabled || !!usbActionPending[device.serial]}
-                  >
-                    啟用 TCPIP
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="surface-card p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-foreground">隔離區連線</h2>
-          <span className="text-xs text-foreground/60">{isolationDevices.length} 筆</span>
-        </div>
-        {isolationDevices.length === 0 ? (
-          <div className="text-center text-foreground/60">目前沒有隔離中的連線</div>
-        ) : (
           <div className="space-y-3">
             {isolationDevices.map((entry) => {
               const valid = entry.valid && isValidClientId(entry.client_id)
-              const deviceId = valid ? getDeviceIdFromClient(entry.client_id) : ""
               const matched = entry.id_matched && !entry.ip_matched && valid
               const draft = isolationDrafts[entry.client_id] || {
                 alias: entry.client_id,
+                roomId: "",
               }
-              return (
-                <div key={entry.client_id} className="surface-panel p-4">
-                  <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
-                    <div className="lg:col-span-4">
-                      <div className="text-sm text-foreground/60">Client ID</div>
-                      <div className="font-mono text-foreground">{entry.client_id}</div>
-                      <div className="mt-1 text-xs text-foreground/50">IP: {entry.ip || "—"}</div>
-                      {entry.device_id && (
-                        <div className="text-xs text-foreground/50">
-                          對應設備: {entry.device_id}
-                        </div>
-                      )}
-                      <div className="text-xs text-foreground/50">
-                        最近連線:{" "}
-                        {entry.last_seen ? new Date(entry.last_seen).toLocaleString() : "—"}
-                      </div>
-                      {!valid && (
-                        <div className="mt-2 text-xs text-danger">
-                          格式錯誤：需為 8 位英數（A-Z, 0-9）
-                        </div>
-                      )}
-                      {valid && entry.id_matched && !entry.ip_matched && (
-                        <div className="mt-2 text-xs text-warning">
-                          ID 相符但 IP 不一致，可更新現有設備
-                        </div>
-                      )}
-                      {valid && !entry.id_matched && (
-                        <div className="mt-2 text-xs text-foreground/60">
-                          尚未建立設備，可直接建立
-                        </div>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-1 gap-3 lg:col-span-5">
-                      <div>
-                        <div className="text-xs text-foreground/60">顯示名稱</div>
-                        <input
-                          value={draft.alias}
-                          onChange={(e) =>
-                            handleIsolationDraftChange(entry.client_id, e.target.value)
-                          }
-                          className="ui-input w-full px-2 py-1"
-                          placeholder="顯示名稱"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center justify-end gap-2 lg:col-span-3">
-                      {matched ? (
-                        <>
-                          <div className="text-xs text-foreground/60">已匹配: {deviceId}</div>
-                          <Button
-                            onClick={() => handleUpdateFromIsolation(entry)}
-                            className="ui-btn-sm ui-btn-accent"
-                            disabled={!valid || !!isolationPending[entry.client_id]}
-                            loading={isolationPending[entry.client_id] === "update"}
-                          >
-                            更新設備
-                          </Button>
-                        </>
-                      ) : (
-                        <Button
-                          onClick={() => handleCreateFromIsolation(entry)}
-                          className="ui-btn-sm ui-btn-primary"
-                          disabled={
-                            !valid || entry.id_matched || !!isolationPending[entry.client_id]
-                          }
-                          loading={isolationPending[entry.client_id] === "create"}
-                        >
-                          建立設備
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
 
-      {scrcpySystemInfo?.installed && scrcpySessions.length > 0 && (
-        <div className="surface-card p-6">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-foreground">監看會話</h2>
-            <Button
-              onClick={handleRefreshSessions}
-              className="ui-btn-md ui-btn-muted"
-              loading={refreshScrcpyPending}
-            >
-              重新整理狀態
-            </Button>
-          </div>
-          <div className="surface-card overflow-hidden">
-            <div className="grid grid-cols-12 gap-3 border-b border-border bg-surface/50 px-4 py-3 text-xs text-foreground/60">
-              <div className="col-span-4">設備</div>
-              <div className="col-span-2">PID</div>
-              <div className="col-span-3">啟動時間</div>
-              <div className="col-span-2">狀態</div>
-              <div className="col-span-1 text-right">操作</div>
-            </div>
-            {scrcpySessions.map((session) => {
-              const device = devices.find((d) => d.device_id === session.device_id)
               return (
-                <div
-                  key={session.device_id}
-                  className="grid grid-cols-12 items-start gap-3 border-b border-border px-4 py-3 transition-colors last:border-b-0 hover:bg-surface/40"
-                >
-                  <div className="col-span-4 text-sm text-foreground">
-                    {device ? getDisplayName(device) : session.device_id}
+                <div key={entry.client_id} className="devices-alert-grid">
+                  <div>
+                    <div className="console-field__label">
+                      Info 資訊
+                    </div>
+                    <div className="text-sm font-semibold text-text-primary">{entry.ip || "—"}</div>
+                    <div className="console-meta">{valid ? `DEV-${entry.client_id.toUpperCase()}` : entry.client_id}</div>
+                    {matched ? (
+                      <div className="mt-2 text-[11px] text-msg-warning">已匹配現有設備，可更新 IP</div>
+                    ) : null}
+                    {!valid ? (
+                      <div className="mt-2 text-[11px] text-msg-danger">Client ID 格式錯誤，需為 8 位英數</div>
+                    ) : null}
+                    {valid && !entry.id_matched ? (
+                      <div className="mt-2 text-[11px] text-text-secondary">可建立為新設備</div>
+                    ) : null}
                   </div>
-                  <div className="col-span-2 font-mono text-sm text-foreground/70">
-                    {session.process_id}
-                  </div>
-                  <div className="col-span-3 text-sm text-foreground/70">
-                    {new Date(session.started_at).toLocaleString()}
-                  </div>
-                  <div className="col-span-2">
-                    <span
-                      className={`ui-badge inline-flex font-semibold leading-5 ${
-                        session.is_running ? "ui-badge-success" : "ui-badge-muted"
-                      }`}
+
+                  <ConsoleField label="Name 名稱">
+                    <input
+                      value={draft.alias}
+                      onChange={(event) =>
+                        handleIsolationDraftChange(entry.client_id, "alias", event.target.value)
+                      }
+                      className="console-control--compact"
+                      placeholder="輸入設備顯示名稱"
+                    />
+                  </ConsoleField>
+
+                  <ConsoleField label="Group 群組">
+                    <select
+                      value={draft.roomId}
+                      onChange={(event) =>
+                        handleIsolationDraftChange(entry.client_id, "roomId", event.target.value)
+                      }
+                      className="console-control--compact console-control--select"
                     >
-                      {session.is_running ? "運行中" : "已停止"}
-                    </span>
-                  </div>
-                  <div className="col-span-1 flex justify-end">
-                    {session.is_running && (
+                      <option value="">未指派</option>
+                      {sortedRooms.map((room) => (
+                        <option key={room.room_id} value={room.room_id}>
+                          {room.name}
+                        </option>
+                      ))}
+                    </select>
+                  </ConsoleField>
+
+                  <div className="flex items-end justify-end md:pb-px">
+                    {matched ? (
                       <Button
-                        onClick={() => handleStopScrcpy(session.device_id)}
-                        className="ui-btn-xs ui-btn-danger"
-                        loading={!!scrcpyStopPending[session.device_id]}
-                        disabled={!!scrcpyStopPending[session.device_id]}
+                        onClick={() => handleUpdateFromIsolation(entry)}
+                        className="ui-btn-sm ui-btn-accent min-w-[128px]"
+                        disabled={!valid || !!isolationPending[entry.client_id]}
+                        loading={isolationPending[entry.client_id] === "update"}
                       >
-                        停止
+                        更新設備
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => handleCreateFromIsolation(entry)}
+                        className="ui-btn-sm ui-btn-primary min-w-[128px]"
+                        disabled={!valid || entry.id_matched || !!isolationPending[entry.client_id]}
+                        loading={isolationPending[entry.client_id] === "create"}
+                      >
+                        Add Device 新增裝置
                       </Button>
                     )}
                   </div>
@@ -1313,8 +594,209 @@ export default function DevicesPage() {
               )
             })}
           </div>
-        </div>
-      )}
+        </section>
+      ) : null}
+
+      <ListShell
+        title="裝置列表"
+        className="gap-2"
+        variant="compact"
+        headerVariant="compact"
+        headingVariant="compact"
+        columns={
+          devices.length > 0 ? (
+            <>
+              <div className="col-span-4">Name 名稱</div>
+              <div className="col-span-2">Status 狀態</div>
+              <div className="col-span-2">Group 群組</div>
+              <div className="col-span-4">Active 動作</div>
+            </>
+          ) : undefined
+        }
+        emptyState={
+          <div className="console-empty-state">
+            <div className="console-empty-state__title">尚無裝置</div>
+            <p className="console-empty-state__description">目前沒有已建立的設備，待偵測到新裝置後即可加入列表。</p>
+          </div>
+        }
+      >
+        {devices.length > 0
+          ? devices.map((device) => {
+          const pendingAction = deviceActionPending[device.device_id]
+          const isConnecting = device.status === DEVICE_STATUS.CONNECTING
+          const isOnline = device.status === DEVICE_STATUS.ONLINE
+          const disabledReasonText = getAutoReconnectDisabledReasonText(
+            device.auto_reconnect_disabled_reason,
+          )
+          const statusErrorType = statusErrors[device.device_id] || "idle"
+          const statusFootnote =
+            statusErrorType === "timeout"
+              ? "ADB 狀態查詢逾時"
+              : statusErrorType === "adb-error"
+                ? "ADB 狀態查詢失敗"
+                : disabledReasonText
+
+          return (
+            <ConsoleListRow key={device.device_id} variant="compact" className="grid-cols-12 items-center">
+              <div className="col-span-4">
+                <div className="console-table-title">{getDisplayName(device)}</div>
+                <div className="console-meta mt-1">{device.ip}:{device.port}</div>
+                <div className="console-meta">{device.device_id}</div>
+                {statusFootnote ? (
+                  <div className="mt-1.5 text-[11px] text-msg-warning">{statusFootnote}</div>
+                ) : null}
+              </div>
+
+              <div className="col-span-2">
+                <div className="console-status-stack">
+                  <div className="console-status-line">
+                    <span className="console-status-label">
+                      WS
+                    </span>
+                    <span className={`ui-badge console-status-badge ${getWsStatusBadgeClass(device.ws_status)}`}>
+                      {getWsStatusText(device.ws_status)}
+                    </span>
+                  </div>
+                  <div className="console-status-line">
+                    <span className="console-status-label">
+                      ADB
+                    </span>
+                    <span className={`ui-badge console-status-badge ${getAdbStatusBadgeClass(device.status)}`}>
+                      {getStatusText(device.status)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="col-span-2">
+                {device.room_id ? (
+                  <button
+                    onClick={() => navigate(`/rooms/${device.room_id}/control`)}
+                    className="console-link-muted"
+                  >
+                    <div className="text-sm font-semibold text-text-primary">
+                      {roomNameMap.get(device.room_id) || device.room_id}
+                    </div>
+                    <div className="console-meta mt-1">{device.room_id}</div>
+                  </button>
+                ) : (
+                  <div className="text-sm font-semibold text-text-secondary">-</div>
+                )}
+              </div>
+
+              <div className="col-span-4 console-action-stack">
+                <div className="console-action-stack__controls">
+                  <select
+                    value={device.room_id || ""}
+                    onChange={(event) => handleAssignRoom(device, event.target.value)}
+                    disabled={roomUpdatingIds[device.device_id]}
+                    className="console-control--compact console-control--select text-sm"
+                  >
+                    <option value="">未指派</option>
+                    {sortedRooms.map((room) => (
+                      <option key={room.room_id} value={room.room_id}>
+                        {room.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  {!isOnline && !isConnecting ? (
+                    <Button
+                      onClick={() => handleConnect(device.device_id)}
+                      className="console-button-pill ui-btn-sm ui-btn-primary"
+                      loading={pendingAction === "connect"}
+                      disabled={!!pendingAction}
+                    >
+                      ADB 連線
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => handleDisconnect(device.device_id)}
+                      className="console-button-pill ui-btn-sm ui-btn-muted"
+                      loading={pendingAction === "disconnect"}
+                      disabled={!!pendingAction && pendingAction !== "disconnect"}
+                    >
+                      {isConnecting ? "ADB 連線中" : "中斷 ADB"}
+                    </Button>
+                  )}
+                </div>
+
+                <div className="console-action-stack__icons">
+                  <IconActionButton
+                    onClick={() => navigate(`/devices/${device.device_id}`)}
+                    disabled={!!pendingAction}
+                    aria-label={`編輯 ${getDisplayName(device)}`}
+                    title="編輯"
+                  >
+                    <LuPencilLine className="h-4 w-4" />
+                  </IconActionButton>
+                  <IconActionButton
+                    onClick={() => handleDelete(device.device_id)}
+                    danger
+                    loading={pendingAction === "delete"}
+                    disabled={!!pendingAction && pendingAction !== "delete"}
+                    aria-label={`刪除 ${getDisplayName(device)}`}
+                    title="刪除"
+                  >
+                    <LuTrash2 className="h-4 w-4" />
+                  </IconActionButton>
+                </div>
+              </div>
+            </ConsoleListRow>
+          )
+        })
+          : null}
+      </ListShell>
+
+      {usbDevices.length > 0 ? (
+        <ListShell
+          title="USB 連線"
+          className="gap-2"
+          variant="compact"
+          headerVariant="compact"
+          headingVariant="compact"
+          columns={
+            <>
+              <div className="col-span-4">Serial 序列號</div>
+              <div className="col-span-3">Model 型號</div>
+              <div className="col-span-3">TCPIP 狀態</div>
+              <div className="col-span-2">動作</div>
+            </>
+          }
+        >
+          {usbDevices.map((device) => (
+            <ConsoleListRow key={device.serial} variant="compact" className="grid-cols-12 items-center">
+              <div className="col-span-4">
+                <div className="console-table-title font-mono">{device.serial}</div>
+                <div className="console-meta mt-1">{device.connection_type.toUpperCase()}</div>
+              </div>
+
+              <div className="col-span-3">
+                <div className="text-sm font-semibold text-text-primary">{device.model || "—"}</div>
+                <div className="console-meta mt-1">IP: {device.ip || "—"}</div>
+              </div>
+
+              <div className="col-span-3 console-inline-status">
+                <span className={`ui-badge console-status-badge ${device.tcpip_enabled ? "ui-badge-success" : "ui-badge-muted"}`}>
+                  {getUSBTcpipStatusText(device)}
+                </span>
+                <LuUsb className="h-4 w-4 text-text-muted" />
+              </div>
+
+              <div className="col-span-2 flex justify-end">
+                <Button
+                  onClick={() => handleEnableUSBTCPIP(device.serial)}
+                  className="console-button-pill ui-btn-sm ui-btn-primary"
+                  loading={!!usbActionPending[device.serial]}
+                  disabled={device.tcpip_enabled || !!usbActionPending[device.serial]}
+                >
+                  啟用 TCPIP
+                </Button>
+              </div>
+            </ConsoleListRow>
+          ))}
+        </ListShell>
+      ) : null}
     </PageShell>
   )
 }

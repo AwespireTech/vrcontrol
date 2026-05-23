@@ -8,11 +8,13 @@ vi.mock("@/services/api", async () => {
 })
 
 describe("RoomsPage", () => {
-  it("renders room data and primary action with mocked data", async () => {
+  it("renders group list and simplified room actions with mocked data", async () => {
     renderRoute("/rooms")
 
-    expect(await screen.findByRole("heading", { name: "房間管理" })).toBeInTheDocument()
-    expect(await screen.findByText("主展示區")).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: /建立房間/ })).toBeInTheDocument()
+    expect(await screen.findByRole("heading", { name: "Groups 群組管理" })).toBeInTheDocument()
+    expect(await screen.findByText("群組列表")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: /Add Group 新增群組/ })).toBeInTheDocument()
+    expect(screen.getAllByRole("button", { name: /進入控制頁/ }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole("button", { name: /開啟監控/ }).length).toBeGreaterThan(0)
   })
 })

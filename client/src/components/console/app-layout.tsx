@@ -5,7 +5,7 @@ import AppSidebar from "./app-sidebar"
 
 const SIDEBAR_MIN_WIDTH = 220
 const SIDEBAR_MAX_WIDTH = 420
-const SIDEBAR_COLLAPSED_WIDTH = 68
+const SIDEBAR_COLLAPSED_WIDTH = 88
 const SMALL_SCREEN_QUERY = "(max-width: 1024px)"
 
 export default function AppLayout() {
@@ -72,7 +72,7 @@ export default function AppLayout() {
   }
 
   return (
-    <div className="relative -m-10 min-h-screen bg-background text-foreground">
+    <div className="console-shell relative -m-10 min-h-screen overflow-x-clip bg-bg-canvas text-text-primary">
       <AppSidebar
         collapsed={collapsed}
         dragging={dragging}
@@ -85,7 +85,7 @@ export default function AppLayout() {
         className={`relative box-border min-h-screen w-full ${dragging ? "" : "transition-[padding] duration-200"}`}
         style={{ paddingLeft: collapsed ? SIDEBAR_COLLAPSED_WIDTH : sidebarWidth }}
       >
-        <div className="min-h-screen w-full">
+        <div className="min-h-screen w-full bg-transparent">
           <Outlet />
         </div>
       </div>

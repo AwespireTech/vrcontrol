@@ -7,13 +7,15 @@ type PageShellProps = {
   actions?: ReactNode
   children: ReactNode
   maxWidth?: "sm" | "md" | "lg" | "xl"
+  headerVariant?: "card" | "plain"
+  titleVariant?: "default" | "compact"
 }
 
 const maxWidthMap = {
   sm: "max-w-2xl",
-  md: "max-w-4xl",
+  md: "max-w-5xl",
   lg: "max-w-6xl",
-  xl: "max-w-7xl",
+  xl: "max-w-[1400px]",
 }
 
 export default function PageShell({
@@ -23,23 +25,42 @@ export default function PageShell({
   actions,
   children,
   maxWidth = "lg",
+  headerVariant = "card",
+  titleVariant = "default",
 }: PageShellProps) {
+  const headerClassName =
+    headerVariant === "plain"
+      ? `relative flex flex-col ${titleVariant === "compact" ? "gap-3 px-1 py-1" : "gap-4 px-1 py-2"} xl:flex-row xl:items-end xl:justify-between`
+      : "console-page__header"
+
+  const contentClassName = "relative flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between"
+  const titleClassName =
+    titleVariant === "compact"
+      ? eyebrow
+        ? "console-page__title console-page__title--compact mt-2"
+        : "console-page__title console-page__title--compact"
+      : eyebrow
+        ? "console-page__title mt-3"
+        : "console-page__title"
+  const subtitleClassName =
+    titleVariant === "compact"
+      ? "console-page__subtitle console-page__subtitle--compact mt-1.5"
+      : "console-page__subtitle mt-2"
+
   return (
-    <div className="min-h-screen bg-background px-6 py-8">
-      <div className={`mx-auto flex w-full flex-col gap-8 ${maxWidthMap[maxWidth]}`}>
-        <header className="surface-card p-6 shadow-[0_18px_40px_-30px_rgba(0,0,0,0.8)]">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="console-page">
+      <div className={`console-page__inner ${maxWidthMap[maxWidth]}`}>
+        <header className={headerClassName}>
+          <div className={contentClassName}>
             <div>
-              <div className="text-xs uppercase tracking-[0.28em] text-foreground/50">
-                {eyebrow}
-              </div>
-              <h1 className="mt-2 text-3xl font-bold text-foreground">{title}</h1>
-              {subtitle ? <p className="mt-2 text-sm text-foreground/70">{subtitle}</p> : null}
+              {eyebrow ? <div className="console-page__eyebrow">{eyebrow}</div> : null}
+              <h1 className={titleClassName}>{title}</h1>
+              {subtitle ? <p className={subtitleClassName}>{subtitle}</p> : null}
             </div>
-            {actions ? <div className="flex flex-wrap items-center gap-2">{actions}</div> : null}
+            {actions ? <div className="console-toolbar xl:justify-end">{actions}</div> : null}
           </div>
         </header>
-        {children}
+        <div className="flex flex-col gap-6">{children}</div>
       </div>
     </div>
   )
