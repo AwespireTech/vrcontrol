@@ -128,10 +128,21 @@
 ### 後端
 
 - [server/controller/webrtc_stream_controller.go](../server/controller/webrtc_stream_controller.go)：WebRTC signaling 入口、錯誤分類與 session lifecycle。
-- [server/service/scrcpy_stream_service.go](../server/service/scrcpy_stream_service.go)：將 device/config 轉成 live view stream session。
+- [server/service/scrcpy_stream_service.go](../server/service/scrcpy_stream_service.go)：將 device/config 轉成 shared live view source，並管理同 device 多 viewer fan-out。
 - [server/scrcpy/stream_manager.go](../server/scrcpy/stream_manager.go)：scrcpy standalone 啟播、source probe、control socket、RESET_VIDEO 與 fallback。
 - [server/scrcpy/protocol.go](../server/scrcpy/protocol.go)：目前只封裝 `RESET_VIDEO` control message。
-- [server/webrtc/streamer.go](../server/webrtc/streamer.go)：H264 Annex-B 解析、首 IDR / 首 keyframe 量測與 sample 寫入。
+- [server/h264stream/parser.go](../server/h264stream/parser.go)：H264 Annex-B 解析、首 IDR / 首 keyframe 量測、SPS/PPS 注入與 access unit 產生。
+- [server/webrtc/streamer.go](../server/webrtc/streamer.go)：將 H264 access units 寫入 Pion WebRTC track 的 adapter。
+
+## Live View Shared Source
+
+- 同一台 device 只會啟動一個 scrcpy standalone source；WebRTC live view 與 legacy raw H264 WebSocket 都透過 [server/service/scrcpy_stream_service.go](../server/service/scrcpy_stream_service.go) 訂閱同一個 source。
+- 每個 WebRTC viewer 仍有自己的 signaling WebSocket、PeerConnection 與 Pion track；共享範圍只到後端 device H264 source，不共享瀏覽器端連線。
+- 每個 subscriber 使用 bounded queue 接收 H264 access units。慢 viewer 不會阻塞 source；keyframe 會優先清掉該 viewer 的舊 queue，讓新 GOP 能盡快送達。
+- 新 subscriber 會先等待 IDR。等待期間，後端會丟棄該 subscriber 的 non-keyframe access units，避免瀏覽器從 P/B frame 開始解碼。
+- 新 subscriber 加入時會呼叫 scrcpy control socket 的 `RESET_VIDEO` 請求 keyframe，並以短時間 rate limit 合併密集加入事件。若 control socket 不可用，subscriber 仍會等待下一個自然 keyframe。
+- 最後一個 subscriber 離開後，source 會保留短暫 grace period，避免前端重試、popup takeover 或頁面切換造成 scrcpy 反覆啟停。
+- `GET /api/scrcpy/stream/:id` 仍保留 legacy header + binary frame contract，但 binary frame 現在對齊 H264 Annex-B access unit，而不是任意 TCP read chunk。
 
 ## Scrcpy Config 與資料儲存
 
@@ -179,6 +190,6 @@
 - `keep_awake` 尚未在後端實作
 - Scrcpy 依賴作業系統已安裝並可從 PATH 呼叫
 - WebRTC live view 目前僅傳視訊，不含音訊。
-- WebRTC live view 的首畫面仍依賴來源 keyframe；目前已透過 control channel + `RESET_VIDEO` 優化啟播，但不同設備編碼器表現可能不同。
+- WebRTC live view 的首畫面仍依賴來源 keyframe；新 viewer 加入時會透過 control channel + `RESET_VIDEO` 請求 keyframe，但不同設備編碼器表現可能不同。
 - live-stream popup 模式目前只支援單一 popup 視窗，不支援多 popup 管理。
 - popup 與主頁之間的同步依賴瀏覽器 BroadcastChannel；若瀏覽器不支援，popup 只會保留骨架頁面與提示，不會收到即時串流資料。

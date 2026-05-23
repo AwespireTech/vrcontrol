@@ -94,6 +94,7 @@ npm run dev
 - ✅ WebRTC 頁內即時畫面（live view）
 - ✅ WebRTC 外部 popup 視窗模式（前端路由 / popup takeover）
 - ✅ scrcpy standalone stream + control channel 啟播優化
+- ✅ 同一台 device 的 live view 可由後端共享給多個前端 viewer
 
 ## 常用連線
 
@@ -184,8 +185,11 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 ## WebRTC Live View 概要
 
 - WebRTC live view 會在後端啟動 scrcpy standalone server，將 raw H264 視訊透過 Pion WebRTC 發送到瀏覽器。
+- 同一台 device 的多個前端 viewer 會共享同一個後端 scrcpy/H264 source；每個 viewer 仍有自己的 signaling WebSocket、PeerConnection 與 WebRTC track。
 - signaling 經由 `/api/ws/webrtc/:deviceId` 交換 `offer`、`answer`、`ice`、`close`、`error` 訊息。
-- 後端會在 control socket 可用時送出一次 `RESET_VIDEO`，盡量提早取得第一個可解碼 keyframe。
+- 後端會在新 viewer 加入且 control socket 可用時送出 rate-limited `RESET_VIDEO`，盡量提早取得第一個可解碼 keyframe。
+- 每個 viewer 會等到 IDR/keyframe 才開始接收畫面資料，避免從 delta frame 開始解碼。
+- legacy `/api/scrcpy/stream/:id` raw H264 WebSocket 也會共享同一個 source；它仍先送 header text frame，之後每個 binary frame 代表一個 H264 Annex-B access unit。
 - 設定檔中的 `video_codec_options` 可作為 live view 啟播診斷或 fallback，不影響既有外部 scrcpy 監看視窗。
 - 前端新增的 popup 外部視窗模式仍然使用相同的 `/api/ws/webrtc/:deviceId` signaling；它不新增任何後端 API，只是改變前端由哪個視窗承載播放器。
 - popup takeover、release、closing 與來源頁面同步中斷等流程皆屬前端瀏覽器內部協調，不需額外配置後端。

@@ -148,6 +148,8 @@
 - `PUT /api/scrcpy/config`
 - `GET /api/scrcpy/stream/:id`
 
+`GET /api/scrcpy/stream/:id` 是 legacy raw H264 WebSocket endpoint。連線建立後，server 會先送出 text frame stream header，之後每個 binary frame 代表一個 H264 Annex-B access unit。多個 client 連到同一台 device 時會共享同一個後端 scrcpy source。
+
 ### 使用者偏好
 
 - `GET /api/preferences`
@@ -169,6 +171,8 @@
 - `GET /api/ws/client/:clientId`
 - `GET /api/ws/control/:roomId`
 - `GET /api/ws/webrtc/:deviceId`
+
+`GET /api/ws/webrtc/:deviceId` 是 WebRTC live view signaling endpoint。每個前端 viewer 仍會建立自己的 WebRTC PeerConnection，但同一台 device 的多個 viewer 會共享同一個後端 scrcpy/H264 source；最後一個 viewer 離開後，後端會等待短暫 grace period 再停止 source。新 viewer 加入時，後端會嘗試透過 scrcpy control socket 請求 keyframe，並在該 viewer 收到 IDR 前暫不送出 delta frame。
 
 ## 房間 Player WebSocket
 
