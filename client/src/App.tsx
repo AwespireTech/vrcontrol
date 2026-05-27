@@ -13,6 +13,7 @@ import ActionsPage from "./app/actions/page"
 import NewActionPage from "./app/actions/new/page"
 import EditActionPage from "./app/actions/[id]/page"
 import MonitoringPage from "./app/monitoring/page"
+import MonitoringRoomPage from "./app/monitoring/rooms/[id]/page"
 import SettingsPage from "./app/settings/page"
 import AppLayout from "./components/console/app-layout"
 import "./app/globals.css"
@@ -37,6 +38,7 @@ function App() {
             <Route path="actions/new" element={<NewActionPage />} />
             <Route path="actions/:id" element={<EditActionPage />} />
             <Route path="monitoring" element={<MonitoringPage />} />
+            <Route path="monitoring/rooms/:id" element={<MonitoringRoomPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
         </Routes>

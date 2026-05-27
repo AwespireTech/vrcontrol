@@ -570,6 +570,11 @@
   padding: 1rem;
 }
 
+.monitoring-wall {
+  min-height: 100vh;
+  padding: 1.5rem;
+}
+
 .live-stream-popup-page {
   min-height: 100vh;
   background:
