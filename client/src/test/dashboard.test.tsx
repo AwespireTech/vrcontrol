@@ -20,15 +20,12 @@ describe("DashboardPage", () => {
   it("renders dashboard metrics and entry points with mocked data", async () => {
     renderRoute("/")
 
-    expect(await screen.findByRole("heading", { name: "設備控制台" })).toBeInTheDocument()
+    expect(await screen.findByRole("heading", { name: "Dashboard 總覽" })).toBeInTheDocument()
 
-    expect(screen.getByText("設備總數").parentElement).toHaveTextContent("2")
-    expect(screen.getByText("在線設備").parentElement).toHaveTextContent("1")
-    expect(screen.getByText("房間數量").parentElement).toHaveTextContent("2")
-    expect(screen.getByText("動作數量").parentElement).toHaveTextContent("2")
+    expect(screen.getByText("Devices 裝置總數").parentElement).toHaveTextContent("2")
+    expect(screen.getByText("Groups 群組總數").parentElement).toHaveTextContent("2")
 
-    expect(screen.getByRole("link", { name: /設備管理/ })).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: /房間管理/ })).toBeInTheDocument()
-    expect(screen.getByRole("link", { name: /動作管理/ })).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: /Manage Devices/ })).toBeInTheDocument()
+    expect(screen.getByRole("link", { name: /Manage Groups/ })).toBeInTheDocument()
   })
 })

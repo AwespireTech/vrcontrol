@@ -47,6 +47,10 @@ export async function registerMockApiRoutes(page: Page) {
         })
       case "/api/rooms":
         return fulfillJson(route, { success: true, data: mockRooms })
+      case `/api/rooms/${mockRooms[0].room_id}`:
+        return fulfillJson(route, { success: true, data: mockRooms[0] })
+      case `/api/rooms/${mockRooms[1].room_id}`:
+        return fulfillJson(route, { success: true, data: mockRooms[1] })
       case "/api/actions":
         return fulfillJson(route, { success: true, data: mockActions })
       case "/api/monitoring/status":

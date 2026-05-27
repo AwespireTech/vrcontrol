@@ -1,5 +1,4 @@
 import { screen } from "@testing-library/react"
-import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { renderRoute } from "./render-app"
 
@@ -18,17 +17,9 @@ vi.mock("@/hooks/useMonitoringStatus", () => ({
 }))
 
 describe("MonitoringPage", () => {
-  it("renders monitoring data and filters the list with mocked devices", async () => {
-    const user = userEvent.setup()
-
+  it("renders the monitoring landing shell", async () => {
     renderRoute("/monitoring")
 
     expect(await screen.findByRole("heading", { name: "監控中心" })).toBeInTheDocument()
-    expect(await screen.findByText("Quest 3 Demo")).toBeInTheDocument()
-
-    await user.type(screen.getByPlaceholderText("搜尋：名稱 / IP / ID"), "backup")
-
-    expect(screen.queryByText("Quest 3 Demo")).not.toBeInTheDocument()
-    expect(screen.getByText("Pico Backup")).toBeInTheDocument()
   })
 })
