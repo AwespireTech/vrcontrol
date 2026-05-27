@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import MonitoringManagementSection from "@/components/console/monitoring-management-section"
 import { monitoringApi, scrcpyApi, preferenceApi } from "@/services/api"
 import { ScrcpyConfigForm } from "@/components/console/scrcpy-config-form"
 import type { ScrcpyConfig, ScrcpySystemInfo, UserPreference } from "@/services/api-types"
@@ -119,7 +120,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <PageShell title="系統設定" subtitle="偏好、監控與 Scrcpy 的設定總覽" maxWidth="md">
+    <PageShell title="系統設定" subtitle="偏好、監控與 Scrcpy 的設定總覽" maxWidth="lg">
       <div className="space-y-6">
         {/* 設備狀態設定 */}
         <div className="surface-card p-6">
@@ -268,7 +269,7 @@ export default function SettingsPage() {
             <div className="surface-panel p-4">
               <p className="mb-2 font-semibold text-foreground">說明</p>
               <p className="text-sm text-foreground/70">
-                監控的啟動/停止與手動執行已移至總覽頁，此頁僅保留監控相關設定。
+                監控的啟動、執行與設備管理已集中到下方 Monitoring 區塊，這裡保留服務層級設定。
               </p>
             </div>
 
@@ -298,6 +299,8 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
+
+        <MonitoringManagementSection />
 
         {/* Scrcpy 螢幕鏡像設定 */}
         <div className="surface-card p-6">
