@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useParams } from "react-router-dom"
 import { LuX } from "react-icons/lu"
 import {
@@ -27,7 +27,6 @@ import {
 import Button from "@/components/button"
 import LiveStreamStage from "@/components/console/live-stream-stage"
 import RoomMinimap from "@/components/console/room-minimap"
-import LiveStreamTakeoverPlaceholder from "@/components/console/live-stream-takeover-placeholder"
 import type { LiveStreamLayout } from "@/components/console/live-stream-stage"
 import PageShell from "@/components/console/page-shell"
 import DeviceSelectionModal from "@/components/console/device-selection-modal"
@@ -37,12 +36,6 @@ import { buildRoomMinimapDisplayMarkers } from "@/lib/room-minimap/display"
 import { buildRoomMinimapMarkers } from "@/lib/room-minimap/mappers"
 import { getDisplayName } from "@/lib/utils/device"
 import type { PlayerData, RoomInfoData } from "@/interfaces/room.interface"
-import {
-  createLiveStreamPopupChannel,
-  postLiveStreamPopupMessage,
-  subscribeLiveStreamPopupChannel,
-  type LiveStreamPopupState,
-} from "@/lib/utils/live-stream-popup"
 import {
   MONITORING_WINDOW_BLOCKED_MESSAGE,
   openRoomMonitoringWindow,
@@ -152,32 +145,12 @@ export default function RoomControlPage() {
   const [executePending, setExecutePending] = useState(false)
   const [liveWindows, setLiveWindows] = useState<LiveStreamWindowState[]>([])
   const [liveStreamLayout, setLiveStreamLayout] = useState<LiveStreamLayout>("grid")
-  const [popupTakeoverActive, setPopupTakeoverActive] = useState(false)
-  const popupChannelRef = useRef<BroadcastChannel | null>(null)
 
   const currentRoomName = useMemo(() => currentRoom?.name || roomId, [currentRoom?.name, roomId])
   const roomProfile = useMemo(
     () => currentRoom?.operation_profile || DEFAULT_ROOM_OPERATION_PROFILE,
     [currentRoom],
   )
-
-  const buildLiveStreamPopupState = useCallback((): LiveStreamPopupState => {
-    return {
-      source: "rooms",
-      roomId,
-      layout: liveStreamLayout,
-      takeoverActive: popupTakeoverActive,
-      selectedDeviceId,
-      streams: popupTakeoverActive
-        ? liveWindows.map((entry) => ({
-            deviceId: entry.deviceId,
-            title: entry.title,
-            subtitle: entry.subtitle,
-          }))
-        : [],
-      timestamp: Date.now(),
-    }
-  }, [liveStreamLayout, liveWindows, popupTakeoverActive, roomId, selectedDeviceId])
 
   const playerByDeviceId = useMemo(
     () => new Map(playerData.map((player) => [player.device_id, player])),
@@ -321,71 +294,6 @@ export default function RoomControlPage() {
       ws.close()
     }
   }, [host, roomId, wsProtocol])
-
-  useEffect(() => {
-    const channel = createLiveStreamPopupChannel()
-    popupChannelRef.current = channel
-
-    const unsubscribe = subscribeLiveStreamPopupChannel(channel, (message) => {
-      if (message.type === "selection-requested") {
-        if (message.sender !== "popup") return
-        if (message.source && message.source !== "rooms") return
-        if (message.roomId && message.roomId !== roomId) return
-        if (!displayDeviceIds.includes(message.deviceId)) return
-        setSelectedDeviceId((current) => (current === message.deviceId ? null : message.deviceId))
-        return
-      }
-
-      if (message.type === "popup-ready") {
-        if (message.source && message.source !== "rooms") return
-        if (message.roomId && message.roomId !== roomId) return
-        postLiveStreamPopupMessage(channel, {
-          type: "init",
-          payload: buildLiveStreamPopupState(),
-        })
-        return
-      }
-
-      if (message.type === "takeover-requested") {
-        if (message.source && message.source !== "rooms") return
-        if (message.roomId && message.roomId !== roomId) return
-        setPopupTakeoverActive(true)
-        return
-      }
-
-      if (message.type === "popup-closing") {
-        if (message.source && message.source !== "rooms") return
-        if (message.roomId && message.roomId !== roomId) return
-        setPopupTakeoverActive(false)
-      }
-    })
-
-    return () => {
-      unsubscribe()
-      channel?.close()
-    }
-  }, [buildLiveStreamPopupState, displayDeviceIds, roomId])
-
-  useEffect(() => {
-    postLiveStreamPopupMessage(popupChannelRef.current, {
-      type: "state-update",
-      payload: buildLiveStreamPopupState(),
-    })
-  }, [buildLiveStreamPopupState])
-
-  useEffect(() => {
-    const handlePageHide = () => {
-      postLiveStreamPopupMessage(popupChannelRef.current, {
-        type: "source-unavailable",
-        source: "rooms",
-        roomId,
-        timestamp: Date.now(),
-      })
-    }
-
-    window.addEventListener("pagehide", handlePageHide)
-    return () => window.removeEventListener("pagehide", handlePageHide)
-  }, [roomId])
 
   useEffect(() => {
     if (moveState !== "") {
@@ -549,16 +457,6 @@ export default function RoomControlPage() {
     if (!popup) {
       alert(MONITORING_WINDOW_BLOCKED_MESSAGE)
     }
-  }
-
-  const handleReturnLiveStreamInline = () => {
-    setPopupTakeoverActive(false)
-    postLiveStreamPopupMessage(popupChannelRef.current, {
-      type: "takeover-released",
-      source: "rooms",
-      roomId,
-      timestamp: Date.now(),
-    })
   }
 
   const handleOpenBatchActionModal = (action: Action | null, fallbackLabel: string) => {
@@ -1050,13 +948,7 @@ export default function RoomControlPage() {
                   </div>
                 </div>
 
-                {popupTakeoverActive ? (
-                  <LiveStreamTakeoverPlaceholder
-                    description="外部視窗已接管這個房間的即時串流顯示。你仍可在本頁調整清單與版型，變更會同步送到外部視窗。"
-                    onFocusPopup={handleOpenLiveStreamPopup}
-                    onReturnInline={handleReturnLiveStreamInline}
-                  />
-                ) : liveWindows.length > 0 ? (
+                {liveWindows.length > 0 ? (
                   <LiveStreamStage
                     windows={liveWindows}
                     layout={liveStreamLayout}
