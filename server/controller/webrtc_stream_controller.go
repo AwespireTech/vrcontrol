@@ -167,7 +167,15 @@ func (c *WebRTCStreamController) Stream(ctx *gin.Context) {
 				continue
 			}
 
-			sendSignal(signalMessage{Type: "answer", SDP: answer.SDP})
+			localDescription := pc.LocalDescription()
+			if localDescription == nil {
+				sendSignal(signalMessage{Type: "error", Error: "local description unavailable after SetLocalDescription"})
+				cleanup()
+				setCleanup(func() {})
+				continue
+			}
+
+			sendSignal(signalMessage{Type: "answer", SDP: localDescription.SDP})
 
 			// Drain RTCP packets from sender to keep Pion sender feedback path healthy.
 			if session.sender != nil {
