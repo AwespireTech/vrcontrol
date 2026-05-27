@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom"
 import type { IconType } from "react-icons"
+import { LuChevronDown } from "react-icons/lu"
 
 type SidebarNavItemProps = {
   label: string
@@ -10,6 +11,9 @@ type SidebarNavItemProps = {
   collapsed: boolean
   disabled?: boolean
   badge?: string
+  expandable?: boolean
+  expanded?: boolean
+  onClick?: () => void
 }
 
 export default function SidebarNavItem({
@@ -21,6 +25,9 @@ export default function SidebarNavItem({
   collapsed,
   disabled,
   badge,
+  expandable,
+  expanded,
+  onClick,
 }: SidebarNavItemProps) {
   const itemClassName = [
     "console-sidebar-item group",
@@ -51,11 +58,33 @@ export default function SidebarNavItem({
             <span className="ui-badge ui-badge-muted">{badge}</span>
           </span>
         ) : (
-          <span className="console-sidebar-item__text">{combinedLabel}</span>
+          <span className="flex items-center justify-between gap-3">
+            <span className="console-sidebar-item__text">{combinedLabel}</span>
+            {expandable && !collapsed ? (
+              <LuChevronDown
+                className={`h-4 w-4 shrink-0 text-text-quiet transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+                aria-hidden="true"
+              />
+            ) : null}
+          </span>
         )}
       </span>
     </>
   )
+
+  if (onClick && !disabled) {
+    return (
+      <button
+        type="button"
+        className={itemClassName}
+        title={collapsed ? combinedLabel : label}
+        onClick={onClick}
+        aria-expanded={expandable ? expanded : undefined}
+      >
+        {body}
+      </button>
+    )
+  }
 
   if (disabled || !to) {
     return <div className={itemClassName}>{body}</div>

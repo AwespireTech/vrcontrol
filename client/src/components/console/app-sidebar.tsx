@@ -80,8 +80,15 @@ export default function AppSidebar({
   const location = useLocation()
   const sections = useMemo(buildSections, [])
   const [rooms, setRooms] = useState<Room[]>([])
+  const [monitoringExpanded, setMonitoringExpanded] = useState(() => location.pathname.startsWith("/monitoring"))
 
   const sidebarWidth = collapsed ? collapsedWidth : width
+
+  useEffect(() => {
+    if (location.pathname.startsWith("/monitoring")) {
+      setMonitoringExpanded(true)
+    }
+  }, [location.pathname])
 
   useEffect(() => {
     let active = true
@@ -158,12 +165,21 @@ export default function AppSidebar({
                     <SidebarNavItem
                       label={item.label}
                       caption={item.caption}
-                      to={item.to || "/"}
+                      to={item.to}
                       icon={item.icon}
                       active={active}
                       collapsed={collapsed}
                       disabled={item.disabled}
                       badge={item.badge}
+                      expandable={item.label === "Monitor"}
+                      expanded={item.label === "Monitor" ? monitoringExpanded : undefined}
+                      onClick={
+                        item.label === "Monitor"
+                          ? () => {
+                              setMonitoringExpanded((current) => !current)
+                            }
+                          : undefined
+                      }
                     />
                     {!collapsed && item.label === "Groups" && roomControlItems.length > 0 ? (
                       <div className="ml-5 space-y-1.5 border-l border-border-subtle/70 pl-3">
@@ -188,7 +204,7 @@ export default function AppSidebar({
                         })}
                       </div>
                     ) : null}
-                    {!collapsed && item.label === "Monitor" && roomMonitoringItems.length > 0 ? (
+                    {!collapsed && item.label === "Monitor" && monitoringExpanded && roomMonitoringItems.length > 0 ? (
                       <div className="ml-5 space-y-1.5 border-l border-border-subtle/70 pl-3">
                         {roomMonitoringItems.map((room) => {
                           const roomActive = location.pathname === `/monitoring/rooms/${room.room_id}`

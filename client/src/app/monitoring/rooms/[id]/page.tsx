@@ -225,7 +225,7 @@ export default function MonitoringRoomPage() {
               </div>
               <div className="space-y-2">
                 {devices.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-border-subtle/70 p-4 text-sm text-foreground/60">
+                  <div className="rounded-[12px] border border-dashed border-border-subtle/70 p-4 text-sm text-foreground/60">
                     這個房間目前沒有裝置。
                   </div>
                 ) : (
@@ -234,7 +234,7 @@ export default function MonitoringRoomPage() {
                       key={device.device_id}
                       type="button"
                       onClick={() => setSelectedDeviceId((current) => current === device.device_id ? null : device.device_id)}
-                      className={`w-full rounded-xl border px-3 py-2 text-left transition ${
+                      className={`w-full rounded-[12px] border px-3 py-2 text-left transition ${
                         selectedDeviceId === device.device_id
                           ? "border-primary/70 bg-primary/10"
                           : "border-border-subtle/70 bg-bg-panel/55 hover:border-border-subtle hover:bg-bg-panel/80"

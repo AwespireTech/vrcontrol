@@ -1,4 +1,5 @@
 import { screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { renderRoute } from "./render-app"
 
@@ -18,6 +19,8 @@ vi.mock("@/hooks/useMonitoringStatus", () => ({
 
 describe("DashboardPage", () => {
   it("renders dashboard metrics and entry points with mocked data", async () => {
+    const user = userEvent.setup()
+
     renderRoute("/")
 
     expect(await screen.findByRole("heading", { name: "Dashboard 總覽" })).toBeInTheDocument()
@@ -27,5 +30,15 @@ describe("DashboardPage", () => {
 
     expect(screen.getByRole("link", { name: /Manage Devices/ })).toBeInTheDocument()
     expect(screen.getByRole("link", { name: /Manage Groups/ })).toBeInTheDocument()
+
+    const monitorToggle = screen.getByRole("button", { name: "Monitor 監控" })
+    expect(monitorToggle).toHaveAttribute("aria-expanded", "false")
+    expect(screen.queryByRole("link", { name: "主展示區" })).not.toBeInTheDocument()
+
+    await user.click(monitorToggle)
+
+    expect(monitorToggle).toHaveAttribute("aria-expanded", "true")
+    expect(screen.getByRole("link", { name: "主展示區" })).toBeInTheDocument()
+    expect(window.location.pathname).toBe("/")
   })
 })
