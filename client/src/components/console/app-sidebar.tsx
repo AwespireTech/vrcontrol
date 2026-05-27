@@ -5,6 +5,7 @@ import {
   LuBookOpenText,
   LuHouse,
   LuLayoutDashboard,
+  LuExternalLink,
   LuMonitorPlay,
   LuPanelLeftClose,
   LuPanelLeftOpen,
@@ -15,11 +16,13 @@ import {
 import SidebarNavItem from "@/components/console/sidebar-nav-item"
 import { roomApi } from "@/services/api"
 import type { Room } from "@/services/api-types"
+import { openRoomMonitoringWindow } from "@/lib/utils/monitoring-window"
 
 type NavItem = {
   label: string
   caption: string
   to?: string
+  matchPrefix?: string
   icon: IconType
   exact?: boolean
   disabled?: boolean
@@ -38,7 +41,7 @@ const buildSections = (): NavSection[] => [
       { label: "Dashboard", caption: "總覽", to: "/", icon: LuLayoutDashboard, exact: true },
       { label: "Devices", caption: "裝置", to: "/devices", icon: LuSmartphone },
       { label: "Groups", caption: "群組", to: "/rooms", icon: LuHouse },
-      { label: "Monitor", caption: "監控", to: "/monitoring", icon: LuMonitorPlay },
+      { label: "Monitor", caption: "監控", matchPrefix: "/monitoring", icon: LuMonitorPlay },
       { label: "Actions", caption: "動作", to: "/actions", icon: LuSparkles },
     ],
   },
@@ -105,10 +108,19 @@ export default function AppSidebar({
     return [...rooms].sort((left, right) => left.name.localeCompare(right.name))
   }, [rooms])
 
+  const roomMonitoringItems = roomControlItems
+
   const isItemActive = (item: NavItem) => {
+    if (item.matchPrefix) return location.pathname.startsWith(item.matchPrefix)
     if (!item.to) return false
     if (item.exact) return location.pathname === item.to
     return location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)
+  }
+
+  const handleOpenMonitoringWindow = (event: React.MouseEvent<HTMLButtonElement>, roomId: string) => {
+    event.preventDefault()
+    event.stopPropagation()
+    openRoomMonitoringWindow(roomId, { display: "wall", layout: "grid" })
   }
 
   return (
@@ -172,6 +184,39 @@ export default function AppSidebar({
                                 Ctrl
                               </span>
                             </Link>
+                          )
+                        })}
+                      </div>
+                    ) : null}
+                    {!collapsed && item.label === "Monitor" && roomMonitoringItems.length > 0 ? (
+                      <div className="ml-5 space-y-1.5 border-l border-border-subtle/70 pl-3">
+                        {roomMonitoringItems.map((room) => {
+                          const roomActive = location.pathname === `/monitoring/rooms/${room.room_id}`
+                          return (
+                            <div
+                              key={room.room_id}
+                              className={`flex items-center rounded-[14px] text-sm transition ${
+                                roomActive
+                                  ? "bg-bg-panel text-text-primary shadow-panel"
+                                  : "text-text-secondary hover:bg-bg-panel/70 hover:text-text-primary"
+                              }`}
+                            >
+                              <Link
+                                to={`/monitoring/rooms/${room.room_id}`}
+                                className="min-w-0 flex-1 px-3 py-2"
+                              >
+                                <span className="block truncate">{room.name}</span>
+                              </Link>
+                              <button
+                                type="button"
+                                onClick={(event) => handleOpenMonitoringWindow(event, room.room_id)}
+                                className="mr-1 flex h-8 w-8 items-center justify-center rounded-full text-text-quiet transition hover:bg-bg-shell hover:text-text-primary"
+                                aria-label={`開啟 ${room.name} 監控視窗`}
+                                title="開新監控視窗"
+                              >
+                                <LuExternalLink className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           )
                         })}
                       </div>

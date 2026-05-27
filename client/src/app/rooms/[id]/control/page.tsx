@@ -39,12 +39,14 @@ import { getDisplayName } from "@/lib/utils/device"
 import type { PlayerData, RoomInfoData } from "@/interfaces/room.interface"
 import {
   createLiveStreamPopupChannel,
-  LIVE_STREAM_POPUP_BLOCKED_MESSAGE,
-  openLiveStreamPopupWindow,
   postLiveStreamPopupMessage,
   subscribeLiveStreamPopupChannel,
   type LiveStreamPopupState,
 } from "@/lib/utils/live-stream-popup"
+import {
+  MONITORING_WINDOW_BLOCKED_MESSAGE,
+  openRoomMonitoringWindow,
+} from "@/lib/utils/monitoring-window"
 import {
   closeLiveStreamWindow,
   openOrFocusLiveStreamWindow,
@@ -539,14 +541,13 @@ export default function RoomControlPage() {
   }
 
   const handleOpenLiveStreamPopup = () => {
-    const popup = openLiveStreamPopupWindow({
-      source: "rooms",
-      roomId,
+    const popup = openRoomMonitoringWindow(roomId, {
+      display: "wall",
       layout: liveStreamLayout,
     })
 
     if (!popup) {
-      alert(LIVE_STREAM_POPUP_BLOCKED_MESSAGE)
+      alert(MONITORING_WINDOW_BLOCKED_MESSAGE)
     }
   }
 
@@ -833,7 +834,7 @@ export default function RoomControlPage() {
                     關閉 APP
                   </Button>
                   <select
-                    className={`console-control--compact console-control--select h-8 w-[96px] rounded-full px-3 py-0 text-center text-xs ${
+                    className={`console-control--compact console-control--select h-8 w-24 rounded-full px-3 py-0 text-center text-xs ${
                       selectedOption === "" ? "text-text-quiet" : ""
                     }`}
                     value={selectedOption}
@@ -883,7 +884,7 @@ export default function RoomControlPage() {
                       : "已中斷"}
                 </span>
               </div>
-              <div className="max-h-[296px] overflow-y-auto">
+              <div className="max-h-74 overflow-y-auto">
                 {displayDeviceIds.map((deviceId) => {
                   const player = playerByDeviceId.get(deviceId)
                   const device = deviceMap.get(deviceId)
@@ -1068,7 +1069,7 @@ export default function RoomControlPage() {
                     {Array.from({ length: 4 }, (_, index) => (
                       <div
                         key={index}
-                        className="aspect-[16/9] rounded-[12px] border border-border-subtle/70 bg-[#d7d7d7]"
+                        className="aspect-video rounded-xl border border-border-subtle/70 bg-[#d7d7d7]"
                       />
                     ))}
                   </div>

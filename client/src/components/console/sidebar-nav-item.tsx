@@ -42,7 +42,7 @@ export default function SidebarNavItem({
   const body = (
     <>
       <span className="console-sidebar-item__icon">
-        <Icon className="h-[18px] w-[18px]" />
+        <Icon className="h-4.5 w-4.5" />
       </span>
       <span className={labelClassName}>
         {badge ? (
@@ -57,7 +57,7 @@ export default function SidebarNavItem({
     </>
   )
 
-  if (disabled) {
+  if (disabled || !to) {
     return <div className={itemClassName}>{body}</div>
   }
 
