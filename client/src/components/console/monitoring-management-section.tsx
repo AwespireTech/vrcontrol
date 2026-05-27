@@ -364,7 +364,7 @@ export default function MonitoringManagementSection() {
                 <summary className="cursor-pointer text-sm text-warning">
                   查看失敗清單（{batchResult.failed_count}）
                 </summary>
-                <div className="mt-2 rounded-xl border border-warning/30 bg-warning/10 p-3">
+                <div className="mt-2 rounded-[18px] border border-warning/30 bg-warning/10 p-3">
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                     {Object.entries(batchResult.failed).map(([id, reason]) => (
                       <div key={id} className="text-xs text-foreground/80">

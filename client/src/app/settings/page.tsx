@@ -309,7 +309,7 @@ export default function SettingsPage() {
           {/* 系統檢查區塊 */}
           {scrcpySystemInfo && (
             <div
-              className={`mb-6 rounded-xl p-4 ${
+              className={`mb-6 rounded-[18px] p-4 ${
                 scrcpySystemInfo.installed
                   ? "border border-success/60 bg-success/10"
                   : "border border-border/70 bg-surface/60"

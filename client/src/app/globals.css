@@ -46,7 +46,7 @@
   }
 
   .surface-card {
-    @apply rounded-shell border border-border-subtle/90 bg-bg-surface/92 text-text-primary shadow-panel;
+    @apply rounded-[18px] border border-border-subtle/90 bg-bg-surface/92 text-text-primary shadow-panel;
   }
 
   .surface-card-hover {
