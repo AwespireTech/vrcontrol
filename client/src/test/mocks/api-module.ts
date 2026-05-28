@@ -85,6 +85,7 @@ const deviceApi = {
 
 const roomApi = {
   getAll: (async () => mockRooms) satisfies AsyncValue<typeof mockRooms>,
+  get: async (roomId: string) => mockRooms.find((room) => room.room_id === roomId) || null,
   delete: voidAsync,
   updateDevices: async () => mockRooms[0],
 }

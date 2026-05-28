@@ -2,27 +2,6 @@ import "@testing-library/jest-dom/vitest"
 import { cleanup } from "@testing-library/react"
 import { afterEach, beforeEach, vi } from "vitest"
 
-class BroadcastChannelMock {
-  name: string
-  onmessage: ((event: MessageEvent) => void) | null = null
-
-  constructor(name: string) {
-    this.name = name
-  }
-
-  addEventListener() {}
-
-  removeEventListener() {}
-
-  postMessage() {}
-
-  close() {}
-
-  dispatchEvent() {
-    return true
-  }
-}
-
 class ResizeObserverMock {
   observe() {}
 
@@ -42,12 +21,6 @@ class IntersectionObserverMock {
     return []
   }
 }
-
-Object.defineProperty(globalThis, "BroadcastChannel", {
-  configurable: true,
-  writable: true,
-  value: BroadcastChannelMock,
-})
 
 Object.defineProperty(globalThis, "ResizeObserver", {
   configurable: true,

@@ -99,8 +99,8 @@ export default function LiveStreamStage({
             layout === "grid" ? "live-stream-inline-grid__item" : "live-stream-inline-stack__item"
           } ${
             selectedDeviceId === windowState.deviceId
-              ? "selection-surface-selected rounded-[1.25rem] p-1"
-              : "rounded-[1.25rem] p-1"
+              ? "selection-surface-selected rounded-[12px] p-1"
+              : "rounded-[12px] p-1"
           } ${
             onSelectDevice ? "selection-surface-interactive cursor-pointer" : ""
           }`}

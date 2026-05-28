@@ -101,28 +101,25 @@
 8. update loop 僅在 QA 狀態變更時廣播一次聚合後的 `qa` event，內容是該題目前所有玩家答案的完整 map。
 9. 活動結束時，room runtime 會先廣播 `play_command(false)`，再把 QA answers、locked questions、lantern events 與當場 context 封存成 activity artifacts，最後送出不帶 `activity_id` 的新 config；當房間玩家數回到 0 時，不代表 Activity 結束。
 
-### Live View Popup Takeover
+### Independent Room Monitoring
 
-1. 使用者在設備頁或房間控制頁的 live-stream section 點擊「在新視窗開啟」。
-2. 前端透過 `window.open` 開啟 `/live-stream-popup`，popup 頁面載入後用 BroadcastChannel 對主頁送出 `popup-ready`。
-3. 主頁收到 `popup-ready` 後送出 `init`，後續在清單或 layout 變動時送出 `state-update`。
-4. popup 套用第一次 `init` 後送出 `takeover-requested`，主頁才切換到 takeover placeholder，停止在主頁 DOM 中渲染播放器。
-5. takeover 期間主頁仍維護 stream 清單與版型，popup 為唯一播放器承載者。
-6. 使用者在主頁點「回到本頁顯示」時，主頁切回 inline stage，並送出 `takeover-released`。
-7. 若 popup 關閉，會送出 `popup-closing`，主頁自動解除 takeover 並恢復頁內顯示。
-8. 若主頁關閉或重新整理，會送出 `source-unavailable`，popup 顯示來源頁面已中斷同步的提示，但不自動關閉視窗。
+1. 使用者可從左側 Monitor 房間子項、房間控制頁 live-stream section，或直接輸入 URL 開啟 `/monitoring/rooms/:roomId`。
+2. 監控頁自行讀取 room/device metadata，並透過 `/api/ws/control/:roomId` 取得 room runtime 更新。
+3. 監控頁使用 `LiveStreamStage` 與 `LiveStreamPlayer` 為房內裝置建立 WebRTC viewer；控制頁 inline live view 也使用同一組共用元件。
+4. 控制頁的「在新視窗開啟」只負責 `window.open` 到 `/monitoring/rooms/:roomId?display=wall`，不再與外部視窗交換 UI 狀態或接管播放器。
+5. 控制頁、監控頁與其他裝置上的監控頁都是獨立 viewer。任一頁面關閉都不會改變其他頁面的 UI 生命週期。
+6. 同一 device 的多個 viewer 會在後端共享同一個 scrcpy source，但各自擁有 signaling WebSocket、PeerConnection 與 RTP track。
 
 ## Live View 主要模組
 
 ### 前端
 
-- [client/src/app/devices/page.tsx](../client/src/app/devices/page.tsx)：設備頁的 live-stream section、外部視窗接管狀態與單台開啟入口。
-- [client/src/app/rooms/[id]/control/page.tsx](../client/src/app/rooms/%5Bid%5D/control/page.tsx)：房間控制頁的 live-stream section、批次開啟入口與 popup takeover 流程。
-- [client/src/app/live-stream-popup/page.tsx](../client/src/app/live-stream-popup/page.tsx)：外部 live-stream 視窗頁面，承接 popup 顯示與同步狀態提示。
+- [client/src/app/devices/page.tsx](../client/src/app/devices/page.tsx)：設備頁的 live-stream section 與單台開啟入口。
+- [client/src/app/rooms/[id]/control/page.tsx](../client/src/app/rooms/%5Bid%5D/control/page.tsx)：房間控制頁的 live-stream section、批次開啟入口與開啟獨立監控視窗的入口。
+- [client/src/app/monitoring/rooms/[id]/page.tsx](../client/src/app/monitoring/rooms/%5Bid%5D/page.tsx)：獨立房間監控頁，承載房間狀態、平面圖與即時串流 grid/wall 模式。
 - [client/src/components/console/live-stream-player.tsx](../client/src/components/console/live-stream-player.tsx)：共用播放器，負責 signaling、peer lifecycle、首幀等待提示與診斷面板。
-- [client/src/components/console/live-stream-stage.tsx](../client/src/components/console/live-stream-stage.tsx)：共用 inline stack / grid 排版容器，供主頁與 popup 共用。
-- [client/src/components/console/live-stream-takeover-placeholder.tsx](../client/src/components/console/live-stream-takeover-placeholder.tsx)：主頁在 popup 接管期間顯示的 placeholder 與回到本頁顯示控制。
-- [client/src/lib/utils/live-stream-popup.ts](../client/src/lib/utils/live-stream-popup.ts)：popup `window.open` helper、BroadcastChannel 訊息型別與跨視窗同步工具。
+- [client/src/components/console/live-stream-stage.tsx](../client/src/components/console/live-stream-stage.tsx)：共用 inline stack / grid 排版容器，供控制頁與監控頁共用。
+- [client/src/lib/utils/monitoring-window.ts](../client/src/lib/utils/monitoring-window.ts)：房間監控 URL 與 `window.open` helper。
 - [client/src/services/api.ts](../client/src/services/api.ts)：`webrtcApi.getSignalUrl()` 與錯誤碼對應。
 
 ### 後端
@@ -141,7 +138,7 @@
 - 每個 subscriber 使用 bounded queue 接收 H264 access units。慢 viewer 不會阻塞 source；keyframe 會優先清掉該 viewer 的舊 queue，讓新 GOP 能盡快送達。
 - 新 subscriber 會先等待 IDR。等待期間，後端會丟棄該 subscriber 的 non-keyframe access units，避免瀏覽器從 P/B frame 開始解碼。
 - 新 subscriber 加入時會呼叫 scrcpy control socket 的 `RESET_VIDEO` 請求 keyframe，並以短時間 rate limit 合併密集加入事件。若 control socket 不可用，subscriber 仍會等待下一個自然 keyframe。
-- 最後一個 subscriber 離開後，source 會保留短暫 grace period，避免前端重試、popup takeover 或頁面切換造成 scrcpy 反覆啟停。
+- 最後一個 subscriber 離開後，source 會保留短暫 grace period，避免前端重試或頁面切換造成 scrcpy 反覆啟停。
 - `GET /api/scrcpy/stream/:id` 仍保留 legacy header + binary frame contract，但 binary frame 現在對齊 H264 Annex-B access unit，而不是任意 TCP read chunk。
 
 ## Scrcpy Config 與資料儲存
@@ -191,5 +188,4 @@
 - Scrcpy 依賴作業系統已安裝並可從 PATH 呼叫
 - WebRTC live view 目前僅傳視訊，不含音訊。
 - WebRTC live view 的首畫面仍依賴來源 keyframe；新 viewer 加入時會透過 control channel + `RESET_VIDEO` 請求 keyframe，但不同設備編碼器表現可能不同。
-- live-stream popup 模式目前只支援單一 popup 視窗，不支援多 popup 管理。
-- popup 與主頁之間的同步依賴瀏覽器 BroadcastChannel；若瀏覽器不支援，popup 只會保留骨架頁面與提示，不會收到即時串流資料。
+- 監控頁初版會尊重前端 `LIVE_VIEW_MAX_STREAMS` 限制；房間裝置超過上限時，未顯示的裝置需後續以分頁、排序或焦點模式處理。

@@ -11,8 +11,8 @@ describe("DevicesPage", () => {
   it("renders the devices route with mocked page dependencies", async () => {
     renderRoute("/devices")
 
-    expect(await screen.findByRole("heading", { name: "設備管理" })).toBeInTheDocument()
+    expect(await screen.findByRole("heading", { name: "Devices 裝置" })).toBeInTheDocument()
     expect(await screen.findByText("Quest 3 Demo")).toBeInTheDocument()
-    expect(screen.getByRole("button", { name: "+ 建立設備" })).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Add Device 新增裝置" })).toBeInTheDocument()
   })
 })
