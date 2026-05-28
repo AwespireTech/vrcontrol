@@ -273,6 +273,8 @@ export type WebRTCStreamStatus = "idle" | "connecting" | "live" | "stalled" | "e
 
 export type WebRTCStreamErrorCode =
   | "invalid_signal"
+  | "invalid_offer_sdp"
+  | "invalid_answer_sdp"
   | "source_server_exited_with_error"
   | "source_server_exited"
   | "source_backend_not_ready"

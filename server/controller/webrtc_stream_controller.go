@@ -121,6 +121,19 @@ func (c *WebRTCStreamController) Stream(ctx *gin.Context) {
 			}
 			session = &webrtcSession{subscription: subscription}
 
+			if reason := validateOfferSDP(msg.SDP); reason != "" {
+				sdpHead := msg.SDP
+				if len(sdpHead) > 200 {
+					sdpHead = sdpHead[:200]
+				}
+				log.Printf("[WebRTC][server] invalid offer sdp for device=%s reason=%s len=%d head=%q",
+					deviceID, reason, len(msg.SDP), sdpHead)
+				sendSignal(signalMessage{Type: "error", Error: "invalid_offer_sdp"})
+				cleanup()
+				setCleanup(func() {})
+				continue
+			}
+
 			pc, err = newPeerConnection(deviceID, session, sendSignal)
 			if err != nil {
 				sendSignal(signalMessage{Type: "error", Error: err.Error()})
@@ -170,6 +183,15 @@ func (c *WebRTCStreamController) Stream(ctx *gin.Context) {
 			localDescription := pc.LocalDescription()
 			if localDescription == nil {
 				sendSignal(signalMessage{Type: "error", Error: "local description unavailable after SetLocalDescription"})
+				cleanup()
+				setCleanup(func() {})
+				continue
+			}
+
+			if reason := validateAnswerSDP(localDescription.SDP); reason != "" {
+				log.Printf("[WebRTC][server] invalid answer sdp for device=%s reason=%s len=%d",
+					deviceID, reason, len(localDescription.SDP))
+				sendSignal(signalMessage{Type: "error", Error: "invalid_answer_sdp"})
 				cleanup()
 				setCleanup(func() {})
 				continue
@@ -247,6 +269,45 @@ func (c *WebRTCStreamController) Stream(ctx *gin.Context) {
 			return
 		}
 	}
+}
+
+// validateOfferSDP returns an empty string when the SDP looks like a usable
+// WebRTC offer (non-empty, has at least one m=video section, and contains both
+// ICE ufrag and pwd attributes either at session-level or any media-level).
+// Otherwise it returns a short reason describing the first missing requirement,
+// suitable for logging and signaling an invalid_offer_sdp error code.
+func validateOfferSDP(sdp string) string {
+	if strings.TrimSpace(sdp) == "" {
+		return "empty"
+	}
+	if !strings.Contains(sdp, "m=video") {
+		return "missing_m_video"
+	}
+	if !strings.Contains(sdp, "a=ice-ufrag:") {
+		return "missing_ice_ufrag"
+	}
+	if !strings.Contains(sdp, "a=ice-pwd:") {
+		return "missing_ice_pwd"
+	}
+	return ""
+}
+
+// validateAnswerSDP performs the same kind of structural check on a Pion-built
+// answer before we trust it back over signaling. Pion should always produce a
+// valid answer once SetLocalDescription succeeds, but treating a missing
+// ufrag/pwd as a hard error gives us a precise alarm if a future Pion upgrade
+// or codec change regresses this guarantee.
+func validateAnswerSDP(sdp string) string {
+	if strings.TrimSpace(sdp) == "" {
+		return "empty"
+	}
+	if !strings.Contains(sdp, "a=ice-ufrag:") {
+		return "missing_ice_ufrag"
+	}
+	if !strings.Contains(sdp, "a=ice-pwd:") {
+		return "missing_ice_pwd"
+	}
+	return ""
 }
 
 func classifyStreamError(err error) string {
