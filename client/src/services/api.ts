@@ -29,6 +29,8 @@ const SIMPLE_BASE = `${API_BASE}/simple`
 
 const webrtcErrorMessages: Record<WebRTCStreamErrorCode, string> = {
   invalid_signal: "即時畫面連線資料無效。",
+  invalid_offer_sdp: "即時畫面請求格式無效，請重新嘗試。",
+  invalid_answer_sdp: "即時畫面回應格式無效，請重新嘗試。",
   source_server_exited_with_error: "串流來源異常結束。",
   source_server_exited: "串流來源已結束。",
   source_backend_not_ready: "串流後端尚未準備完成。",
