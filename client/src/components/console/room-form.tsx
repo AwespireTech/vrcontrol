@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { actionApi } from "@/services/api"
-import type { Action, Room } from "@/services/api-types"
+import { ACTION_TYPES, type Action, type Room } from "@/services/api-types"
 import Button from "@/components/button"
 
 const DEFAULT_ACTIVITY_CONTEXT = {
@@ -33,6 +33,8 @@ function buildInitialOperationProfile(room?: Room) {
       2,
     ),
     batchActionIds: profile?.batch_action_ids || [],
+    launchActionId: profile?.launch_action_id || "",
+    stopActionId: profile?.stop_action_id || "",
     allowActivityNameOverride: profile?.allow_activity_name_override ?? true,
     allowSeedOverride: profile?.allow_seed_override ?? true,
   }
@@ -54,6 +56,8 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
     activitySeed: initialProfile.activitySeed,
     activityContext: initialProfile.activityContext,
     batchActionIds: initialProfile.batchActionIds,
+    launchActionId: initialProfile.launchActionId,
+    stopActionId: initialProfile.stopActionId,
     allowActivityNameOverride: initialProfile.allowActivityNameOverride,
     allowSeedOverride: initialProfile.allowSeedOverride,
   })
@@ -77,6 +81,41 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
 
     void loadActions()
   }, [])
+
+  useEffect(() => {
+    if (actions.length === 0) {
+      return
+    }
+
+    setFormData((prev) => {
+      if ((prev.launchActionId && prev.stopActionId) || prev.batchActionIds.length === 0) {
+        return prev
+      }
+
+      const selectedActions = actions.filter((action) => prev.batchActionIds.includes(action.action_id))
+      const nextLaunchActionId =
+        prev.launchActionId ||
+        selectedActions.find((action) => action.action_type === ACTION_TYPES.LAUNCH_APP)?.action_id ||
+        ""
+      const nextStopActionId =
+        prev.stopActionId ||
+        selectedActions.find((action) => action.action_type === ACTION_TYPES.STOP_APP)?.action_id ||
+        ""
+
+      if (nextLaunchActionId === prev.launchActionId && nextStopActionId === prev.stopActionId) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        launchActionId: nextLaunchActionId,
+        stopActionId: nextStopActionId,
+      }
+    })
+  }, [actions])
+
+  const launchActions = actions.filter((action) => action.action_type === ACTION_TYPES.LAUNCH_APP)
+  const stopActions = actions.filter((action) => action.action_type === ACTION_TYPES.STOP_APP)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -126,7 +165,9 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
             activity_context: activityContext,
             ...(parsedSeed !== undefined ? { seed: parsedSeed } : {}),
           },
-          batch_action_ids: formData.batchActionIds,
+          batch_action_ids: [],
+          launch_action_id: formData.launchActionId || undefined,
+          stop_action_id: formData.stopActionId || undefined,
           allow_activity_name_override: formData.allowActivityNameOverride,
           allow_seed_override: formData.allowSeedOverride,
         },
@@ -152,15 +193,6 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
     setFormData((prev) => ({
       ...prev,
       [name]: checked,
-    }))
-  }
-
-  const toggleBatchActionId = (actionId: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      batchActionIds: prev.batchActionIds.includes(actionId)
-        ? prev.batchActionIds.filter((id) => id !== actionId)
-        : [...prev.batchActionIds, actionId],
     }))
   }
 
@@ -210,7 +242,7 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
         <div>
           <h3 className="text-sm font-semibold text-foreground">目前操作設定</h3>
           <p className="mt-1 text-xs text-foreground/50">
-            每個 room 固定維護一組可重複執行的 activity 預設與批次動作設定。
+            每個 room 固定維護一組可重複執行的 activity 預設，以及開啟 / 關閉 app 動作設定。
           </p>
         </div>
 
@@ -252,55 +284,53 @@ export default function RoomForm({ room, onSubmit, onCancel }: RoomFormProps) {
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-semibold text-foreground">
-            固定批次動作
-          </label>
-          <div className="rounded-2xl border border-border/70 bg-background/60 p-3">
-            <div className="mb-3 text-xs text-foreground/50">
-              已選 {formData.batchActionIds.length} 個動作。控制頁會依這份清單顯示固定批次操作按鈕。
-            </div>
+          <label className="mb-2 block text-sm font-semibold text-foreground">開啟 app 動作</label>
+          {actionsLoading ? (
+            <div className="text-sm text-foreground/60">讀取動作中…</div>
+          ) : launchActions.length === 0 ? (
+            <div className="text-sm text-foreground/60">尚無可選的開啟 app 動作，請先到動作管理建立。</div>
+          ) : (
+            <select
+              value={formData.launchActionId}
+              onChange={(event) =>
+                setFormData((prev) => ({ ...prev, launchActionId: event.target.value }))
+              }
+              className="ui-select w-full px-4 py-2"
+            >
+              <option value="">未指定</option>
+              {launchActions.map((action) => (
+                <option key={action.action_id} value={action.action_id}>
+                  {action.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <p className="mt-1 text-xs text-foreground/50">控制頁批次與單機的「開啟 APP」會使用這個動作。</p>
+        </div>
 
-            {actionsLoading ? (
-              <div className="text-sm text-foreground/60">讀取動作中…</div>
-            ) : actions.length === 0 ? (
-              <div className="text-sm text-foreground/60">尚無可選動作，請先到動作管理建立。</div>
-            ) : (
-              <div className="max-h-72 space-y-2 overflow-y-auto pr-1">
-                {actions.map((action) => {
-                  const isSelected = formData.batchActionIds.includes(action.action_id)
-                  return (
-                    <label
-                      key={action.action_id}
-                      className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-3 transition ${
-                        isSelected
-                          ? "border-primary/60 bg-primary/10"
-                          : "border-border bg-surface/40 hover:bg-surface/70"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleBatchActionId(action.action_id)}
-                        className="mt-1 h-4 w-4"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-semibold text-foreground">{action.name}</div>
-                        <div className="mt-1 font-mono text-xs text-foreground/45">
-                          {action.action_id}
-                        </div>
-                        {action.description ? (
-                          <div className="mt-2 text-xs text-foreground/60">{action.description}</div>
-                        ) : null}
-                      </div>
-                    </label>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-          <p className="mt-1 text-xs text-foreground/50">
-            不再手動輸入 action ID，改由這裡直接選擇要綁定在 room 的固定批次動作。
-          </p>
+        <div>
+          <label className="mb-2 block text-sm font-semibold text-foreground">關閉 app 動作</label>
+          {actionsLoading ? (
+            <div className="text-sm text-foreground/60">讀取動作中…</div>
+          ) : stopActions.length === 0 ? (
+            <div className="text-sm text-foreground/60">尚無可選的關閉 app 動作，請先到動作管理建立。</div>
+          ) : (
+            <select
+              value={formData.stopActionId}
+              onChange={(event) =>
+                setFormData((prev) => ({ ...prev, stopActionId: event.target.value }))
+              }
+              className="ui-select w-full px-4 py-2"
+            >
+              <option value="">未指定</option>
+              {stopActions.map((action) => (
+                <option key={action.action_id} value={action.action_id}>
+                  {action.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <p className="mt-1 text-xs text-foreground/50">控制頁批次與單機的「關閉 APP」會使用這個動作。</p>
         </div>
 
         <label className="flex items-center gap-3 text-sm text-foreground">

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
+import dayjs from "dayjs"
 import { useParams } from "react-router-dom"
 import { LuX } from "react-icons/lu"
 import {
@@ -80,8 +81,23 @@ const DEFAULT_ROOM_OPERATION_PROFILE: RoomOperationProfile = {
     activity_context: DEFAULT_ACTIVITY_CONTEXT,
   },
   batch_action_ids: [],
+  launch_action_id: "",
+  stop_action_id: "",
   allow_activity_name_override: true,
   allow_seed_override: true,
+}
+
+function formatDeviceLastUpdate(lastUpdate?: string) {
+  if (!lastUpdate) {
+    return "-"
+  }
+
+  const parsed = dayjs(lastUpdate)
+  if (!parsed.isValid()) {
+    return lastUpdate
+  }
+
+  return parsed.format("HH:mm:ss")
 }
 
 function shouldIgnoreDeviceCardSelectionEvent(
@@ -195,14 +211,36 @@ export default function RoomControlPage() {
     [actions, selectedActionId],
   )
 
+  const resolveRoomAction = useCallback(
+    (explicitActionId: string | undefined, actionType: string) => {
+      if (explicitActionId) {
+        const explicitAction = actions.find((action) => action.action_id === explicitActionId)
+        if (explicitAction) {
+          return explicitAction
+        }
+      }
+
+      const legacyBatchAction = roomProfile.batch_action_ids
+        .map((actionId) => actions.find((action) => action.action_id === actionId) || null)
+        .find((action): action is Action => action !== null && action.action_type === actionType)
+
+      if (legacyBatchAction) {
+        return legacyBatchAction
+      }
+
+      return actions.find((action) => action.action_type === actionType) || null
+    },
+    [actions, roomProfile.batch_action_ids],
+  )
+
   const launchAppAction = useMemo(
-    () => actions.find((action) => action.action_type === ACTION_TYPES.LAUNCH_APP) || null,
-    [actions],
+    () => resolveRoomAction(roomProfile.launch_action_id, ACTION_TYPES.LAUNCH_APP),
+    [resolveRoomAction, roomProfile.launch_action_id],
   )
 
   const stopAppAction = useMemo(
-    () => actions.find((action) => action.action_type === ACTION_TYPES.STOP_APP) || null,
-    [actions],
+    () => resolveRoomAction(roomProfile.stop_action_id, ACTION_TYPES.STOP_APP),
+    [resolveRoomAction, roomProfile.stop_action_id],
   )
 
   const hasRunningActivity = currentActivityMeta.status === "running" && currentActivityMeta.id !== ""
@@ -311,17 +349,6 @@ export default function RoomControlPage() {
       setActionPanelOpen(false)
     }
   }, [displayDeviceIds, selectedDeviceId])
-
-  useEffect(() => {
-    if (!selectedDeviceId) {
-      setSelectedDeviceMoveTarget("")
-      setSelectedDeviceSequenceInput("")
-      return
-    }
-
-    setSelectedDeviceMoveTarget("")
-    setSelectedDeviceSequenceInput(selectedPlayer ? selectedPlayer.sequence.toString() : "")
-  }, [selectedDeviceId, selectedPlayer])
 
   const handleChangeSequence = async (deviceId: string, seq: number) => {
     if (!roomId) return
@@ -502,7 +529,10 @@ export default function RoomControlPage() {
   }
 
   const handleOpenDeviceActions = (deviceId: string) => {
+    const player = playerByDeviceId.get(deviceId)
     setSelectedDeviceId(deviceId)
+    setSelectedDeviceMoveTarget("")
+    setSelectedDeviceSequenceInput(player ? player.sequence.toString() : "")
     setActionPanelOpen(true)
   }
 
@@ -815,7 +845,7 @@ export default function RoomControlPage() {
                         event.preventDefault()
                         setSelectedDeviceId(deviceId)
                       }}
-                      className={`grid grid-cols-[minmax(0,1.1fr)_116px_108px_56px] items-start gap-4 border-b border-border-subtle/65 px-5 py-3.5 last:border-b-0 ${
+                      className={`grid grid-cols-[minmax(0,1.05fr)_116px_108px_112px] items-start gap-4 border-b border-border-subtle/65 px-5 py-3.5 last:border-b-0 ${
                         isSelectedDevice ? "bg-bg-panel/80" : "hover:bg-bg-panel/45"
                       }`}
                     >
@@ -850,38 +880,35 @@ export default function RoomControlPage() {
                           Chapter：<span className="text-text-primary">{player ? player.chapter : "-"}</span>
                         </div>
                         <div>
-                          Time：<span className="text-text-primary">00:00 / 02:30</span>
+                          Time：<span className="text-text-primary">{formatDeviceLastUpdate(player?.last_update)}</span>
                         </div>
                       </div>
 
-                      <div className="flex flex-col items-end gap-3">
+                      <div className="flex flex-col items-end gap-2.5">
                         <div className="text-right text-[11px] text-text-secondary">
                           Sequence
                           <div className="mt-1 text-[1.75rem] font-semibold leading-none text-text-primary">
                             {player ? player.sequence : "-"}
                           </div>
                         </div>
-                        {!isAdbOnline && !isAdbConnecting ? (
+                        <div className="flex flex-col items-end gap-2">
                           <Button
                             onClick={() => handleConnect(deviceId)}
-                            className="ui-btn-xs ui-btn-primary h-7 rounded-full px-3"
+                            className={`ui-btn-xs h-7 min-w-[4.5rem] rounded-full px-3 ${
+                              isAdbOnline ? "ui-btn-muted" : "ui-btn-primary"
+                            }`}
                             loading={devicePendingAction === "connect"}
-                            disabled={!!devicePendingAction}
+                            disabled={!!devicePendingAction || isAdbOnline || isAdbConnecting}
                           >
-                            連線
+                            {isAdbConnecting ? "連線中" : isAdbOnline ? "已連線" : "連線"}
                           </Button>
-                        ) : isAdbConnecting ? (
-                          <Button className="ui-btn-xs ui-btn-muted h-7 rounded-full px-3" disabled>
-                            連線中
-                          </Button>
-                        ) : (
                           <Button
                             onClick={() => handleOpenDeviceActions(deviceId)}
-                            className="ui-btn-xs ui-btn-primary h-7 rounded-full px-3"
+                            className="ui-btn-xs ui-btn-primary h-7 min-w-[4.5rem] rounded-full px-3"
                           >
                             動作
                           </Button>
-                        )}
+                        </div>
                       </div>
                     </div>
                   )
@@ -961,7 +988,7 @@ export default function RoomControlPage() {
                     {Array.from({ length: 4 }, (_, index) => (
                       <div
                         key={index}
-                        className="aspect-video rounded-xl border border-border-subtle/70 bg-[#d7d7d7]"
+                        className="aspect-[16/9] rounded-[12px] border border-border-subtle/70 bg-[#d7d7d7]"
                       />
                     ))}
                   </div>
@@ -1011,7 +1038,7 @@ export default function RoomControlPage() {
                 }
                 className="ui-btn-md ui-btn-primary w-full justify-start"
                 loading={deviceCommandPending === "launch"}
-                disabled={selectedDevice?.status !== DEVICE_STATUS.ONLINE || deviceCommandPending !== ""}
+                disabled={!launchAppAction || deviceCommandPending !== ""}
               >
                 開啟 APP
               </Button>
@@ -1021,7 +1048,7 @@ export default function RoomControlPage() {
                 }
                 className="ui-btn-md ui-btn-muted w-full justify-start"
                 loading={deviceCommandPending === "stop"}
-                disabled={selectedDevice?.status !== DEVICE_STATUS.ONLINE || deviceCommandPending !== ""}
+                disabled={!stopAppAction || deviceCommandPending !== ""}
               >
                 關閉 APP
               </Button>
@@ -1095,6 +1122,7 @@ export default function RoomControlPage() {
             <div className="console-control-panel__inner p-4 text-sm text-text-secondary">
               <div>WS：{selectedDevice ? getWsStatusText(selectedDevice.ws_status) : "-"}</div>
               <div className="mt-2">ADB：{selectedDevice ? getAdbStatusText(selectedDevice.status) : "-"}</div>
+                <div className="mt-2">Time：{formatDeviceLastUpdate(selectedPlayer?.last_update)}</div>
               <div className="mt-2">
                 Battery：
                 {selectedDevice && selectedDevice.battery !== undefined ? `${selectedDevice.battery}%` : "-"}

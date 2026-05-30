@@ -131,6 +131,8 @@ export interface RoomActivityDefaults {
 export interface RoomOperationProfile {
   activity_defaults: RoomActivityDefaults
   batch_action_ids: string[]
+  launch_action_id?: string
+  stop_action_id?: string
   allow_activity_name_override: boolean
   allow_seed_override: boolean
 }

@@ -116,6 +116,8 @@ export default function AppSidebar({
   }, [rooms])
 
   const roomMonitoringItems = roomControlItems
+  const showCollapsedMonitoringFlyout =
+    collapsed && monitoringExpanded && roomMonitoringItems.length > 0
 
   const isItemActive = (item: NavItem) => {
     if (item.matchPrefix) return location.pathname.startsWith(item.matchPrefix)
@@ -128,6 +130,38 @@ export default function AppSidebar({
     event.preventDefault()
     event.stopPropagation()
     openRoomMonitoringWindow(roomId, { display: "wall", layout: "grid" })
+  }
+
+  const renderMonitoringItem = (room: Room, compact = false) => {
+    const roomActive = location.pathname === `/monitoring/rooms/${room.room_id}`
+
+    return (
+      <div
+        key={room.room_id}
+        className={`flex items-center rounded-[14px] text-sm transition ${
+          roomActive
+            ? "bg-bg-panel text-text-primary shadow-panel"
+            : "text-text-secondary hover:bg-bg-panel/70 hover:text-text-primary"
+        }`}
+      >
+        <Link
+          to={`/monitoring/rooms/${room.room_id}`}
+          className={`min-w-0 flex-1 ${compact ? "px-3 py-2.5" : "px-3 py-2"}`}
+          onClick={() => setMonitoringExpanded(false)}
+        >
+          <span className="block truncate">{room.name}</span>
+        </Link>
+        <button
+          type="button"
+          onClick={(event) => handleOpenMonitoringWindow(event, room.room_id)}
+          className="mr-1 flex h-8 w-8 items-center justify-center rounded-full text-text-quiet transition hover:bg-bg-shell hover:text-text-primary"
+          aria-label={`開啟 ${room.name} 監控視窗`}
+          title="開新監控視窗"
+        >
+          <LuExternalLink className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -206,35 +240,7 @@ export default function AppSidebar({
                     ) : null}
                     {!collapsed && item.label === "Monitor" && monitoringExpanded && roomMonitoringItems.length > 0 ? (
                       <div className="ml-5 space-y-1.5 border-l border-border-subtle/70 pl-3">
-                        {roomMonitoringItems.map((room) => {
-                          const roomActive = location.pathname === `/monitoring/rooms/${room.room_id}`
-                          return (
-                            <div
-                              key={room.room_id}
-                              className={`flex items-center rounded-[14px] text-sm transition ${
-                                roomActive
-                                  ? "bg-bg-panel text-text-primary shadow-panel"
-                                  : "text-text-secondary hover:bg-bg-panel/70 hover:text-text-primary"
-                              }`}
-                            >
-                              <Link
-                                to={`/monitoring/rooms/${room.room_id}`}
-                                className="min-w-0 flex-1 px-3 py-2"
-                              >
-                                <span className="block truncate">{room.name}</span>
-                              </Link>
-                              <button
-                                type="button"
-                                onClick={(event) => handleOpenMonitoringWindow(event, room.room_id)}
-                                className="mr-1 flex h-8 w-8 items-center justify-center rounded-full text-text-quiet transition hover:bg-bg-shell hover:text-text-primary"
-                                aria-label={`開啟 ${room.name} 監控視窗`}
-                                title="開新監控視窗"
-                              >
-                                <LuExternalLink className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          )
-                        })}
+                        {roomMonitoringItems.map((room) => renderMonitoringItem(room))}
                       </div>
                     ) : null}
                   </div>
@@ -243,6 +249,17 @@ export default function AppSidebar({
             </div>
           </div>
         ))}
+
+        {showCollapsedMonitoringFlyout ? (
+          <div className="px-2 pt-2">
+            <div className="ml-[4.75rem] w-[17rem] rounded-[12px] border border-border-subtle/80 bg-[#202635]/98 p-2 shadow-panel">
+              <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-muted">
+                Monitor Rooms
+              </div>
+              <div className="space-y-1.5">{roomMonitoringItems.map((room) => renderMonitoringItem(room, true))}</div>
+            </div>
+          </div>
+        ) : null}
       </nav>
 
       <div className={`border-t border-border-subtle/70 ${collapsed ? "px-3 py-4" : "px-5 py-4"}`}>
