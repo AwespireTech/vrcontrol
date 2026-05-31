@@ -134,7 +134,7 @@ const initialRoomSocketPayload = {
   players: [
     {
       device_id: ONLINE_DEVICE_ID,
-      message: "ok",
+      message: "00:10 / 16:23",
       chapter: 3,
       sequence: 7,
       ready_to_move: true,
@@ -148,8 +148,24 @@ const initialRoomSocketPayload = {
       head_forward: { x: 0, y: 0, z: 1 },
       last_update: "2026-05-23T09:10:11",
     },
+    {
+      device_id: OFFLINE_DEVICE_ID,
+      message: "00:05 / 16:23",
+      chapter: 2,
+      sequence: 2,
+      ready_to_move: false,
+      left_hand_available: false,
+      left_hand_position: { x: 0, y: 0, z: 0 },
+      left_hand_forward: { x: 0, y: 0, z: 1 },
+      right_hand_available: false,
+      right_hand_position: { x: 0, y: 0, z: 0 },
+      right_hand_forward: { x: 0, y: 0, z: 1 },
+      head_position: { x: 0, y: 1.5, z: 0 },
+      head_forward: { x: 0, y: 0, z: 1 },
+      last_update: "2026-05-23T09:10:08",
+    },
   ],
-  player_count: 1,
+  player_count: 2,
 }
 
 async function installMockRoomSocket(page: Page, payload: unknown) {
@@ -298,7 +314,9 @@ test("shows monitoring rooms from the collapsed mobile sidebar", async ({ page }
   })
 })
 
-test("keeps room control inputs stable and uses room-specific actions", async ({ page }, testInfo) => {
+test("keeps room control inputs stable and uses room-specific actions", async ({
+  page,
+}, testInfo) => {
   let lastExecutedActionId = ""
   let lastAssignSequencePath = ""
   let lastForceMovePath = ""
@@ -320,7 +338,9 @@ test("keeps room control inputs stable and uses room-specific actions", async ({
   await page.goto(`/rooms/${ROOM_ID}/control`)
 
   await expect(page.getByRole("heading", { name: "主展示區" })).toBeVisible()
-  await expect(page.getByText("09:10:11")).toBeVisible()
+  const summaryPanel = page.locator(".console-control-panel--padded")
+  await expect(summaryPanel.getByText("依 Sequence 最小裝置顯示：Pico Backup")).toBeVisible()
+  await expect(summaryPanel.getByText("00:05 / 16:23")).toBeVisible()
 
   const offlineRow = page.locator(`[data-device-id="${OFFLINE_DEVICE_ID}"]`)
   await expect(offlineRow.getByRole("button", { name: "動作" })).toBeVisible()
@@ -338,19 +358,22 @@ test("keeps room control inputs stable and uses room-specific actions", async ({
   await expect(sequenceInput).toHaveValue("7")
   await sequenceInput.fill("42")
 
-  await page.evaluate((payload) => {
-    window.__emitMockRoomSocketPayload(payload)
-  }, {
-    ...initialRoomSocketPayload,
-    players: [
-      {
-        ...initialRoomSocketPayload.players[0],
-        chapter: 5,
-        sequence: 9,
-        last_update: "2026-05-23T09:10:59",
-      },
-    ],
-  })
+  await page.evaluate(
+    (payload) => {
+      window.__emitMockRoomSocketPayload(payload)
+    },
+    {
+      ...initialRoomSocketPayload,
+      players: [
+        {
+          ...initialRoomSocketPayload.players[0],
+          chapter: 5,
+          sequence: 9,
+          message: "00:59 / 16:23",
+        },
+      ],
+    },
+  )
 
   await expect(sequenceInput).toHaveValue("42")
   await actionDialog.getByRole("button", { name: "開啟 APP" }).click()
@@ -361,13 +384,18 @@ test("keeps room control inputs stable and uses room-specific actions", async ({
 
   await actionDialog.getByRole("combobox").selectOption("5")
   await actionDialog.getByRole("button", { name: "Go" }).first().click()
-  await expect.poll(() => lastForceMovePath).toBe(`/api/simple/forcemove/${ROOM_ID}/${ONLINE_DEVICE_ID}/5`)
+  await expect
+    .poll(() => lastForceMovePath)
+    .toBe(`/api/simple/forcemove/${ROOM_ID}/${ONLINE_DEVICE_ID}/5`)
 
   await actionDialog.getByRole("button", { name: "Go" }).nth(1).click()
-  await expect.poll(() => lastAssignSequencePath).toBe(
-    `/api/control/assignseq/${ROOM_ID}/${ONLINE_DEVICE_ID}/42`,
-  )
+  await expect
+    .poll(() => lastAssignSequencePath)
+    .toBe(`/api/control/assignseq/${ROOM_ID}/${ONLINE_DEVICE_ID}/42`)
 
-  await expect(actionDialog.getByText("Time：09:10:59")).toBeVisible()
-  await page.screenshot({ path: testInfo.outputPath("room-control-regression.png"), fullPage: true })
+  await expect(actionDialog.getByText("Time：00:59 / 16:23")).toBeVisible()
+  await page.screenshot({
+    path: testInfo.outputPath("room-control-regression.png"),
+    fullPage: true,
+  })
 })
