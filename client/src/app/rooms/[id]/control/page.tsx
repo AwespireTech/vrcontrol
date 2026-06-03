@@ -137,6 +137,11 @@ export default function RoomControlPage() {
   const [liveWindows, setLiveWindows] = useState<LiveStreamWindowState[]>([])
   const [liveStreamLayout, setLiveStreamLayout] = useState<LiveStreamLayout>("grid")
 
+  // Batch monitoring state
+  const [batchMonitoringModalOpen, setBatchMonitoringModalOpen] = useState(false)
+  const [batchMonitoringSelectedIds, setBatchMonitoringSelectedIds] = useState<string[]>([])
+  const [batchMonitoringPending, setBatchMonitoringPending] = useState(false)
+
   const currentRoomName = useMemo(() => currentRoom?.name || roomId, [currentRoom?.name, roomId])
   const roomProfile = useMemo(
     () => currentRoom?.operation_profile || DEFAULT_ROOM_OPERATION_PROFILE,
@@ -513,6 +518,69 @@ export default function RoomControlPage() {
     }
   }
 
+  // Batch monitoring handlers
+  const handleOpenBatchMonitoringModal = () => {
+    const onlineDeviceIds = modalDeviceIds.filter(
+      (deviceId) => deviceMap.get(deviceId)?.status === DEVICE_STATUS.ONLINE,
+    )
+
+    if (onlineDeviceIds.length === 0) {
+      alert("目前沒有可監控的在線裝置")
+      return
+    }
+
+    setBatchMonitoringSelectedIds(onlineDeviceIds)
+    setBatchMonitoringModalOpen(true)
+  }
+
+  const handleConfirmBatchMonitoring = async () => {
+    if (batchMonitoringSelectedIds.length === 0 || batchMonitoringPending) return
+
+    setBatchMonitoringPending(true)
+    try {
+      const newWindows: LiveStreamWindowState[] = batchMonitoringSelectedIds
+        .filter((deviceId) => !liveWindows.some((w) => w.deviceId === deviceId))
+        .map((deviceId, index) => {
+          const device = deviceMap.get(deviceId)
+          return {
+            deviceId,
+            title: device ? getDisplayName(device) : deviceId,
+            subtitle: device ? `${device.ip}:${device.port}` : "",
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+            zIndex: liveWindows.length + index + 1,
+            minimized: false,
+          }
+        })
+
+      if (newWindows.length === 0) {
+        alert("這些裝置已經在下方監控區塊中")
+        setBatchMonitoringModalOpen(false)
+        setBatchMonitoringSelectedIds([])
+        return
+      }
+
+      if (liveWindows.length + newWindows.length > LIVE_VIEW_MAX_STREAMS) {
+        const remaining = LIVE_VIEW_MAX_STREAMS - liveWindows.length
+        const truncated = newWindows.slice(0, remaining)
+        setLiveWindows((prev) => [...prev, ...truncated])
+        alert(`已加入 ${truncated.length} 台裝置，超過 ${LIVE_VIEW_MAX_STREAMS} 台上限`)
+      } else {
+        setLiveWindows((prev) => [...prev, ...newWindows])
+      }
+
+      setBatchMonitoringModalOpen(false)
+      setBatchMonitoringSelectedIds([])
+    } catch (error) {
+      console.error("Failed to add batch monitoring:", error)
+      alert("加入監控失敗，請稍後再試")
+    } finally {
+      setBatchMonitoringPending(false)
+    }
+  }
+
   const handleOpenDeviceActions = (deviceId: string) => {
     const player = playerByDeviceId.get(deviceId)
     setSelectedDeviceId(deviceId)
@@ -776,6 +844,27 @@ export default function RoomControlPage() {
               ) : moveState === "failed" ? (
                 <div className="text-danger text-xs">批次章節指令送出失敗</div>
               ) : null}
+
+              <div className="mt-3 border-t border-border-subtle/50 pt-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-text-secondary text-xs">批次監控</span>
+                  {liveWindows.length > 0 && (
+                    <span className="ui-badge ui-badge-primary text-[11px]">
+                      {liveWindows.length}
+                    </span>
+                  )}
+                </div>
+                <Button
+                  onClick={() => handleOpenBatchMonitoringModal()}
+                  className="ui-btn-sm ui-btn-primary w-full"
+                  disabled={batchMonitoringPending}
+                  loading={batchMonitoringPending}
+                >
+                  {liveWindows.length > 0
+                    ? `加入下方監控 (${liveWindows.length})`
+                    : "選擇裝置監控"}
+                </Button>
+              </div>
             </div>
           </section>
 
@@ -1168,6 +1257,30 @@ export default function RoomControlPage() {
         onClose={() => {
           setBatchModalOpen(false)
           setBatchSelectedDeviceIds([])
+        }}
+      />
+
+      <DeviceSelectionModal
+        open={batchMonitoringModalOpen}
+        title="批次監控 - 選擇裝置"
+        confirmText="加入下方監控"
+        targets={modalDeviceIds.map((deviceId) => {
+          const device = deviceMap.get(deviceId)
+          return {
+            id: deviceId,
+            label: device ? getDisplayName(device) : deviceId,
+            ip: device?.ip,
+            status: device?.status,
+            isOnline: device?.status === DEVICE_STATUS.ONLINE,
+          }
+        })}
+        selectedIds={batchMonitoringSelectedIds}
+        onSelectedIdsChange={setBatchMonitoringSelectedIds}
+        confirmPending={batchMonitoringPending}
+        onConfirm={handleConfirmBatchMonitoring}
+        onClose={() => {
+          setBatchMonitoringModalOpen(false)
+          setBatchMonitoringSelectedIds([])
         }}
       />
     </PageShell>
