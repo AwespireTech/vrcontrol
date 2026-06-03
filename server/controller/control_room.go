@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"log"
 	"strings"
 	"vrcontrol/server/service"
 	"vrcontrol/server/sockets"
@@ -42,6 +43,13 @@ func createRoomRuntime(roomID string) *sockets.Room {
 	room := sockets.NewRoom(roomID)
 	room.AssignedSequence = getAssignedSequences(roomID)
 	room.SetActivityService(activityServiceRef)
+	if activityServiceRef != nil {
+		if activity, err := activityServiceRef.GetRunningActivityByRoom(roomID); err == nil && activity != nil {
+			if err := room.RestoreActivity(activity); err != nil {
+				log.Printf("[room] restore running activity failed for %s: %v", roomID, err)
+			}
+		}
+	}
 	return room
 }
 

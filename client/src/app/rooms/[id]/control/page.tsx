@@ -246,13 +246,25 @@ export default function RoomControlPage() {
 
   const loadControlData = useCallback(async () => {
     try {
-      const [room, devices] = await Promise.all([
+      const [room, devices, currentActivity] = await Promise.all([
         roomId ? roomApi.get(roomId) : Promise.resolve(null),
         deviceApi.getAll(),
+        roomId ? activityApi.getCurrentByRoom(roomId).catch(() => null) : Promise.resolve(null),
       ])
       setCurrentRoom(room)
       setRoomDeviceIds(room?.device_ids || [])
       setDeviceMap(new Map(devices.map((device) => [device.device_id, device])))
+      if (currentActivity) {
+        setCurrentActivityMeta({
+          id: currentActivity.activity_id || "",
+          name: currentActivity.name || "",
+          status: currentActivity.status || "",
+          seed: currentActivity.runtime_snapshot?.seed,
+          startedAt: currentActivity.started_at,
+        })
+      } else {
+        setCurrentActivityMeta({ id: "", name: "", status: "" })
+      }
     } catch (error) {
       console.error("Failed to load control data:", error)
     }

@@ -60,6 +60,15 @@ func (c *ActivityController) ListByRoom(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"success": true, "data": c.activityService.ListActivitiesByRoom(roomID)})
 }
 
+func (c *ActivityController) GetCurrentActivityByRoom(ctx *gin.Context) {
+	activity, err := c.activityService.GetRunningActivityByRoom(ctx.Param("id"))
+	if err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"success": true, "data": nil})
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{"success": true, "data": activity})
+}
+
 func (c *ActivityController) ListActivities(ctx *gin.Context) {
 	query, err := parseActivityListQuery(ctx)
 	if err != nil {

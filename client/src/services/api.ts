@@ -371,6 +371,13 @@ export const activityApi = {
     return data.data || []
   },
 
+  getCurrentByRoom: async (roomId: string): Promise<Activity | null> => {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/current-activity`)
+    const data: ApiResponse<Activity | null> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to load current activity")
+    return data.data || null
+  },
+
   get: async (activityId: string): Promise<Activity | null> => {
     const res = await fetch(`${API_BASE}/activities/${activityId}`)
     const data: ApiResponse<Activity> = await res.json()
