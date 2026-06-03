@@ -11,6 +11,8 @@ type RoomActivityDefaults struct {
 type RoomOperationProfile struct {
 	ActivityDefaults          RoomActivityDefaults `json:"activity_defaults"`
 	BatchActionIDs            []string             `json:"batch_action_ids"`
+	LaunchActionID            string               `json:"launch_action_id,omitempty"`
+	StopActionID              string               `json:"stop_action_id,omitempty"`
 	AllowActivityNameOverride bool                 `json:"allow_activity_name_override"`
 	AllowSeedOverride         bool                 `json:"allow_seed_override"`
 }

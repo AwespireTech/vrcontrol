@@ -1,15 +1,13 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import {
-  LuMonitorPlay,
-  LuPencilLine,
-  LuPlus,
-  LuSmartphone,
-  LuTrash2,
-} from "react-icons/lu"
+import { LuMonitorPlay, LuPencilLine, LuPlus, LuSmartphone, LuTrash2 } from "react-icons/lu"
 import { roomApi, deviceApi } from "@/services/api"
 import type { Room } from "@/services/api-types"
 import { getDisplayName } from "@/lib/utils/device"
+import {
+  MONITORING_WINDOW_BLOCKED_MESSAGE,
+  openRoomMonitoringWindow,
+} from "@/lib/utils/monitoring-window"
 import PageShell from "@/components/console/page-shell"
 import ListShell from "@/components/console/list-shell"
 import ConsoleListRow from "@/components/console/console-list-row"
@@ -78,8 +76,12 @@ export default function RoomsPage() {
     }
   }
 
-  const handleOpenMonitoring = (roomName: string) => {
-    alert(`${roomName} 的群組監控功能準備中`)
+  const handleOpenMonitoring = (roomId: string) => {
+    const popup = openRoomMonitoringWindow(roomId, { display: "wall", layout: "grid" })
+
+    if (!popup) {
+      alert(MONITORING_WINDOW_BLOCKED_MESSAGE)
+    }
   }
 
   const sortedRooms = useMemo(
@@ -89,8 +91,8 @@ export default function RoomsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-xl text-foreground">載入中…</div>
+      <div className="bg-background flex min-h-screen items-center justify-center">
+        <div className="text-foreground text-xl">載入中…</div>
       </div>
     )
   }
@@ -106,7 +108,7 @@ export default function RoomsPage() {
       actions={
         <Button
           onClick={() => navigate("/rooms/new")}
-          className="ui-btn-sm ui-btn-primary whitespace-nowrap px-5"
+          className="ui-btn-sm ui-btn-primary px-5 whitespace-nowrap"
         >
           <LuPlus className="h-4 w-4" />
           Add Group 新增群組
@@ -151,7 +153,9 @@ export default function RoomsPage() {
                     <div className="console-table-title">{room.name}</div>
                     <div className="console-meta mt-1">{room.room_id}</div>
                     {room.description ? (
-                      <div className="console-meta mt-1 text-text-secondary">{room.description}</div>
+                      <div className="console-meta text-text-secondary mt-1">
+                        {room.description}
+                      </div>
                     ) : null}
                   </div>
 
@@ -161,9 +165,14 @@ export default function RoomsPage() {
                     ) : (
                       <div className="grid gap-x-5 gap-y-2 sm:grid-cols-2">
                         {room.device_ids.slice(0, 6).map((deviceId) => (
-                          <div key={deviceId} className="flex items-center gap-2 text-sm text-text-primary">
-                            <LuSmartphone className="h-3 w-3 shrink-0 text-text-muted" />
-                            <span className="truncate">{deviceNameMap.get(deviceId) || deviceId}</span>
+                          <div
+                            key={deviceId}
+                            className="text-text-primary flex items-center gap-2 text-sm"
+                          >
+                            <LuSmartphone className="text-text-muted h-3 w-3 shrink-0" />
+                            <span className="truncate">
+                              {deviceNameMap.get(deviceId) || deviceId}
+                            </span>
                           </div>
                         ))}
                         {room.device_ids.length > 6 ? (
@@ -173,7 +182,7 @@ export default function RoomsPage() {
                     )}
                   </div>
 
-                  <div className="col-span-4 console-action-stack console-action-stack--fit">
+                  <div className="console-action-stack console-action-stack--fit col-span-4">
                     <div className="console-action-stack__controls console-action-stack__controls--fit">
                       <Button
                         onClick={() => navigate(`/rooms/${room.room_id}/control`)}
@@ -182,9 +191,9 @@ export default function RoomsPage() {
                         進入控制頁
                       </Button>
                       <Button
-                        onClick={() => handleOpenMonitoring(room.name)}
+                        onClick={() => handleOpenMonitoring(room.room_id)}
                         className="console-button-pill console-button-pill--fit ui-btn-sm ui-btn-primary"
-                        title="群組監控功能準備中"
+                        title="開新監控視窗"
                       >
                         <LuMonitorPlay className="h-4 w-4" />
                         開啟監控

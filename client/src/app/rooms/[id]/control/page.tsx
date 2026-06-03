@@ -11,19 +11,8 @@ import {
   type Room,
   type RoomOperationProfile,
 } from "@/services/api-types"
-import {
-  actionApi,
-  activityApi,
-  controlApi,
-  deviceApi,
-  roomApi,
-  simpleApi,
-} from "@/services/api"
-import {
-  DEFAULT_POLL_INTERVAL_SECONDS,
-  LIVE_VIEW_MAX_STREAMS,
-  SERVER,
-} from "@/environment"
+import { actionApi, activityApi, controlApi, deviceApi, roomApi, simpleApi } from "@/services/api"
+import { DEFAULT_POLL_INTERVAL_SECONDS, LIVE_VIEW_MAX_STREAMS, SERVER } from "@/environment"
 import Button from "@/components/button"
 import LiveStreamStage from "@/components/console/live-stream-stage"
 import RoomMinimap from "@/components/console/room-minimap"
@@ -80,6 +69,8 @@ const DEFAULT_ROOM_OPERATION_PROFILE: RoomOperationProfile = {
     activity_context: DEFAULT_ACTIVITY_CONTEXT,
   },
   batch_action_ids: [],
+  launch_action_id: "",
+  stop_action_id: "",
   allow_activity_name_override: true,
   allow_seed_override: true,
 }
@@ -146,6 +137,11 @@ export default function RoomControlPage() {
   const [liveWindows, setLiveWindows] = useState<LiveStreamWindowState[]>([])
   const [liveStreamLayout, setLiveStreamLayout] = useState<LiveStreamLayout>("grid")
 
+  // Batch monitoring state
+  const [batchMonitoringModalOpen, setBatchMonitoringModalOpen] = useState(false)
+  const [batchMonitoringSelectedIds, setBatchMonitoringSelectedIds] = useState<string[]>([])
+  const [batchMonitoringPending, setBatchMonitoringPending] = useState(false)
+
   const currentRoomName = useMemo(() => currentRoom?.name || roomId, [currentRoom?.name, roomId])
   const roomProfile = useMemo(
     () => currentRoom?.operation_profile || DEFAULT_ROOM_OPERATION_PROFILE,
@@ -177,6 +173,15 @@ export default function RoomControlPage() {
     })
   }, [deviceMap, playerByDeviceId, playerData, roomDeviceIds])
 
+  const leadPlayer = useMemo(() => {
+    const leadDeviceId = displayDeviceIds.find((deviceId) => playerByDeviceId.has(deviceId))
+    return leadDeviceId ? playerByDeviceId.get(leadDeviceId) || null : null
+  }, [displayDeviceIds, playerByDeviceId])
+
+  const leadDevice = leadPlayer ? deviceMap.get(leadPlayer.device_id) || null : null
+  const leadDeviceName = leadDevice ? getDisplayName(leadDevice) : leadPlayer?.device_id || "-"
+  const leadMessage = leadPlayer?.message || "-"
+
   const minimapMarkers = useMemo(() => {
     const spatialMarkers = buildRoomMinimapMarkers(playerData, minimapConfig)
     const markers = buildRoomMinimapDisplayMarkers(spatialMarkers, playerData, deviceMap)
@@ -195,17 +200,40 @@ export default function RoomControlPage() {
     [actions, selectedActionId],
   )
 
+  const resolveRoomAction = useCallback(
+    (explicitActionId: string | undefined, actionType: string) => {
+      if (explicitActionId) {
+        const explicitAction = actions.find((action) => action.action_id === explicitActionId)
+        if (explicitAction) {
+          return explicitAction
+        }
+      }
+
+      const legacyBatchAction = roomProfile.batch_action_ids
+        .map((actionId) => actions.find((action) => action.action_id === actionId) || null)
+        .find((action): action is Action => action !== null && action.action_type === actionType)
+
+      if (legacyBatchAction) {
+        return legacyBatchAction
+      }
+
+      return actions.find((action) => action.action_type === actionType) || null
+    },
+    [actions, roomProfile.batch_action_ids],
+  )
+
   const launchAppAction = useMemo(
-    () => actions.find((action) => action.action_type === ACTION_TYPES.LAUNCH_APP) || null,
-    [actions],
+    () => resolveRoomAction(roomProfile.launch_action_id, ACTION_TYPES.LAUNCH_APP),
+    [resolveRoomAction, roomProfile.launch_action_id],
   )
 
   const stopAppAction = useMemo(
-    () => actions.find((action) => action.action_type === ACTION_TYPES.STOP_APP) || null,
-    [actions],
+    () => resolveRoomAction(roomProfile.stop_action_id, ACTION_TYPES.STOP_APP),
+    [resolveRoomAction, roomProfile.stop_action_id],
   )
 
-  const hasRunningActivity = currentActivityMeta.status === "running" && currentActivityMeta.id !== ""
+  const hasRunningActivity =
+    currentActivityMeta.status === "running" && currentActivityMeta.id !== ""
   const modalDeviceIds = useMemo(
     () => (roomDeviceIds.length > 0 ? roomDeviceIds : displayDeviceIds),
     [displayDeviceIds, roomDeviceIds],
@@ -311,17 +339,6 @@ export default function RoomControlPage() {
       setActionPanelOpen(false)
     }
   }, [displayDeviceIds, selectedDeviceId])
-
-  useEffect(() => {
-    if (!selectedDeviceId) {
-      setSelectedDeviceMoveTarget("")
-      setSelectedDeviceSequenceInput("")
-      return
-    }
-
-    setSelectedDeviceMoveTarget("")
-    setSelectedDeviceSequenceInput(selectedPlayer ? selectedPlayer.sequence.toString() : "")
-  }, [selectedDeviceId, selectedPlayer])
 
   const handleChangeSequence = async (deviceId: string, seq: number) => {
     if (!roomId) return
@@ -501,8 +518,74 @@ export default function RoomControlPage() {
     }
   }
 
+  // Batch monitoring handlers
+  const handleOpenBatchMonitoringModal = () => {
+    const onlineDeviceIds = modalDeviceIds.filter(
+      (deviceId) => deviceMap.get(deviceId)?.status === DEVICE_STATUS.ONLINE,
+    )
+
+    if (onlineDeviceIds.length === 0) {
+      alert("目前沒有可監控的在線裝置")
+      return
+    }
+
+    setBatchMonitoringSelectedIds(onlineDeviceIds)
+    setBatchMonitoringModalOpen(true)
+  }
+
+  const handleConfirmBatchMonitoring = async () => {
+    if (batchMonitoringSelectedIds.length === 0 || batchMonitoringPending) return
+
+    setBatchMonitoringPending(true)
+    try {
+      const newWindows: LiveStreamWindowState[] = batchMonitoringSelectedIds
+        .filter((deviceId) => !liveWindows.some((w) => w.deviceId === deviceId))
+        .map((deviceId, index) => {
+          const device = deviceMap.get(deviceId)
+          return {
+            deviceId,
+            title: device ? getDisplayName(device) : deviceId,
+            subtitle: device ? `${device.ip}:${device.port}` : "",
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+            zIndex: liveWindows.length + index + 1,
+            minimized: false,
+          }
+        })
+
+      if (newWindows.length === 0) {
+        alert("這些裝置已經在下方監控區塊中")
+        setBatchMonitoringModalOpen(false)
+        setBatchMonitoringSelectedIds([])
+        return
+      }
+
+      if (liveWindows.length + newWindows.length > LIVE_VIEW_MAX_STREAMS) {
+        const remaining = LIVE_VIEW_MAX_STREAMS - liveWindows.length
+        const truncated = newWindows.slice(0, remaining)
+        setLiveWindows((prev) => [...prev, ...truncated])
+        alert(`已加入 ${truncated.length} 台裝置，超過 ${LIVE_VIEW_MAX_STREAMS} 台上限`)
+      } else {
+        setLiveWindows((prev) => [...prev, ...newWindows])
+      }
+
+      setBatchMonitoringModalOpen(false)
+      setBatchMonitoringSelectedIds([])
+    } catch (error) {
+      console.error("Failed to add batch monitoring:", error)
+      alert("加入監控失敗，請稍後再試")
+    } finally {
+      setBatchMonitoringPending(false)
+    }
+  }
+
   const handleOpenDeviceActions = (deviceId: string) => {
+    const player = playerByDeviceId.get(deviceId)
     setSelectedDeviceId(deviceId)
+    setSelectedDeviceMoveTarget("")
+    setSelectedDeviceSequenceInput(player ? player.sequence.toString() : "")
     setActionPanelOpen(true)
   }
 
@@ -515,7 +598,8 @@ export default function RoomControlPage() {
     try {
       const created = await activityApi.createDraft(roomId, {
         name: activityName,
-        activity_context: roomProfile.activity_defaults.activity_context || DEFAULT_ACTIVITY_CONTEXT,
+        activity_context:
+          roomProfile.activity_defaults.activity_context || DEFAULT_ACTIVITY_CONTEXT,
       })
       createdActivityId = created.activity_id
 
@@ -646,7 +730,7 @@ export default function RoomControlPage() {
 
   if (!roomId) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-6">
+      <div className="bg-background flex min-h-screen items-center justify-center p-6">
         <div className="text-danger">房間不存在</div>
       </div>
     )
@@ -662,313 +746,348 @@ export default function RoomControlPage() {
       titleVariant="compact"
     >
       <div className="space-y-5">
-          <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
-            <section className="console-control-panel console-control-panel--padded">
-              <div className="grid gap-3.5">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <div className="text-[15px] font-semibold text-text-primary">批次處理</div>
-                    <div className="mt-1 text-sm text-text-secondary">
-                      章節與時間目前先以 placeholder 顯示。
-                    </div>
-                  </div>
-                  <span className={`ui-badge ${getActivityBadgeClass(currentActivityMeta.status)}`}>
-                    {hasRunningActivity ? "進行中" : "待命"}
-                  </span>
-                </div>
-
-                <div className="console-control-panel__inner grid grid-cols-2 gap-4 p-4">
-                  <div>
-                    <div className="text-[12px] font-semibold tracking-[0.08em] text-text-secondary">
-                      Chapter 章節
-                    </div>
-                    <div className="mt-2 font-display text-[2rem] font-semibold leading-none text-text-primary">
-                      0 / 7
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[12px] font-semibold tracking-[0.08em] text-text-secondary">
-                      Time 時間
-                    </div>
-                    <div className="mt-2 font-display text-[2rem] font-semibold leading-none text-text-primary">
-                      00:00 / 16:23
-                    </div>
+        <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
+          <section className="console-control-panel console-control-panel--padded">
+            <div className="grid gap-3.5">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-text-primary text-[15px] font-semibold">批次處理</div>
+                  <div className="text-text-secondary mt-1 text-sm">
+                    依 Sequence 最小裝置顯示：{leadDeviceName}
                   </div>
                 </div>
-
-                <Button
-                  type="button"
-                  loading={
-                    hasRunningActivity
-                      ? activityPending === `end:${currentActivityMeta.id}`
-                      : activityPending === "start"
-                  }
-                  disabled={activityPending !== ""}
-                  className={
-                    hasRunningActivity ? "ui-btn-md ui-btn-danger" : "ui-btn-md ui-btn-primary"
-                  }
-                  onClick={
-                    hasRunningActivity
-                      ? () => handleEndActivity(currentActivityMeta.id)
-                      : handleStartConfiguredActivity
-                  }
-                >
-                  {hasRunningActivity ? "End 結束體驗" : "Start 開始體驗"}
-                </Button>
-
-                <div className="flex flex-wrap items-center gap-2 pt-1">
-                  <Button
-                    onClick={() => handleOpenBatchActionModal(launchAppAction, "開啟 APP")}
-                    className="console-button-pill console-button-pill--fit ui-btn-sm ui-btn-primary"
-                    disabled={executePending}
-                  >
-                    開啟 APP
-                  </Button>
-                  <Button
-                    onClick={() => handleOpenBatchActionModal(stopAppAction, "關閉 APP")}
-                    className="console-button-pill console-button-pill--fit ui-btn-sm ui-btn-primary"
-                    disabled={executePending}
-                  >
-                    關閉 APP
-                  </Button>
-                  <select
-                    className={`console-control--compact console-control--select h-8 w-24 rounded-full px-3 py-0 text-center text-xs ${
-                      selectedOption === "" ? "text-text-quiet" : ""
-                    }`}
-                    value={selectedOption}
-                    onChange={(event) => setSelectedOption(event.target.value)}
-                  >
-                    <option value=""></option>
-                    {options.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                  <Button
-                    className="ui-btn-xs ui-btn-primary h-8 rounded-full px-3"
-                    disabled={selectedOption === ""}
-                    loading={forceMovePending}
-                    onClick={handleForceAllMove}
-                  >
-                    Go
-                  </Button>
-                </div>
-
-                {moveState === "success" ? (
-                  <div className="text-xs text-success">已送出批次章節指令</div>
-                ) : moveState === "failed" ? (
-                  <div className="text-xs text-danger">批次章節指令送出失敗</div>
-                ) : null}
-              </div>
-            </section>
-
-            <section className="console-control-panel">
-              <div className="console-control-panel__toolbar">
-                <div className="console-control-panel__title">房間內裝置</div>
-                <span
-                  className={`ui-badge ${
-                    connectionStatus === "connected"
-                      ? "ui-badge-success"
-                      : connectionStatus === "connecting"
-                        ? "ui-badge-warning"
-                        : "ui-badge-danger"
-                  }`}
-                >
-                  {connectionStatus === "connected"
-                    ? "已連線"
-                    : connectionStatus === "connecting"
-                      ? "連線中"
-                      : "已中斷"}
+                <span className={`ui-badge ${getActivityBadgeClass(currentActivityMeta.status)}`}>
+                  {hasRunningActivity ? "進行中" : "待命"}
                 </span>
               </div>
-              <div className="max-h-74 overflow-y-auto">
-                {displayDeviceIds.map((deviceId) => {
-                  const player = playerByDeviceId.get(deviceId)
-                  const device = deviceMap.get(deviceId)
-                  const alias = device ? getDisplayName(device) : deviceId
-                  const adbStatus = isSupportedDeviceStatus(device?.status) ? device.status : undefined
-                  const wsStatus = device?.ws_status
-                  const isAdbOnline = adbStatus === DEVICE_STATUS.ONLINE
-                  const isAdbConnecting = adbStatus === DEVICE_STATUS.CONNECTING
-                  const devicePendingAction = deviceActionPending[deviceId]
-                  const isSelectedDevice = selectedDeviceId === deviceId
 
-                  return (
-                    <div
-                      key={deviceId}
-                      role="button"
-                      tabIndex={0}
-                      data-device-id={deviceId}
-                      aria-selected={isSelectedDevice}
-                      onClick={(event) => {
-                        if (shouldIgnoreDeviceCardSelectionEvent(event.target, event.currentTarget)) {
-                          return
-                        }
-                        setSelectedDeviceId(deviceId)
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key !== "Enter" && event.key !== " ") return
-                        if (shouldIgnoreDeviceCardSelectionEvent(event.target, event.currentTarget)) {
-                          return
-                        }
-                        event.preventDefault()
-                        setSelectedDeviceId(deviceId)
-                      }}
-                      className={`grid grid-cols-[minmax(0,1.1fr)_116px_108px_56px] items-start gap-4 border-b border-border-subtle/65 px-5 py-3.5 last:border-b-0 ${
-                        isSelectedDevice ? "bg-bg-panel/80" : "hover:bg-bg-panel/45"
-                      }`}
-                    >
-                      <div>
-                        <div className="text-sm font-semibold text-text-primary">{alias}</div>
-                        <div className="console-meta mt-1">{deviceId}</div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="console-status-label">WS</span>
-                          <span className={`ui-badge console-status-badge ${getWsStatusBadgeClass(wsStatus)}`}>
-                            {getWsStatusText(wsStatus)}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs">
-                          <span className="console-status-label">ADB</span>
-                          <span className={`ui-badge console-status-badge ${getAdbStatusBadgeClass(adbStatus)}`}>
-                            {getAdbStatusText(adbStatus)}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="space-y-1 text-[11px] text-text-secondary">
-                        <div>
-                          Battery：<span className="text-text-primary">{isAdbOnline && device?.battery !== undefined ? `${device.battery}%` : "-"}</span>
-                        </div>
-                        <div>
-                          Status：<span className={player?.ready_to_move ? "text-success" : "text-msg-danger"}>{player ? (player.ready_to_move ? "Ready" : "Not Ready") : "-"}</span>
-                        </div>
-                        <div>
-                          Chapter：<span className="text-text-primary">{player ? player.chapter : "-"}</span>
-                        </div>
-                        <div>
-                          Time：<span className="text-text-primary">00:00 / 02:30</span>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col items-end gap-3">
-                        <div className="text-right text-[11px] text-text-secondary">
-                          Sequence
-                          <div className="mt-1 text-[1.75rem] font-semibold leading-none text-text-primary">
-                            {player ? player.sequence : "-"}
-                          </div>
-                        </div>
-                        {!isAdbOnline && !isAdbConnecting ? (
-                          <Button
-                            onClick={() => handleConnect(deviceId)}
-                            className="ui-btn-xs ui-btn-primary h-7 rounded-full px-3"
-                            loading={devicePendingAction === "connect"}
-                            disabled={!!devicePendingAction}
-                          >
-                            連線
-                          </Button>
-                        ) : isAdbConnecting ? (
-                          <Button className="ui-btn-xs ui-btn-muted h-7 rounded-full px-3" disabled>
-                            連線中
-                          </Button>
-                        ) : (
-                          <Button
-                            onClick={() => handleOpenDeviceActions(deviceId)}
-                            className="ui-btn-xs ui-btn-primary h-7 rounded-full px-3"
-                          >
-                            動作
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </section>
-          </div>
-
-          <section className="console-control-panel console-control-panel--padded">
-            <div className="grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
-              <div>
-                <div className="mb-3 console-control-panel__title">房間平面圖</div>
-                <RoomMinimap
-                  config={minimapConfig}
-                  markers={minimapMarkers}
-                  selectedDeviceId={selectedDeviceId}
-                  onSelectDevice={setSelectedDeviceId}
-                  detailLevel="map-only"
-                />
-              </div>
-
-              <div>
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div className="console-control-panel__title">監控畫面</div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="ui-badge ui-badge-primary">
-                      {liveWindows.length} / {LIVE_VIEW_MAX_STREAMS}
-                    </span>
-                    <div className="live-stream-layout-toggle" role="group" aria-label="即時串流排版">
-                      <button
-                        type="button"
-                        onClick={() => setLiveStreamLayout("stack")}
-                        className={`ui-btn ui-btn-xs ${
-                          liveStreamLayout === "stack" ? "ui-btn-primary" : "ui-btn-muted"
-                        }`}
-                      >
-                        堆疊
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setLiveStreamLayout("grid")}
-                        className={`ui-btn ui-btn-xs ${
-                          liveStreamLayout === "grid" ? "ui-btn-primary" : "ui-btn-muted"
-                        }`}
-                      >
-                        網格
-                      </button>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleOpenLiveStreamPopup}
-                      className="ui-btn ui-btn-xs ui-btn-outline"
-                    >
-                      在新視窗開啟
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setLiveWindows([])}
-                      className="ui-btn ui-btn-xs ui-btn-muted"
-                      disabled={liveWindows.length === 0}
-                    >
-                      收起
-                    </button>
+              <div className="console-control-panel__inner grid grid-cols-2 gap-4 p-4">
+                <div>
+                  <div className="text-text-secondary text-[12px] font-semibold tracking-[0.08em]">
+                    Chapter 章節
+                  </div>
+                  <div className="font-display text-text-primary mt-2 text-[2rem] leading-none font-semibold">
+                    {leadPlayer ? leadPlayer.chapter : "-"}
                   </div>
                 </div>
-
-                {liveWindows.length > 0 ? (
-                  <LiveStreamStage
-                    windows={liveWindows}
-                    layout={liveStreamLayout}
-                    selectedDeviceId={selectedDeviceId}
-                    onSelectDevice={setSelectedDeviceId}
-                    onClose={handleCloseLiveStream}
-                  />
-                ) : (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {Array.from({ length: 4 }, (_, index) => (
-                      <div
-                        key={index}
-                        className="aspect-video rounded-xl border border-border-subtle/70 bg-[#d7d7d7]"
-                      />
-                    ))}
+                <div>
+                  <div className="text-text-secondary text-[12px] font-semibold tracking-[0.08em]">
+                    Time 時間
                   </div>
-                )}
+                  <div className="font-display text-text-primary mt-2 text-[2rem] leading-none font-semibold break-words">
+                    {leadMessage}
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                loading={
+                  hasRunningActivity
+                    ? activityPending === `end:${currentActivityMeta.id}`
+                    : activityPending === "start"
+                }
+                disabled={activityPending !== ""}
+                className={
+                  hasRunningActivity ? "ui-btn-md ui-btn-danger" : "ui-btn-md ui-btn-primary"
+                }
+                onClick={
+                  hasRunningActivity
+                    ? () => handleEndActivity(currentActivityMeta.id)
+                    : handleStartConfiguredActivity
+                }
+              >
+                {hasRunningActivity ? "End 結束體驗" : "Start 開始體驗"}
+              </Button>
+
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <Button
+                  onClick={() => handleOpenBatchActionModal(launchAppAction, "開啟 APP")}
+                  className="console-button-pill console-button-pill--fit ui-btn-sm ui-btn-primary"
+                  disabled={executePending}
+                >
+                  開啟 APP
+                </Button>
+                <Button
+                  onClick={() => handleOpenBatchActionModal(stopAppAction, "關閉 APP")}
+                  className="console-button-pill console-button-pill--fit ui-btn-sm ui-btn-primary"
+                  disabled={executePending}
+                >
+                  關閉 APP
+                </Button>
+                <select
+                  className={`console-control--compact console-control--select h-8 w-24 rounded-full px-3 py-0 text-center text-xs ${
+                    selectedOption === "" ? "text-text-quiet" : ""
+                  }`}
+                  value={selectedOption}
+                  onChange={(event) => setSelectedOption(event.target.value)}
+                >
+                  <option value=""></option>
+                  {options.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <Button
+                  className="ui-btn-xs ui-btn-primary h-8 rounded-full px-3"
+                  disabled={selectedOption === ""}
+                  loading={forceMovePending}
+                  onClick={handleForceAllMove}
+                >
+                  Go
+                </Button>
+              </div>
+
+              {moveState === "success" ? (
+                <div className="text-success text-xs">已送出批次章節指令</div>
+              ) : moveState === "failed" ? (
+                <div className="text-danger text-xs">批次章節指令送出失敗</div>
+              ) : null}
+
+              <div className="mt-3 border-t border-border-subtle/50 pt-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-text-secondary text-xs">批次監控</span>
+                  {liveWindows.length > 0 && (
+                    <span className="ui-badge ui-badge-primary text-[11px]">
+                      {liveWindows.length}
+                    </span>
+                  )}
+                </div>
+                <Button
+                  onClick={() => handleOpenBatchMonitoringModal()}
+                  className="ui-btn-sm ui-btn-primary w-full"
+                  disabled={batchMonitoringPending}
+                  loading={batchMonitoringPending}
+                >
+                  {liveWindows.length > 0
+                    ? `加入下方監控 (${liveWindows.length})`
+                    : "選擇裝置監控"}
+                </Button>
               </div>
             </div>
           </section>
+
+          <section className="console-control-panel">
+            <div className="console-control-panel__toolbar">
+              <div className="console-control-panel__title">房間內裝置</div>
+              <span
+                className={`ui-badge ${
+                  connectionStatus === "connected"
+                    ? "ui-badge-success"
+                    : connectionStatus === "connecting"
+                      ? "ui-badge-warning"
+                      : "ui-badge-danger"
+                }`}
+              >
+                {connectionStatus === "connected"
+                  ? "已連線"
+                  : connectionStatus === "connecting"
+                    ? "連線中"
+                    : "已中斷"}
+              </span>
+            </div>
+            <div className="max-h-74 overflow-y-auto">
+              {displayDeviceIds.map((deviceId) => {
+                const player = playerByDeviceId.get(deviceId)
+                const device = deviceMap.get(deviceId)
+                const alias = device ? getDisplayName(device) : deviceId
+                const adbStatus = isSupportedDeviceStatus(device?.status)
+                  ? device.status
+                  : undefined
+                const wsStatus = device?.ws_status
+                const isAdbOnline = adbStatus === DEVICE_STATUS.ONLINE
+                const isAdbConnecting = adbStatus === DEVICE_STATUS.CONNECTING
+                const devicePendingAction = deviceActionPending[deviceId]
+                const isSelectedDevice = selectedDeviceId === deviceId
+
+                return (
+                  <div
+                    key={deviceId}
+                    role="button"
+                    tabIndex={0}
+                    data-device-id={deviceId}
+                    aria-selected={isSelectedDevice}
+                    onClick={(event) => {
+                      if (shouldIgnoreDeviceCardSelectionEvent(event.target, event.currentTarget)) {
+                        return
+                      }
+                      setSelectedDeviceId(deviceId)
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter" && event.key !== " ") return
+                      if (shouldIgnoreDeviceCardSelectionEvent(event.target, event.currentTarget)) {
+                        return
+                      }
+                      event.preventDefault()
+                      setSelectedDeviceId(deviceId)
+                    }}
+                    className={`border-border-subtle/65 grid grid-cols-[minmax(0,1.05fr)_116px_108px_112px] items-start gap-4 border-b px-5 py-3.5 last:border-b-0 ${
+                      isSelectedDevice ? "bg-bg-panel/80" : "hover:bg-bg-panel/45"
+                    }`}
+                  >
+                    <div>
+                      <div className="text-text-primary text-sm font-semibold">{alias}</div>
+                      <div className="console-meta mt-1">{deviceId}</div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="console-status-label">WS</span>
+                        <span
+                          className={`ui-badge console-status-badge ${getWsStatusBadgeClass(wsStatus)}`}
+                        >
+                          {getWsStatusText(wsStatus)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className="console-status-label">ADB</span>
+                        <span
+                          className={`ui-badge console-status-badge ${getAdbStatusBadgeClass(adbStatus)}`}
+                        >
+                          {getAdbStatusText(adbStatus)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-text-secondary space-y-1 text-[11px]">
+                      <div>
+                        Battery：
+                        <span className="text-text-primary">
+                          {isAdbOnline && device?.battery !== undefined
+                            ? `${device.battery}%`
+                            : "-"}
+                        </span>
+                      </div>
+                      <div>
+                        Status：
+                        <span
+                          className={player?.ready_to_move ? "text-success" : "text-msg-danger"}
+                        >
+                          {player ? (player.ready_to_move ? "Ready" : "Not Ready") : "-"}
+                        </span>
+                      </div>
+                      <div>
+                        Chapter：
+                        <span className="text-text-primary">{player ? player.chapter : "-"}</span>
+                      </div>
+                      <div>
+                        Time：<span className="text-text-primary">{player?.message || "-"}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-2.5">
+                      <div className="text-text-secondary text-right text-[11px]">
+                        Sequence
+                        <div className="text-text-primary mt-1 text-[1.75rem] leading-none font-semibold">
+                          {player ? player.sequence : "-"}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        <Button
+                          onClick={() => handleConnect(deviceId)}
+                          className={`ui-btn-xs h-7 min-w-[4.5rem] rounded-full px-3 ${
+                            isAdbOnline ? "ui-btn-muted" : "ui-btn-primary"
+                          }`}
+                          loading={devicePendingAction === "connect"}
+                          disabled={!!devicePendingAction || isAdbOnline || isAdbConnecting}
+                        >
+                          {isAdbConnecting ? "連線中" : isAdbOnline ? "已連線" : "連線"}
+                        </Button>
+                        <Button
+                          onClick={() => handleOpenDeviceActions(deviceId)}
+                          className="ui-btn-xs ui-btn-primary h-7 min-w-[4.5rem] rounded-full px-3"
+                        >
+                          動作
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        </div>
+
+        <section className="console-control-panel console-control-panel--padded">
+          <div className="grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
+            <div>
+              <div className="console-control-panel__title mb-3">房間平面圖</div>
+              <RoomMinimap
+                config={minimapConfig}
+                markers={minimapMarkers}
+                selectedDeviceId={selectedDeviceId}
+                onSelectDevice={setSelectedDeviceId}
+                detailLevel="map-only"
+              />
+            </div>
+
+            <div>
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="console-control-panel__title">監控畫面</div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="ui-badge ui-badge-primary">
+                    {liveWindows.length} / {LIVE_VIEW_MAX_STREAMS}
+                  </span>
+                  <div className="live-stream-layout-toggle" role="group" aria-label="即時串流排版">
+                    <button
+                      type="button"
+                      onClick={() => setLiveStreamLayout("stack")}
+                      className={`ui-btn ui-btn-xs ${
+                        liveStreamLayout === "stack" ? "ui-btn-primary" : "ui-btn-muted"
+                      }`}
+                    >
+                      堆疊
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLiveStreamLayout("grid")}
+                      className={`ui-btn ui-btn-xs ${
+                        liveStreamLayout === "grid" ? "ui-btn-primary" : "ui-btn-muted"
+                      }`}
+                    >
+                      網格
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleOpenLiveStreamPopup}
+                    className="ui-btn ui-btn-xs ui-btn-outline"
+                  >
+                    在新視窗開啟
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLiveWindows([])}
+                    className="ui-btn ui-btn-xs ui-btn-muted"
+                    disabled={liveWindows.length === 0}
+                  >
+                    收起
+                  </button>
+                </div>
+              </div>
+
+              {liveWindows.length > 0 ? (
+                <LiveStreamStage
+                  windows={liveWindows}
+                  layout={liveStreamLayout}
+                  selectedDeviceId={selectedDeviceId}
+                  onSelectDevice={setSelectedDeviceId}
+                  onClose={handleCloseLiveStream}
+                />
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {Array.from({ length: 4 }, (_, index) => (
+                    <div
+                      key={index}
+                      className="border-border-subtle/70 aspect-[16/9] rounded-[12px] border bg-[#d7d7d7]"
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
       </div>
 
       <OverlayCard
@@ -979,10 +1098,10 @@ export default function RoomControlPage() {
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="text-[1.85rem] font-semibold tracking-[-0.04em] text-text-primary">
+            <div className="text-text-primary text-[1.85rem] font-semibold tracking-[-0.04em]">
               {selectedDeviceAlias}
             </div>
-            <div className="mt-2 text-sm text-text-secondary">執行動作</div>
+            <div className="text-text-secondary mt-2 text-sm">執行動作</div>
           </div>
           <button
             type="button"
@@ -1011,7 +1130,7 @@ export default function RoomControlPage() {
                 }
                 className="ui-btn-md ui-btn-primary w-full justify-start"
                 loading={deviceCommandPending === "launch"}
-                disabled={selectedDevice?.status !== DEVICE_STATUS.ONLINE || deviceCommandPending !== ""}
+                disabled={!launchAppAction || deviceCommandPending !== ""}
               >
                 開啟 APP
               </Button>
@@ -1021,7 +1140,7 @@ export default function RoomControlPage() {
                 }
                 className="ui-btn-md ui-btn-muted w-full justify-start"
                 loading={deviceCommandPending === "stop"}
-                disabled={selectedDevice?.status !== DEVICE_STATUS.ONLINE || deviceCommandPending !== ""}
+                disabled={!stopAppAction || deviceCommandPending !== ""}
               >
                 關閉 APP
               </Button>
@@ -1036,7 +1155,7 @@ export default function RoomControlPage() {
 
             <div className="space-y-3">
               <label className="space-y-2">
-                <span className="text-sm font-semibold text-text-primary">跳轉章節</span>
+                <span className="text-text-primary text-sm font-semibold">跳轉章節</span>
                 <div className="flex items-center gap-2">
                   <select
                     className="console-control--compact console-control--select h-10 min-w-0 flex-1"
@@ -1051,10 +1170,14 @@ export default function RoomControlPage() {
                     ))}
                   </select>
                   <Button
-                    onClick={() => handleForceMoveSingle(selectedDeviceId, selectedDeviceMoveTarget)}
+                    onClick={() =>
+                      handleForceMoveSingle(selectedDeviceId, selectedDeviceMoveTarget)
+                    }
                     className="ui-btn-sm ui-btn-primary h-10 rounded-full px-3"
                     loading={forceMovePendingIds.has(selectedDeviceId)}
-                    disabled={selectedDeviceMoveTarget === "" || forceMovePendingIds.has(selectedDeviceId)}
+                    disabled={
+                      selectedDeviceMoveTarget === "" || forceMovePendingIds.has(selectedDeviceId)
+                    }
                   >
                     Go
                   </Button>
@@ -1062,7 +1185,7 @@ export default function RoomControlPage() {
               </label>
 
               <label className="space-y-2">
-                <span className="text-sm font-semibold text-text-primary">切換 Sequence</span>
+                <span className="text-text-primary text-sm font-semibold">切換 Sequence</span>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
@@ -1092,15 +1215,21 @@ export default function RoomControlPage() {
               </label>
             </div>
 
-            <div className="console-control-panel__inner p-4 text-sm text-text-secondary">
+            <div className="console-control-panel__inner text-text-secondary p-4 text-sm">
               <div>WS：{selectedDevice ? getWsStatusText(selectedDevice.ws_status) : "-"}</div>
-              <div className="mt-2">ADB：{selectedDevice ? getAdbStatusText(selectedDevice.status) : "-"}</div>
+              <div className="mt-2">
+                ADB：{selectedDevice ? getAdbStatusText(selectedDevice.status) : "-"}
+              </div>
+              <div className="mt-2">Time：{selectedPlayer?.message || "-"}</div>
               <div className="mt-2">
                 Battery：
-                {selectedDevice && selectedDevice.battery !== undefined ? `${selectedDevice.battery}%` : "-"}
+                {selectedDevice && selectedDevice.battery !== undefined
+                  ? `${selectedDevice.battery}%`
+                  : "-"}
               </div>
               <div className="mt-2">
-                Status：{selectedPlayer ? (selectedPlayer.ready_to_move ? "Ready" : "Not Ready") : "-"}
+                Status：
+                {selectedPlayer ? (selectedPlayer.ready_to_move ? "Ready" : "Not Ready") : "-"}
               </div>
             </div>
           </div>
@@ -1128,6 +1257,30 @@ export default function RoomControlPage() {
         onClose={() => {
           setBatchModalOpen(false)
           setBatchSelectedDeviceIds([])
+        }}
+      />
+
+      <DeviceSelectionModal
+        open={batchMonitoringModalOpen}
+        title="批次監控 - 選擇裝置"
+        confirmText="加入下方監控"
+        targets={modalDeviceIds.map((deviceId) => {
+          const device = deviceMap.get(deviceId)
+          return {
+            id: deviceId,
+            label: device ? getDisplayName(device) : deviceId,
+            ip: device?.ip,
+            status: device?.status,
+            isOnline: device?.status === DEVICE_STATUS.ONLINE,
+          }
+        })}
+        selectedIds={batchMonitoringSelectedIds}
+        onSelectedIdsChange={setBatchMonitoringSelectedIds}
+        confirmPending={batchMonitoringPending}
+        onConfirm={handleConfirmBatchMonitoring}
+        onClose={() => {
+          setBatchMonitoringModalOpen(false)
+          setBatchMonitoringSelectedIds([])
         }}
       />
     </PageShell>

@@ -346,18 +346,15 @@ export default function SettingsPage() {
               <ScrcpyConfigForm
                 value={scrcpyConfig}
                 onChange={handleScrcpyConfigChange}
-                disabled={!scrcpySystemInfo?.installed}
               />
 
               <div className="mt-6 flex justify-end">
                 <Button
                   onClick={handleSaveScrcpyConfig}
-                  disabled={
-                    !scrcpyConfigChanged || !scrcpySystemInfo?.installed || savingScrcpyConfig
-                  }
+                  disabled={!scrcpyConfigChanged || savingScrcpyConfig}
                   loading={savingScrcpyConfig}
                   className={`ui-btn ui-btn-md transition-colors ${
-                    scrcpyConfigChanged && scrcpySystemInfo?.installed
+                    scrcpyConfigChanged
                       ? "ui-btn-primary"
                       : "cursor-not-allowed bg-muted/50 text-foreground/50"
                   }`}
