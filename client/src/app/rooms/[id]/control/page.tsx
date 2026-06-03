@@ -12,7 +12,8 @@ import {
   type RoomOperationProfile,
 } from "@/services/api-types"
 import { actionApi, activityApi, controlApi, deviceApi, roomApi, simpleApi } from "@/services/api"
-import { DEFAULT_POLL_INTERVAL_SECONDS, LIVE_VIEW_MAX_STREAMS, SERVER } from "@/environment"
+import { DEFAULT_POLL_INTERVAL_SECONDS, LIVE_VIEW_MAX_STREAMS } from "@/environment"
+import { buildWebSocketUrl } from "@/lib/utils/server-url"
 import Button from "@/components/button"
 import LiveStreamStage from "@/components/console/live-stream-stage"
 import RoomMinimap from "@/components/console/room-minimap"
@@ -96,8 +97,10 @@ export default function RoomControlPage() {
   const { id } = useParams<{ id: string }>()
   const roomId = id || ""
 
-  const wsProtocol = SERVER.startsWith("https") ? "wss" : "ws"
-  const host = SERVER.replace(/^https?:\/\//, "")
+  const roomControlSocketUrl = useMemo(
+    () => buildWebSocketUrl(`/api/ws/control/${encodeURIComponent(roomId)}`),
+    [roomId],
+  )
   const minimapConfig = useRoomMinimapConfig(roomId)
 
   const [playerData, setPlayerData] = useState<PlayerData[]>([])
@@ -312,7 +315,7 @@ export default function RoomControlPage() {
   useEffect(() => {
     if (!roomId) return
 
-    const ws = new WebSocket(`${wsProtocol}://${host}/api/ws/control/${roomId}`)
+    const ws = new WebSocket(roomControlSocketUrl)
     setConnectionStatus("connecting")
 
     ws.onopen = () => setConnectionStatus("connected")
@@ -333,7 +336,7 @@ export default function RoomControlPage() {
     return () => {
       ws.close()
     }
-  }, [host, roomId, wsProtocol])
+  }, [roomControlSocketUrl, roomId])
 
   useEffect(() => {
     if (moveState !== "") {

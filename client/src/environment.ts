@@ -1,4 +1,12 @@
-export const SERVER = "http://localhost:8080"
+/// <reference types="vite/client" />
+
+import { getServerOrigin } from "@/lib/utils/server-url"
+
+export const SERVER =
+  import.meta.env.VITE_API_SERVER ||
+  (typeof window !== "undefined"
+    ? getServerOrigin(undefined, window.location.origin)
+    : "http://localhost:8080")
 
 // Safe fallback values (last resort only). Source: previously hard-coded defaults in UI.
 export const DEFAULT_POLL_INTERVAL_SECONDS = 5
