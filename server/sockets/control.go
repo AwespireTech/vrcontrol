@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"maps"
+	"sync"
 	"time"
 
 	"vrcontrol/server/model"
@@ -18,6 +19,16 @@ type Controller struct {
 	Room           *Room
 	Connection     *websocket.Conn
 	UpdateStopChan chan struct{}
+	stopOnce       sync.Once
+}
+
+func (c *Controller) stopRoomUpdater() {
+	if c == nil {
+		return
+	}
+	c.stopOnce.Do(func() {
+		close(c.UpdateStopChan)
+	})
 }
 
 func (r *Room) GetRoomUpdate() model.RoomUpdate {
@@ -133,7 +144,7 @@ func (c *Controller) write() {
 	ticker := time.NewTicker(PingPeriod)
 	defer func() {
 		ticker.Stop()
-		c.UpdateStopChan <- struct{}{}
+		c.stopRoomUpdater()
 		c.Connection.Close()
 	}()
 	for {
@@ -185,6 +196,7 @@ func (c *Controller) RoomUpdater(stop chan struct{}) {
 			case c.InChannel <- data:
 			default:
 				log.Println("RoomUpdater: InChannel is full, diconnecting controller")
+				c.stopRoomUpdater()
 				c.Connection.Close()
 				return
 			}

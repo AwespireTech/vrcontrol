@@ -120,6 +120,7 @@ type StreamSubscription struct {
 	mu               sync.Mutex
 	err              error
 	awaitingKeyframe bool
+	closed           bool
 	closeOnce        sync.Once
 }
 
@@ -142,24 +143,34 @@ func (s *StreamSubscription) Err() error {
 func (s *StreamSubscription) close(err error, unsubscribe bool) {
 	s.closeOnce.Do(func() {
 		s.mu.Lock()
+		s.closed = true
 		s.err = err
+		source := s.source
 		s.mu.Unlock()
 
-		if unsubscribe && s.source != nil {
-			s.source.removeSubscriber(s.id)
+		if unsubscribe && source != nil {
+			source.removeSubscriber(s.id)
 		}
 		close(s.ch)
 	})
 }
 
 func (s *StreamSubscription) enqueue(unit h264stream.AccessUnit) bool {
+	s.mu.Lock()
+	if s.closed {
+		s.mu.Unlock()
+		return false
+	}
+
 	select {
 	case s.ch <- unit:
+		s.mu.Unlock()
 		return true
 	default:
 	}
 
 	if !unit.IsKeyframe {
+		s.mu.Unlock()
 		return true
 	}
 
@@ -169,8 +180,10 @@ func (s *StreamSubscription) enqueue(unit h264stream.AccessUnit) bool {
 		default:
 			select {
 			case s.ch <- unit:
+				s.mu.Unlock()
 				return true
 			default:
+				s.mu.Unlock()
 				return false
 			}
 		}
@@ -299,9 +312,13 @@ func (s *deviceStreamSource) requestKeyframe() {
 
 func (s *deviceStreamSource) broadcast(unit h264stream.AccessUnit) error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
+	subscribers := make(map[uint64]*StreamSubscription, len(s.subscribers))
 	for id, subscription := range s.subscribers {
+		subscribers[id] = subscription
+	}
+	s.mu.Unlock()
+
+	for id, subscription := range subscribers {
 		if subscription.awaitingKeyframe {
 			if !unit.IsKeyframe {
 				continue
@@ -310,7 +327,7 @@ func (s *deviceStreamSource) broadcast(unit h264stream.AccessUnit) error {
 		}
 
 		if !subscription.enqueue(unit) {
-			delete(s.subscribers, id)
+			s.removeSubscriber(id)
 			go subscription.close(fmt.Errorf("stream subscriber queue overflow"), false)
 			log.Printf("[StreamHub] subscriber queue overflow device=%s id=%d", s.session.DeviceID, id)
 		}

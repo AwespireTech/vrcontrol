@@ -506,7 +506,6 @@ func (r *Room) Run() {
 				delete(r.Players, player)
 				r.refreshActivityParticipants()
 				log.Println("Player Unregistered: ", player.DeiviceID)
-				close(player.InChannel)
 				if len(r.Players) == 0 {
 					if !r.HasRunningActivity() {
 						r.flushQAData()
