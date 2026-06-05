@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"vrcontrol/server/h264stream"
 	"vrcontrol/server/service"
 
 	"github.com/gin-gonic/gin"
@@ -49,7 +50,6 @@ func (c *WebRTCStreamController) Stream(ctx *gin.Context) {
 	var (
 		pc        *pion.PeerConnection
 		session   *webrtcSession
-		cancel    context.CancelFunc
 		writeLock sync.Mutex
 		cleanupMu sync.Mutex
 		cleanupFn func()
@@ -95,23 +95,11 @@ func (c *WebRTCStreamController) Stream(ctx *gin.Context) {
 		case "offer":
 			cleanup()
 
-			once := &sync.Once{}
-			setCleanup(func() {
-				once.Do(func() {
-					if cancel != nil {
-						cancel()
-						cancel = nil
-					}
-					if session != nil {
-						session.Stop()
-						session = nil
-					}
-					if pc != nil {
-						_ = pc.Close()
-						pc = nil
-					}
-				})
-			})
+			var (
+				currentPC      *pion.PeerConnection
+				currentSession *webrtcSession
+				currentCancel  context.CancelFunc
+			)
 
 			subscription, err := c.streamService.SubscribeStream(deviceID)
 			if err != nil {
@@ -119,7 +107,8 @@ func (c *WebRTCStreamController) Stream(ctx *gin.Context) {
 				setCleanup(func() {})
 				continue
 			}
-			session = &webrtcSession{subscription: subscription}
+			currentSession = &webrtcSession{subscription: subscription}
+			session = currentSession
 
 			if reason := validateOfferSDP(msg.SDP); reason != "" {
 				sdpHead := msg.SDP
@@ -134,13 +123,32 @@ func (c *WebRTCStreamController) Stream(ctx *gin.Context) {
 				continue
 			}
 
-			pc, err = newPeerConnection(deviceID, session, sendSignal)
+			currentPC, err = newPeerConnection(deviceID, currentSession, sendSignal)
 			if err != nil {
 				sendSignal(signalMessage{Type: "error", Error: err.Error()})
 				cleanup()
 				setCleanup(func() {})
 				continue
 			}
+			pc = currentPC
+
+			currentOnce := &sync.Once{}
+			setCleanup(func() {
+				currentOnce.Do(func() {
+					if currentCancel != nil {
+						currentCancel()
+						currentCancel = nil
+					}
+					if currentSession != nil {
+						currentSession.Stop()
+						currentSession = nil
+					}
+					if currentPC != nil {
+						_ = currentPC.Close()
+						currentPC = nil
+					}
+				})
+			})
 
 			pc.OnConnectionStateChange(func(state pion.PeerConnectionState) {
 				switch state {
@@ -221,33 +229,15 @@ func (c *WebRTCStreamController) Stream(ctx *gin.Context) {
 			}(session.localCandidateCount)
 
 			streamCtx, cancelFn := context.WithCancel(context.Background())
-			cancel = cancelFn
-			go func() {
-				for {
-					select {
-					case <-streamCtx.Done():
-						return
-					case accessUnit, ok := <-session.subscription.Units:
-						if !ok {
-							if err := session.subscription.Err(); err != nil && streamCtx.Err() == nil {
-								classified := classifyStreamError(err)
-								log.Printf("[WebRTC] stream error for %s: %v (%s)", deviceID, err, classified)
-								sendSignal(signalMessage{Type: "error", Error: classified})
-							}
-							return
-						}
-
-						if err := session.track.WriteSample(media.Sample{Data: accessUnit.Data, Duration: accessUnit.Duration}); err != nil {
-							if streamCtx.Err() == nil {
-								classified := classifyStreamError(err)
-								log.Printf("[WebRTC] track write error for %s: %v (%s)", deviceID, err, classified)
-								sendSignal(signalMessage{Type: "error", Error: classified})
-							}
-							return
-						}
-					}
-				}
-			}()
+			currentCancel = cancelFn
+			go runWebRTCStreamForwarder(
+				streamCtx,
+				currentSession.subscription.Units,
+				currentSession.subscription.Err,
+				currentSession.track.WriteSample,
+				sendSignal,
+				deviceID,
+			)
 
 		case "ice":
 			if pc == nil {
@@ -267,6 +257,44 @@ func (c *WebRTCStreamController) Stream(ctx *gin.Context) {
 			cleanup()
 			setCleanup(func() {})
 			return
+		}
+	}
+}
+
+func runWebRTCStreamForwarder(
+	streamCtx context.Context,
+	units <-chan h264stream.AccessUnit,
+	getErr func() error,
+	writeSample func(media.Sample) error,
+	sendSignal func(signalMessage),
+	deviceID string,
+) {
+	if units == nil || getErr == nil || writeSample == nil {
+		return
+	}
+
+	for {
+		select {
+		case <-streamCtx.Done():
+			return
+		case accessUnit, ok := <-units:
+			if !ok {
+				if err := getErr(); err != nil && streamCtx.Err() == nil {
+					classified := classifyStreamError(err)
+					log.Printf("[WebRTC] stream error for %s: %v (%s)", deviceID, err, classified)
+					sendSignal(signalMessage{Type: "error", Error: classified})
+				}
+				return
+			}
+
+			if err := writeSample(media.Sample{Data: accessUnit.Data, Duration: accessUnit.Duration}); err != nil {
+				if streamCtx.Err() == nil {
+					classified := classifyStreamError(err)
+					log.Printf("[WebRTC] track write error for %s: %v (%s)", deviceID, err, classified)
+					sendSignal(signalMessage{Type: "error", Error: classified})
+				}
+				return
+			}
 		}
 	}
 }
