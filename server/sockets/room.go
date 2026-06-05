@@ -58,6 +58,7 @@ type Room struct {
 	LanternData map[string][]*model.LanternEventMessage
 	// 紀錄題目是否已經結束/鎖定 (true 表示不能再改答案)
 	QuestionLocked map[string]bool
+	Parameters     map[string]any
 	// 標記某個題目的狀態是否被修改過，避免沒人動也一直廣播
 	isDirty         bool
 	currentQID      string // 目前正在進行的題目
@@ -368,7 +369,8 @@ func (r *Room) BuildLanternSnapshot(activityID string) *model.ActivityLanternRes
 
 func (r *Room) buildConfigMessage() model.EventMessage {
 	config := &model.RoomConfigMessage{
-		RoomID: r.RoomID,
+		RoomID:     r.RoomID,
+		Parameters: r.Parameters,
 	}
 	if r.CurrentActivity != nil && r.CurrentActivity.Status == model.ActivityStatusRunning {
 		config.ActivityID = r.CurrentActivity.ActivityID

@@ -58,8 +58,9 @@ type QAEventMessage struct {
 }
 
 type RoomConfigMessage struct {
-	RoomID              string `json:"room_id"`
-	ActivityID          string `json:"activity_id,omitempty"`
-	ActivityContextPath string `json:"activity_context_path,omitempty"`
-	Seed                int    `json:"seed,omitempty"`
+	RoomID              string         `json:"room_id"`
+	ActivityID          string         `json:"activity_id,omitempty"`
+	ActivityContextPath string         `json:"activity_context_path,omitempty"`
+	Seed                int            `json:"seed,omitempty"`
+	Parameters          map[string]any `json:"parameters,omitempty"`
 }

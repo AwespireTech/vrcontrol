@@ -294,13 +294,20 @@
     "room_id": "room-a",
     "activity_id": "ACTIVITY-123456",
     "activity_context_path": "/api/activities/ACTIVITY-123456/context",
-    "seed": 3141
+    "seed": 3141,
+    "parameters": {
+      "minimap": {
+        "width": 6,
+        "depth": 6
+      }
+    }
   }
 }
 ```
 
 - `config` 會在玩家成功加入 room 後送出，也會在 Activity start 時重新廣播給已連線玩家。
 - `room_id` 代表目前 hub / group。
+- `parameters` 為房間級固定設定，會一併透過 `config` 回傳給播放器/接收端，供啟動前解析 room-scoped config。
 - `activity_id` 代表正式遊戲/session；沒有 running Activity 時可能省略。
 - `seed` 來自 running Activity，不再由玩家進出 room 自動建立。
 - `activity_context_path` 指向該場 Activity 的 immutable context；QA 題目、題序、計分與顯示規則應從該 context 取得。

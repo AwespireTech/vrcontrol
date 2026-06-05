@@ -73,7 +73,13 @@ Server 仍回傳 `answer`、`ice`、`error`，client 仍可送 `close`。接收�
     "room_id": "ROOM-001",
     "activity_id": "ACTIVITY-123456",
     "activity_context_path": "/api/activities/ACTIVITY-123456/context",
-    "seed": 3141
+    "seed": 3141,
+    "parameters": {
+      "minimap": {
+        "width": 6,
+        "depth": 6
+      }
+    }
   }
 }
 ```
@@ -81,6 +87,7 @@ Server 仍回傳 `answer`、`ice`、`error`，client 仍可送 `close`。接收�
 Breaking changes:
 
 - `seed` 的來源從 room runtime session 改為 running Activity。
+- `parameters` 是可選的 room-level 固定設定；接收方可在 `config` event 中直接取得，不必再另外查 room API。
 - `rh` 已移除；接收方不得再將它視為正式 session id。
 - 沒有 running Activity 時，`config` 只代表 hub 狀態，可能只有 `room_id`，不一定有 `activity_id` 或 `seed`。
 - Activity start 時 server 會重新廣播 `config`，已連線玩家需用新的 `activity_id` / `seed` 更新場次狀態。
