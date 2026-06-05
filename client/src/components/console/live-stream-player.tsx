@@ -679,7 +679,7 @@ export default function LiveStreamPlayer({
 
   return (
     <div className="surface-panel overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 px-4 py-3">
+      <div className="flex items-center justify-between gap-3 border-b border-border/70 px-4 py-3">
         <div>
           <div className="text-sm font-semibold text-foreground">{title}</div>
           {subtitle ? <div className="text-xs text-foreground/60">{subtitle}</div> : null}

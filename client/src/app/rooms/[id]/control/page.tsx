@@ -11,8 +11,21 @@ import {
   type Room,
   type RoomOperationProfile,
 } from "@/services/api-types"
-import { actionApi, activityApi, controlApi, deviceApi, roomApi, simpleApi } from "@/services/api"
-import { DEFAULT_POLL_INTERVAL_SECONDS, LIVE_VIEW_MAX_STREAMS } from "@/environment"
+import {
+  actionApi,
+  activityApi,
+  controlApi,
+  deviceApi,
+  preferenceApi,
+  roomApi,
+  simpleApi,
+} from "@/services/api"
+import {
+  DEFAULT_BATCH_SIZE,
+  DEFAULT_MAX_CONCURRENCY,
+  DEFAULT_POLL_INTERVAL_SECONDS,
+  LIVE_VIEW_MAX_STREAMS,
+} from "@/environment"
 import { buildWebSocketUrl } from "@/lib/utils/server-url"
 import Button from "@/components/button"
 import LiveStreamStage from "@/components/console/live-stream-stage"
@@ -74,6 +87,25 @@ const DEFAULT_ROOM_OPERATION_PROFILE: RoomOperationProfile = {
   stop_action_id: "",
   allow_activity_name_override: true,
   allow_seed_override: true,
+}
+
+function formatTimeDisplay(message?: string) {
+  const value = message?.trim() || ""
+
+  if (!value) {
+    return { primary: "-", secondary: "", hasSeparator: false }
+  }
+
+  const parts = value
+    .split("|")
+    .map((part) => part.trim())
+    .filter(Boolean)
+
+  if (parts.length >= 2) {
+    return { primary: parts[0], secondary: parts[1], hasSeparator: true }
+  }
+
+  return { primary: value, secondary: "", hasSeparator: false }
 }
 
 function shouldIgnoreDeviceCardSelectionEvent(
@@ -183,7 +215,16 @@ export default function RoomControlPage() {
 
   const leadDevice = leadPlayer ? deviceMap.get(leadPlayer.device_id) || null : null
   const leadDeviceName = leadDevice ? getDisplayName(leadDevice) : leadPlayer?.device_id || "-"
-  const leadMessage = leadPlayer?.message || "-"
+  const selectedDevice = selectedDeviceId ? deviceMap.get(selectedDeviceId) : null
+  const selectedPlayer = selectedDeviceId ? playerByDeviceId.get(selectedDeviceId) : undefined
+  const selectedDeviceAlias = selectedDevice
+    ? getDisplayName(selectedDevice)
+    : selectedDeviceId || "未選擇裝置"
+  const leadMessage = useMemo(() => formatTimeDisplay(leadPlayer?.message), [leadPlayer?.message])
+  const selectedTimeDisplay = useMemo(
+    () => formatTimeDisplay(selectedPlayer?.message),
+    [selectedPlayer?.message],
+  )
 
   const minimapMarkers = useMemo(() => {
     const spatialMarkers = buildRoomMinimapMarkers(playerData, minimapConfig)
@@ -241,22 +282,49 @@ export default function RoomControlPage() {
     () => (roomDeviceIds.length > 0 ? roomDeviceIds : displayDeviceIds),
     [displayDeviceIds, roomDeviceIds],
   )
-  const selectedDevice = selectedDeviceId ? deviceMap.get(selectedDeviceId) : null
-  const selectedPlayer = selectedDeviceId ? playerByDeviceId.get(selectedDeviceId) : undefined
-  const selectedDeviceAlias = selectedDevice
-    ? getDisplayName(selectedDevice)
-    : selectedDeviceId || "未選擇裝置"
-
   const loadControlData = useCallback(async () => {
     try {
-      const [room, devices, currentActivity] = await Promise.all([
+      const [room, devices, currentActivity, preference] = await Promise.all([
         roomId ? roomApi.get(roomId) : Promise.resolve(null),
         deviceApi.getAll(),
         roomId ? activityApi.getCurrentByRoom(roomId).catch(() => null) : Promise.resolve(null),
+        preferenceApi.get().catch(() => null),
       ])
+      const nextDeviceMap = new Map(devices.map((device) => [device.device_id, device]))
+      const batchSize =
+        typeof preference?.batch_size === "number" && preference.batch_size > 0
+          ? preference.batch_size
+          : DEFAULT_BATCH_SIZE
+      const maxWorkers =
+        typeof preference?.max_concurrency === "number" && preference.max_concurrency > 0
+          ? preference.max_concurrency
+          : DEFAULT_MAX_CONCURRENCY
+      const onlineDeviceIds = devices
+        .filter((device) => device.status === DEVICE_STATUS.ONLINE)
+        .map((device) => device.device_id)
+
+      for (let index = 0; index < onlineDeviceIds.length; index += batchSize) {
+        const batchIds = onlineDeviceIds.slice(index, index + batchSize)
+        const result = await deviceApi.getStatusBatch(batchIds, maxWorkers)
+
+        if (!result.success || !result.results) continue
+
+        result.results.forEach((statusResult) => {
+          const device = nextDeviceMap.get(statusResult.device_id)
+          if (!device || statusResult.error) return
+
+          nextDeviceMap.set(statusResult.device_id, {
+            ...device,
+            battery: statusResult.battery,
+            temperature: statusResult.temperature,
+            is_charging: statusResult.is_charging,
+          })
+        })
+      }
+
       setCurrentRoom(room)
       setRoomDeviceIds(room?.device_ids || [])
-      setDeviceMap(new Map(devices.map((device) => [device.device_id, device])))
+      setDeviceMap(nextDeviceMap)
       if (currentActivity) {
         setCurrentActivityMeta({
           id: currentActivity.activity_id || "",
@@ -761,9 +829,9 @@ export default function RoomControlPage() {
       titleVariant="compact"
     >
       <div className="space-y-5">
-        <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
-          <section className="console-control-panel console-control-panel--padded">
-            <div className="grid gap-3.5">
+        <div className="grid gap-5 xl:grid-cols-[minmax(380px,0.92fr)_minmax(0,1.08fr)]">
+          <section className="console-control-panel console-control-panel--padded xl:self-start">
+            <div className="grid gap-3">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className="text-text-primary text-[15px] font-semibold">批次處理</div>
@@ -776,21 +844,22 @@ export default function RoomControlPage() {
                 </span>
               </div>
 
-              <div className="console-control-panel__inner grid grid-cols-2 gap-4 p-4">
-                <div>
+              <div className="console-control-panel__inner grid grid-cols-2 gap-4 p-4 md:gap-5">
+                <div className="min-w-0">
                   <div className="text-text-secondary text-[12px] font-semibold tracking-[0.08em]">
                     Chapter 章節
                   </div>
-                  <div className="font-display text-text-primary mt-2 text-[2rem] leading-none font-semibold">
+                  <div className="font-display text-text-primary mt-2 text-[2rem] leading-none font-semibold tabular-nums">
                     {leadPlayer ? leadPlayer.chapter : "-"}
                   </div>
                 </div>
-                <div>
+                <div className="min-w-0">
                   <div className="text-text-secondary text-[12px] font-semibold tracking-[0.08em]">
                     Time 時間
                   </div>
-                  <div className="font-display text-text-primary mt-2 text-[2rem] leading-none font-semibold break-words">
-                    {leadMessage}
+                  <div className="font-display text-text-primary mt-2 text-[2rem] leading-none font-semibold wrap-break-word tabular-nums">
+                    {leadMessage.primary}
+                    {leadMessage.secondary ? (` / ${leadMessage.secondary}`) : null}
                   </div>
                 </div>
               </div>
@@ -815,7 +884,7 @@ export default function RoomControlPage() {
                 {hasRunningActivity ? "End 結束體驗" : "Start 開始體驗"}
               </Button>
 
-              <div className="flex flex-wrap items-center gap-2 pt-1">
+              <div className="grid grid-cols-[repeat(4,max-content)] items-center gap-2 pt-1">
                 <Button
                   onClick={() => handleOpenBatchActionModal(launchAppAction, "開啟 APP")}
                   className="console-button-pill console-button-pill--fit ui-btn-sm ui-btn-primary"
@@ -845,7 +914,7 @@ export default function RoomControlPage() {
                   ))}
                 </select>
                 <Button
-                  className="ui-btn-xs ui-btn-primary h-8 rounded-full px-3"
+                  className="ui-btn-xs ui-btn-primary h-8 w-8 rounded-full"
                   disabled={selectedOption === ""}
                   loading={forceMovePending}
                   onClick={handleForceAllMove}
@@ -860,7 +929,7 @@ export default function RoomControlPage() {
                 <div className="text-danger text-xs">批次章節指令送出失敗</div>
               ) : null}
 
-              <div className="mt-3 border-t border-border-subtle/50 pt-3">
+              <div className="border-border-subtle/50 mt-3 border-t pt-3">
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-text-secondary text-xs">批次監控</span>
                   {liveWindows.length > 0 && (
@@ -875,9 +944,7 @@ export default function RoomControlPage() {
                   disabled={batchMonitoringPending}
                   loading={batchMonitoringPending}
                 >
-                  {liveWindows.length > 0
-                    ? `加入下方監控 (${liveWindows.length})`
-                    : "選擇裝置監控"}
+                  {liveWindows.length > 0 ? `加入下方監控 (${liveWindows.length})` : "選擇裝置監控"}
                 </Button>
               </div>
             </div>
@@ -906,6 +973,7 @@ export default function RoomControlPage() {
               {displayDeviceIds.map((deviceId) => {
                 const player = playerByDeviceId.get(deviceId)
                 const device = deviceMap.get(deviceId)
+                const deviceTimeDisplay = formatTimeDisplay(player?.message)
                 const alias = device ? getDisplayName(device) : deviceId
                 const adbStatus = isSupportedDeviceStatus(device?.status)
                   ? device.status
@@ -937,16 +1005,18 @@ export default function RoomControlPage() {
                       event.preventDefault()
                       setSelectedDeviceId(deviceId)
                     }}
-                    className={`border-border-subtle/65 grid grid-cols-[minmax(0,1.05fr)_116px_108px_112px] items-start gap-4 border-b px-5 py-3.5 last:border-b-0 ${
+                    className={`border-border-subtle/65 grid grid-cols-[minmax(0,0.88fr)_90px_minmax(150px,0.92fr)_64px_96px] items-start gap-3 border-b px-4 py-3.5 last:border-b-0 ${
                       isSelectedDevice ? "bg-bg-panel/80" : "hover:bg-bg-panel/45"
                     }`}
                   >
-                    <div>
-                      <div className="text-text-primary text-sm font-semibold">{alias}</div>
-                      <div className="console-meta mt-1">{deviceId}</div>
+                    <div className="max-w-48 min-w-0">
+                      <div className="text-text-primary truncate text-sm font-semibold">
+                        {alias}
+                      </div>
+                      <div className="console-meta mt-1 truncate">{deviceId}</div>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="min-w-0 space-y-2 pt-1">
                       <div className="flex items-center gap-2 text-xs">
                         <span className="console-status-label">WS</span>
                         <span
@@ -965,7 +1035,7 @@ export default function RoomControlPage() {
                       </div>
                     </div>
 
-                    <div className="text-text-secondary space-y-1 text-[11px]">
+                    <div className="text-text-secondary min-w-0 space-y-1 justify-self-center pt-0.5 text-[11px]">
                       <div>
                         Battery：
                         <span className="text-text-primary">
@@ -987,21 +1057,37 @@ export default function RoomControlPage() {
                         <span className="text-text-primary">{player ? player.chapter : "-"}</span>
                       </div>
                       <div>
-                        Time：<span className="text-text-primary">{player?.message || "-"}</span>
+                        Time：
+                        <span className="text-text-primary">
+                          {deviceTimeDisplay.hasSeparator ? (
+                            <>
+                              {deviceTimeDisplay.primary}
+                              <span className="text-text-secondary">
+                                {" "}
+                                / {deviceTimeDisplay.secondary}
+                              </span>
+                            </>
+                          ) : (
+                            deviceTimeDisplay.primary
+                          )}
+                        </span>
                       </div>
                     </div>
 
-                    <div className="flex flex-col items-end gap-2.5">
+                    <div className="flex min-w-0 flex-col items-end gap-2.5 justify-self-end pt-0.5">
                       <div className="text-text-secondary text-right text-[11px]">
                         Sequence
                         <div className="text-text-primary mt-1 text-[1.75rem] leading-none font-semibold">
                           {player ? player.sequence : "-"}
                         </div>
                       </div>
-                      <div className="flex flex-col items-end gap-2">
+                    </div>
+
+                    <div className="flex min-w-0 flex-col items-end gap-2.5 justify-self-end pt-0.5">
+                      <div className="grid w-full max-w-26 gap-2">
                         <Button
                           onClick={() => handleConnect(deviceId)}
-                          className={`ui-btn-xs h-7 min-w-[4.5rem] rounded-full px-3 ${
+                          className={`ui-btn-xs h-7 w-full rounded-full px-3 ${
                             isAdbOnline ? "ui-btn-muted" : "ui-btn-primary"
                           }`}
                           loading={devicePendingAction === "connect"}
@@ -1011,7 +1097,7 @@ export default function RoomControlPage() {
                         </Button>
                         <Button
                           onClick={() => handleOpenDeviceActions(deviceId)}
-                          className="ui-btn-xs ui-btn-primary h-7 min-w-[4.5rem] rounded-full px-3"
+                          className="ui-btn-xs ui-btn-primary h-7 w-full rounded-full px-3"
                         >
                           動作
                         </Button>
@@ -1090,16 +1176,7 @@ export default function RoomControlPage() {
                   onSelectDevice={setSelectedDeviceId}
                   onClose={handleCloseLiveStream}
                 />
-              ) : (
-                <div className="grid gap-3 sm:grid-cols-2">
-                  {Array.from({ length: 4 }, (_, index) => (
-                    <div
-                      key={index}
-                      className="border-border-subtle/70 aspect-[16/9] rounded-[12px] border bg-[#d7d7d7]"
-                    />
-                  ))}
-                </div>
-              )}
+              ) : null}
             </div>
           </div>
         </section>
@@ -1235,7 +1312,17 @@ export default function RoomControlPage() {
               <div className="mt-2">
                 ADB：{selectedDevice ? getAdbStatusText(selectedDevice.status) : "-"}
               </div>
-              <div className="mt-2">Time：{selectedPlayer?.message || "-"}</div>
+              <div className="mt-2">
+                Time：
+                {selectedTimeDisplay.hasSeparator ? (
+                  <>
+                    {selectedTimeDisplay.primary}
+                    <span className="text-text-secondary"> / {selectedTimeDisplay.secondary}</span>
+                  </>
+                ) : (
+                  selectedTimeDisplay.primary
+                )}
+              </div>
               <div className="mt-2">
                 Battery：
                 {selectedDevice && selectedDevice.battery !== undefined
