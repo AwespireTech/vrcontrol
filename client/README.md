@@ -31,8 +31,8 @@ npm run test:e2e:install
 ## API 連線
 
 開發模式下，Vite 代理會將 `/api` 與 `/ws` 轉發到後端 `http://localhost:8080`。
-
-如需自訂 API 位置，請調整 `src/environment.ts` 中的 `SERVER` 值。
+若要從另一台裝置開啟 `http://<server-ip>:5173`，請在啟動前設定 `VITE_API_SERVER=http://<server-ip>:8080`，或讓前端使用目前 `window.location.hostname` 的 dev 目標 `:8080`。
+如需自訂 API 位置，也可在啟動時設定 `VITE_API_SERVER`。
 
 ## 專案結構
 

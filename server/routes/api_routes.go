@@ -165,6 +165,7 @@ func SetupRoutes(router *gin.Engine, dataDir string) {
 			rooms.POST("/:id/devices/:deviceId", roomController.AddDevice)
 			rooms.DELETE("/:id/devices/:deviceId", roomController.RemoveDevice)
 			rooms.POST("/:id/activities", activityController.CreateDraft)
+			rooms.GET("/:id/current-activity", activityController.GetCurrentActivityByRoom)
 			rooms.GET("/:id/activities", activityController.ListByRoom)
 		}
 

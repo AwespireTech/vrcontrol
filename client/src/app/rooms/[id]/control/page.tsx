@@ -12,7 +12,8 @@ import {
   type RoomOperationProfile,
 } from "@/services/api-types"
 import { actionApi, activityApi, controlApi, deviceApi, roomApi, simpleApi } from "@/services/api"
-import { DEFAULT_POLL_INTERVAL_SECONDS, LIVE_VIEW_MAX_STREAMS, SERVER } from "@/environment"
+import { DEFAULT_POLL_INTERVAL_SECONDS, LIVE_VIEW_MAX_STREAMS } from "@/environment"
+import { buildWebSocketUrl } from "@/lib/utils/server-url"
 import Button from "@/components/button"
 import LiveStreamStage from "@/components/console/live-stream-stage"
 import RoomMinimap from "@/components/console/room-minimap"
@@ -96,8 +97,10 @@ export default function RoomControlPage() {
   const { id } = useParams<{ id: string }>()
   const roomId = id || ""
 
-  const wsProtocol = SERVER.startsWith("https") ? "wss" : "ws"
-  const host = SERVER.replace(/^https?:\/\//, "")
+  const roomControlSocketUrl = useMemo(
+    () => buildWebSocketUrl(`/api/ws/control/${encodeURIComponent(roomId)}`),
+    [roomId],
+  )
   const minimapConfig = useRoomMinimapConfig(roomId)
 
   const [playerData, setPlayerData] = useState<PlayerData[]>([])
@@ -246,13 +249,25 @@ export default function RoomControlPage() {
 
   const loadControlData = useCallback(async () => {
     try {
-      const [room, devices] = await Promise.all([
+      const [room, devices, currentActivity] = await Promise.all([
         roomId ? roomApi.get(roomId) : Promise.resolve(null),
         deviceApi.getAll(),
+        roomId ? activityApi.getCurrentByRoom(roomId).catch(() => null) : Promise.resolve(null),
       ])
       setCurrentRoom(room)
       setRoomDeviceIds(room?.device_ids || [])
       setDeviceMap(new Map(devices.map((device) => [device.device_id, device])))
+      if (currentActivity) {
+        setCurrentActivityMeta({
+          id: currentActivity.activity_id || "",
+          name: currentActivity.name || "",
+          status: currentActivity.status || "",
+          seed: currentActivity.runtime_snapshot?.seed,
+          startedAt: currentActivity.started_at,
+        })
+      } else {
+        setCurrentActivityMeta({ id: "", name: "", status: "" })
+      }
     } catch (error) {
       console.error("Failed to load control data:", error)
     }
@@ -300,7 +315,7 @@ export default function RoomControlPage() {
   useEffect(() => {
     if (!roomId) return
 
-    const ws = new WebSocket(`${wsProtocol}://${host}/api/ws/control/${roomId}`)
+    const ws = new WebSocket(roomControlSocketUrl)
     setConnectionStatus("connecting")
 
     ws.onopen = () => setConnectionStatus("connected")
@@ -321,7 +336,7 @@ export default function RoomControlPage() {
     return () => {
       ws.close()
     }
-  }, [host, roomId, wsProtocol])
+  }, [roomControlSocketUrl, roomId])
 
   useEffect(() => {
     if (moveState !== "") {

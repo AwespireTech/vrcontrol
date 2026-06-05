@@ -123,6 +123,37 @@ func (r *Room) SetActivityService(svc *service.ActivityService) {
 	r.ActivityService = svc
 }
 
+func (r *Room) RestoreActivity(activity *model.Activity) error {
+	if activity == nil {
+		return fmt.Errorf("activity is required")
+	}
+	if activity.Status != model.ActivityStatusRunning {
+		return nil
+	}
+	if r.CurrentActivity != nil && r.CurrentActivity.Status == model.ActivityStatusRunning {
+		return nil
+	}
+
+	startedAt := activity.StartedAt
+	if startedAt == nil {
+		now := time.Now()
+		startedAt = &now
+	}
+
+	r.CurrentActivity = &RoomActivityRuntime{
+		ActivityID:      activity.ActivityID,
+		Name:            activity.Name,
+		Status:          model.ActivityStatusRunning,
+		Seed:            activitySeed(activity),
+		StartedAt:       startedAt,
+		ActivityContext: cloneRoomActivityContext(activity.ActivityContext),
+		EventCounts:     make(map[string]int),
+		Participants:    make(map[string]bool),
+	}
+	r.refreshActivityParticipants()
+	return nil
+}
+
 func (r *Room) StartActivity(activity *model.Activity) error {
 	if activity == nil {
 		return fmt.Errorf("activity is required")
@@ -475,7 +506,6 @@ func (r *Room) Run() {
 				delete(r.Players, player)
 				r.refreshActivityParticipants()
 				log.Println("Player Unregistered: ", player.DeiviceID)
-				close(player.InChannel)
 				if len(r.Players) == 0 {
 					if !r.HasRunningActivity() {
 						r.flushQAData()

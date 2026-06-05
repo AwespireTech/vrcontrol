@@ -124,6 +124,21 @@ func (s *ActivityService) GetActivity(activityID string) (*model.Activity, error
 	return s.composeActivity(index)
 }
 
+func (s *ActivityService) GetRunningActivityByRoom(roomID string) (*model.Activity, error) {
+	indices := s.activityRepo.GetByRoomID(roomID)
+	for _, index := range indices {
+		if index == nil || index.Status != model.ActivityStatusRunning {
+			continue
+		}
+		activity, err := s.composeActivity(index)
+		if err != nil {
+			return nil, err
+		}
+		return activity, nil
+	}
+	return nil, fmt.Errorf("no running activity found for room %s", roomID)
+}
+
 func (s *ActivityService) GetActivityContext(activityID string) (model.ActivityContext, error) {
 	activity, err := s.GetActivity(activityID)
 	if err != nil {

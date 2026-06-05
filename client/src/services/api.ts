@@ -23,6 +23,7 @@ import {
   type WebRTCStreamErrorCode,
 } from "./api-types"
 import { SERVER } from "@/environment"
+import { buildWebSocketUrl } from "@/lib/utils/server-url"
 
 const CONTROL_BASE = `${API_BASE}/control`
 const SIMPLE_BASE = `${API_BASE}/simple`
@@ -43,9 +44,6 @@ const webrtcErrorMessages: Record<WebRTCStreamErrorCode, string> = {
 }
 
 function normalizeServerUrl() {
-  if (typeof window !== "undefined") {
-    return new URL(SERVER, window.location.href)
-  }
   return new URL(SERVER)
 }
 
@@ -369,6 +367,13 @@ export const activityApi = {
     const res = await fetch(`${API_BASE}/rooms/${roomId}/activities`)
     const data: ApiResponse<Activity[]> = await res.json()
     return data.data || []
+  },
+
+  getCurrentByRoom: async (roomId: string): Promise<Activity | null> => {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/current-activity`)
+    const data: ApiResponse<Activity | null> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to load current activity")
+    return data.data || null
   },
 
   get: async (activityId: string): Promise<Activity | null> => {
@@ -698,12 +703,7 @@ export const preferenceApi = {
 
 export const webrtcApi = {
   getSignalUrl: (deviceId: string): string => {
-    const baseUrl = normalizeServerUrl()
-    baseUrl.protocol = baseUrl.protocol === "https:" ? "wss:" : "ws:"
-    baseUrl.pathname = `/api/ws/webrtc/${encodeURIComponent(deviceId)}`
-    baseUrl.search = ""
-    baseUrl.hash = ""
-    return baseUrl.toString()
+    return buildWebSocketUrl(`/api/ws/webrtc/${encodeURIComponent(deviceId)}`)
   },
 
   getErrorMessage: (error?: string): string => {

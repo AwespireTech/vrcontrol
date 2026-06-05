@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from "react"
 import { Link, useParams, useSearchParams } from "react-router-dom"
 import { DEVICE_STATUS, type Device, type Room } from "@/services/api-types"
 import { deviceApi, roomApi } from "@/services/api"
-import { LIVE_VIEW_MAX_STREAMS, SERVER } from "@/environment"
+import { LIVE_VIEW_MAX_STREAMS } from "@/environment"
+import { buildWebSocketUrl } from "@/lib/utils/server-url"
 import LiveStreamStage from "@/components/console/live-stream-stage"
 import type { LiveStreamLayout } from "@/components/console/live-stream-stage"
 import PageShell from "@/components/console/page-shell"
@@ -55,8 +56,10 @@ export default function MonitoringRoomPage() {
   const displayMode = searchParams.get("display") === "wall" ? "wall" : "page"
   const layoutParam = searchParams.get("layout")
   const [layout, setLayout] = useState<LiveStreamLayout>(layoutParam === "stack" ? "stack" : "grid")
-  const wsProtocol = SERVER.startsWith("https") ? "wss" : "ws"
-  const host = SERVER.replace(/^https?:\/\//, "")
+  const roomControlSocketUrl = useMemo(
+    () => buildWebSocketUrl(`/api/ws/control/${encodeURIComponent(roomId)}`),
+    [roomId],
+  )
   const minimapConfig = useRoomMinimapConfig(roomId)
 
   const [room, setRoom] = useState<Room | null>(null)
@@ -109,7 +112,7 @@ export default function MonitoringRoomPage() {
   useEffect(() => {
     if (!roomId) return
 
-    const socket = new WebSocket(`${wsProtocol}://${host}/api/ws/control/${roomId}`)
+    const socket = new WebSocket(roomControlSocketUrl)
     setConnectionStatus("connecting")
 
     socket.onopen = () => setConnectionStatus("connected")
@@ -129,7 +132,7 @@ export default function MonitoringRoomPage() {
     return () => {
       socket.close()
     }
-  }, [host, roomId, wsProtocol])
+  }, [roomControlSocketUrl, roomId])
 
   const deviceMap = useMemo(
     () => new Map(devices.map((device) => [device.device_id, device])),
