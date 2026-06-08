@@ -32,7 +32,16 @@ export const Button = ({
       {...props}
     >
       {loading && <span className="ui-spinner" aria-hidden="true" />}
-      <span className={loading ? "opacity-80" : ""}>{children}</span>
+      <span
+        className={[
+          "inline-flex items-center gap-1.5 whitespace-nowrap leading-none",
+          loading ? "opacity-80" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
+        {children}
+      </span>
     </button>
   )
 }
