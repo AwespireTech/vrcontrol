@@ -4,40 +4,29 @@ Go + Gin 後端服務，提供 Quest 設備/房間/動作管理，以及 WebSock
 
 ## 快速開始
 
-### 先決條件：ADB 與 Scrcpy
+### 先決條件：ADB
 
-Quest 裝置控制需要 **ADB**，螢幕鏡像功能需要 **scrcpy**。兩者都必須可在系統 `PATH` 中找到。
+Quest 裝置控制與 WebRTC 即時畫面需要 **ADB**。ADB 必須可在系統 `PATH` 中找到；scrcpy standalone server 由 `vendor/scrcpy` 提供，不再需要系統 PATH 中的 scrcpy CLI。
 
 **官方下載**
 
 - Android Platform Tools (ADB)：https://developer.android.com/tools/releases/platform-tools
-- scrcpy：https://github.com/Genymobile/scrcpy/releases
 
 **Windows**
 
 - ADB：下載 Platform Tools → 解壓縮 → 將 `platform-tools` 目錄加入系統 `PATH`
-- scrcpy：下載 Windows release → 解壓縮 → 將 `scrcpy` 所在目錄加入 `PATH`
 
 **macOS**
 
 - ADB：`brew install android-platform-tools`
-- scrcpy：`brew install scrcpy`
-
-> 若你是從 release zip 手動下載 scrcpy，遇到 `fork/exec ...: operation not permitted`，通常是 Gatekeeper quarantine。
-> 可嘗試：`xattr -dr com.apple.quarantine $(which scrcpy)`
 
 **Linux (Debian/Ubuntu)**
 
 - ADB：`sudo apt-get install android-tools-adb`
-- scrcpy：`sudo apt-get install scrcpy`
 
-> `scrcpy` 會開啟鏡像視窗，需在「有桌面環境」的機器上執行（macOS 桌面、Linux X11/Wayland）。
+> 若你用 systemd/LaunchAgent 等方式啟動後端，請確認該服務的 `PATH` 包含 `adb`（macOS Homebrew 常見路徑：`/opt/homebrew/bin`）。
 >
-> - Linux headless（無 `$DISPLAY` / 無 Wayland session）通常無法正常啟動 scrcpy。
-> - Linux 若在 Wayland 下無法顯示視窗，請先確認已安裝/啟用 XWayland，或改用 X11 session 測試。
-> - 若你用 systemd/LaunchAgent 等方式啟動後端，請確認該服務的 `PATH` 包含 `adb`/`scrcpy`（macOS Homebrew 常見路徑：`/opt/homebrew/bin`）。
->
-> 若 `scrcpy` 未安裝，會導致鏡像相關 API（`/api/scrcpy/*`）無法使用。
+> WebRTC live view 需要 `vendor/scrcpy/scrcpy-server-v*` artifact；後端啟播時會透過 ADB push 到裝置。
 
 ### 1. 啟動後端
 
@@ -90,7 +79,6 @@ npm run dev
 
 ### 螢幕觀看
 
-- ✅ 外部 scrcpy 監看視窗
 - ✅ WebRTC 頁內即時畫面（live view）
 - ✅ WebRTC 外部 popup 視窗模式（前端路由 / popup takeover）
 - ✅ scrcpy standalone stream + control channel 啟播優化
@@ -171,15 +159,8 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 
 ### 螢幕觀看 / Live View
 
-- `GET /api/scrcpy/system-info`
-- `POST /api/scrcpy/start/:id`
-- `POST /api/scrcpy/stop/:id`
-- `POST /api/scrcpy/batch/start`
-- `GET /api/scrcpy/sessions`
-- `POST /api/scrcpy/sessions/refresh`
 - `GET /api/scrcpy/config`
 - `PUT /api/scrcpy/config`
-- `GET /api/scrcpy/stream/:id`
 - `GET /api/ws/webrtc/:deviceId`
 
 ## WebRTC Live View 概要
@@ -189,8 +170,7 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 - signaling 經由 `/api/ws/webrtc/:deviceId` 交換 `offer`、`answer`、`ice`、`close`、`error` 訊息。
 - 後端會在新 viewer 加入且 control socket 可用時送出 rate-limited `RESET_VIDEO`，盡量提早取得第一個可解碼 keyframe。
 - 每個 viewer 會等到 IDR/keyframe 才開始接收畫面資料，避免從 delta frame 開始解碼。
-- legacy `/api/scrcpy/stream/:id` raw H264 WebSocket 也會共享同一個 source；它仍先送 header text frame，之後每個 binary frame 代表一個 H264 Annex-B access unit。
-- 設定檔中的 `video_codec_options` 可作為 live view 啟播診斷或 fallback，不影響既有外部 scrcpy 監看視窗。
+- 設定檔中的 `video_codec_options` 可作為 live view 啟播診斷或 fallback。
 - 前端新增的 popup 外部視窗模式仍然使用相同的 `/api/ws/webrtc/:deviceId` signaling；它不新增任何後端 API，只是改變前端由哪個視窗承載播放器。
 - popup takeover、release、closing 與來源頁面同步中斷等流程皆屬前端瀏覽器內部協調，不需額外配置後端。
 

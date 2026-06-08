@@ -136,19 +136,12 @@
 - `POST /api/monitoring/interval`
 - `POST /api/monitoring/run-once`
 
-### Scrcpy 螢幕鏡像
+### Scrcpy WebRTC 串流設定
 
-- `GET /api/scrcpy/system-info`
-- `POST /api/scrcpy/start/:id`
-- `POST /api/scrcpy/stop/:id`
-- `POST /api/scrcpy/batch/start`
-- `GET /api/scrcpy/sessions`
-- `POST /api/scrcpy/sessions/refresh`
 - `GET /api/scrcpy/config`
 - `PUT /api/scrcpy/config`
-- `GET /api/scrcpy/stream/:id`
 
-`GET /api/scrcpy/stream/:id` 是 legacy raw H264 WebSocket endpoint。連線建立後，server 會先送出 text frame stream header，之後每個 binary frame 代表一個 H264 Annex-B access unit。多個 client 連到同一台 device 時會共享同一個後端 scrcpy source。
+`/api/scrcpy/config` 只管理 WebRTC live view 啟動 scrcpy standalone server 時使用的影像參數。
 
 ### 使用者偏好
 
@@ -437,7 +430,7 @@
 
 - `GET /api/ws/webrtc/:deviceId` 提供頁內即時畫面的 WebRTC signaling 通道。
 - 這條路徑會啟動 scrcpy standalone server，並把 H264 視訊經由 WebRTC video track 送到瀏覽器。
-- 既有 `POST /api/scrcpy/start/:id` 仍是外部 scrcpy 視窗監看用途，兩者並存，不互相取代。
+- 外部 scrcpy CLI 視窗與 legacy raw H264 WebSocket 已移除；即時畫面只經由 WebRTC signaling 提供。
 - 前端新增的 live-stream popup 模式不會新增任何後端 API 或 WebSocket 端點；popup 與主頁仍共用同一組 `/api/ws/webrtc/:deviceId` signaling 路徑。
 - popup 與主頁之間的 takeover / release / closing / source-unavailable 同步屬於前端瀏覽器內部通訊，使用 BroadcastChannel 協調，並非後端 signaling 契約的一部分。
 
@@ -518,10 +511,10 @@
 - `invalid_h264_annexb_stream`: H264 Annex-B 格式不合法。
 - `no_h264_packets`: 未產生可播放的 H264 畫面封包。
 
-### Scrcpy Config 與 Live View 關聯
+### Scrcpy Config 與 WebRTC Live View 關聯
 
-- `GET /api/scrcpy/config` / `PUT /api/scrcpy/config` 目前也會影響 WebRTC live view 的 standalone scrcpy 啟播參數。
-- `video_codec_options` 只會套用到 live view 的 standalone server 路徑，不會改變既有外部 scrcpy 視窗參數。
+- `GET /api/scrcpy/config` / `PUT /api/scrcpy/config` 會影響 WebRTC live view 的 standalone scrcpy 啟播參數。
+- 設定欄位目前包含 `bitrate`、`max_size`、`max_fps`、`video_codec_options`。
 - `video_codec_options` 可作為首幀等待過久時的 fallback/診斷手段，例如 `i-frame-interval:int=1`；預設建議維持空字串，優先依賴 control channel 與 RESET_VIDEO 啟播優化。
 
 #### 房間控制更新格式

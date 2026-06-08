@@ -29,7 +29,8 @@
   - 使用者偏好：[server/data/preferences.json](server/data/preferences.json)
 
 ## Dependencies
-- 必要工具：ADB、scrcpy（需在 PATH）
+- 必要工具：ADB（需在 PATH）
+- WebRTC live view 需要 `vendor/scrcpy/scrcpy-server-v*` artifact；不需要系統 PATH 中的 scrcpy CLI
 - 詳細安裝與平台說明：
   - [README.md](README.md)
   - [server/README.md](server/README.md)
@@ -44,7 +45,7 @@
 
 ## Common Pitfalls
 - `keep_awake` 尚未在後端實作（動作會失敗）
-- `scrcpy` 未安裝會導致 `/api/scrcpy/*` 相關 API 失敗
+- 缺少 `vendor/scrcpy/scrcpy-server-v*` 或 ADB 不可用會導致 WebRTC live view 啟播失敗
 - JSON 數值在 Go 會解析為 `float64`（動作參數需注意）
 - 裝置必須為在線狀態才能啟動 scrcpy
 

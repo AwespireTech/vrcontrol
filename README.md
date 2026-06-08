@@ -2,9 +2,7 @@
 
 整合 Go 後端與 Vite + React 前端的 VR 控制系統，包含設備管理、房間管理、動作控制與監控機制。
 
-目前螢幕觀看有兩種模式：
-- 外部 scrcpy 監看視窗
-- 頁內 WebRTC 即時畫面（live view）
+目前螢幕觀看使用頁內 WebRTC 即時畫面（live view），後端以 vendored scrcpy standalone server 提供 H264 來源。
 
 ## 來源與致謝
 
@@ -32,29 +30,23 @@ vrcontrol/
 
 ## 快速開始（本機開發）
 
-### 先決條件：ADB 與 Scrcpy
+### 先決條件：ADB
 
-本專案的 VR 裝置控制與螢幕鏡像功能需要在系統中安裝 **ADB** 與 **scrcpy**，並加入 `PATH`。
+本專案的 VR 裝置控制與 WebRTC 即時畫面需要在系統中安裝 **ADB**，並加入 `PATH`。scrcpy standalone server 由 `vendor/scrcpy` 提供，不再需要系統 PATH 中的 scrcpy CLI。
 
 **官方下載**
 - Android Platform Tools (ADB)：https://developer.android.com/tools/releases/platform-tools
-- scrcpy：https://github.com/Genymobile/scrcpy/releases
 
 **Windows**
 - ADB：下載 Platform Tools → 解壓縮 → 將 `platform-tools` 目錄加入系統 `PATH`
-- scrcpy：下載 Windows release → 解壓縮 → 將 `scrcpy` 所在目錄加入 `PATH`
 
 **macOS**
 - ADB：`brew install android-platform-tools`
-- scrcpy：`brew install scrcpy`
 
 **Linux (Debian/Ubuntu)**
 - ADB：`sudo apt-get install android-tools-adb`
-- scrcpy：`sudo apt-get install scrcpy`
 
-> 若 `scrcpy` 未安裝，僅會影響螢幕鏡像相關功能，其餘 API 仍可運作。
-
-> WebRTC live view 同樣依賴 scrcpy 作為視訊來源，因此若 `scrcpy` 未安裝，頁內即時畫面也無法使用。
+> WebRTC live view 仍需要可用的 ADB 與 `vendor/scrcpy/scrcpy-server-v*` artifact，後端會在啟播時將 server artifact push 到裝置。
 
 ### 後端啟動 (Go)
 
@@ -86,7 +78,7 @@ Vite 會將以下路徑代理到後端：
 ## 即時畫面（WebRTC Live View）
 
 - 設備頁與房間控制頁目前都提供「即時畫面」入口。
-- 頁內即時畫面使用 WebRTC 播放，舊的 scrcpy 監看按鈕仍保留作為並行方案與 fallback。
+- 頁內即時畫面使用 WebRTC 播放；外部 scrcpy CLI 監看視窗已移除。
 - 即時畫面 section 可開到獨立瀏覽器視窗顯示。外部視窗模式會由 popup 接管播放器顯示，主頁則保留清單與版型控制，避免主頁與 popup 同時建立同一批 WebRTC 連線。
 - 當外部視窗關閉時，主頁會自動恢復頁內顯示；若主頁先關閉或重新整理，popup 會顯示來源頁面已中斷同步的提示。
 - 後端 signaling 端點為 `/api/ws/webrtc/:deviceId`。

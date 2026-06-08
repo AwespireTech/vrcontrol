@@ -4,13 +4,12 @@
 
 - 後端：Go + Gin，負責設備/房間/動作/監控與 Socket 管理
 - 前端：React + Vite，提供設備管理 UI
-- 外部依賴：ADB（裝置控制）、scrcpy（螢幕鏡像）
+- 外部依賴：ADB（裝置控制與 WebRTC live view 啟播）
 
 ## 目前監看模式
 
-- 外部監看視窗：沿用 scrcpy CLI，由 `/api/scrcpy/*` 啟動並管理外部桌面視窗。
 - 頁內即時畫面：使用 WebRTC live view，由 `/api/ws/webrtc/:deviceId` 建立 signaling，後端以 scrcpy standalone server 提供 H264 來源。
-- 兩條路徑目前並存。舊的 scrcpy 監看按鈕仍保留，WebRTC live view 是新增的頁內觀看方式。
+- 外部 scrcpy CLI 視窗與 legacy raw H264 WebSocket 已移除。
 
 ## 模組分層
 
@@ -64,12 +63,6 @@
 3. 當 `status` 為 `snapshot` 時，後端將該玩家標記為已就緒 snapshot，並用 `CheckSnapShot` 檢查當前 room 內所有玩家是否都已送出 snapshot。
 4. 當所有玩家都已就緒後，room 會透過 `SnapShotControl` acknowledgement 完成這次協調；running Activity 的 QA / lantern runtime data 會保留到 Activity end 時封存為 artifact。
 5. 若沒有 running Activity，snapshot 只會清空無歸屬的暫存資料，不會寫入 legacy room-hash storage。
-
-### Scrcpy 鏡像
-
-1. 前端呼叫 `/api/scrcpy/*`
-2. 後端檢查 scrcpy 是否安裝
-3. 啟動 scrcpy 子行程並維護 session 狀態
 
 ### WebRTC 即時畫面
 
@@ -133,18 +126,17 @@
 
 ## Live View Shared Source
 
-- 同一台 device 只會啟動一個 scrcpy standalone source；WebRTC live view 與 legacy raw H264 WebSocket 都透過 [server/service/scrcpy_stream_service.go](../server/service/scrcpy_stream_service.go) 訂閱同一個 source。
+- 同一台 device 只會啟動一個 scrcpy standalone source；多個 WebRTC viewer 都透過 [server/service/scrcpy_stream_service.go](../server/service/scrcpy_stream_service.go) 訂閱同一個 source。
 - 每個 WebRTC viewer 仍有自己的 signaling WebSocket、PeerConnection 與 Pion track；共享範圍只到後端 device H264 source，不共享瀏覽器端連線。
 - 每個 subscriber 使用 bounded queue 接收 H264 access units。慢 viewer 不會阻塞 source；keyframe 會優先清掉該 viewer 的舊 queue，讓新 GOP 能盡快送達。
 - 新 subscriber 會先等待 IDR。等待期間，後端會丟棄該 subscriber 的 non-keyframe access units，避免瀏覽器從 P/B frame 開始解碼。
 - 新 subscriber 加入時會呼叫 scrcpy control socket 的 `RESET_VIDEO` 請求 keyframe，並以短時間 rate limit 合併密集加入事件。若 control socket 不可用，subscriber 仍會等待下一個自然 keyframe。
 - 最後一個 subscriber 離開後，source 會保留短暫 grace period，避免前端重試或頁面切換造成 scrcpy 反覆啟停。
-- `GET /api/scrcpy/stream/:id` 仍保留 legacy header + binary frame contract，但 binary frame 現在對齊 H264 Annex-B access unit，而不是任意 TCP read chunk。
 
 ## Scrcpy Config 與資料儲存
 
-- `server/data/scrcpy_config.json` 目前除了既有 `bitrate`、`max_size`、`max_fps`、`window_*` 等欄位外，另有 `video_codec_options`。
-- `video_codec_options` 是 WebRTC live view 用於啟播診斷與 fallback 的額外編碼器選項，不影響既有外部 scrcpy 視窗啟動參數。
+- `server/data/scrcpy_config.json` 目前包含 `bitrate`、`max_size`、`max_fps`、`video_codec_options`。
+- `video_codec_options` 是 WebRTC live view 用於啟播診斷與 fallback 的額外編碼器選項。
 - 預設建議維持空字串；只有在特定設備首幀等待過久時，才暫時用較積極的 codec options 做排障。
 
 ## 重要資料儲存
@@ -185,7 +177,7 @@
 ## 已知限制
 
 - `keep_awake` 尚未在後端實作
-- Scrcpy 依賴作業系統已安裝並可從 PATH 呼叫
+- WebRTC live view 依賴 ADB 與 `vendor/scrcpy/scrcpy-server-v*` artifact
 - WebRTC live view 目前僅傳視訊，不含音訊。
 - WebRTC live view 的首畫面仍依賴來源 keyframe；新 viewer 加入時會透過 control channel + `RESET_VIDEO` 請求 keyframe，但不同設備編碼器表現可能不同。
 - 監控頁初版會尊重前端 `LIVE_VIEW_MAX_STREAMS` 限制；房間裝置超過上限時，未顯示的裝置需後續以分頁、排序或焦點模式處理。
