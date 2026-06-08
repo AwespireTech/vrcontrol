@@ -14,10 +14,6 @@ import {
   type MonitoringStatus,
   type ExecutionResult,
   type ScrcpyConfig,
-  type ScrcpySession,
-  type ScrcpySystemInfo,
-  type ScrcpyBatchStartRequest,
-  type ScrcpyBatchStartResponse,
   type UserPreference,
   type BatchStatusResponse,
   type WebRTCStreamErrorCode,
@@ -604,69 +600,14 @@ export const monitoringApi = {
 // ============ Scrcpy API ============
 
 export const scrcpyApi = {
-  // 獲取 scrcpy 系統信息（檢查是否已安裝）
-  getSystemInfo: async (): Promise<ScrcpySystemInfo> => {
-    const res = await fetch(`${API_BASE}/scrcpy/system-info`)
-    const data: ApiResponse<ScrcpySystemInfo> = await res.json()
-    return data.data!
-  },
-
-  // 啟動單個設備的 scrcpy
-  start: async (deviceId: string, config?: Partial<ScrcpyConfig>): Promise<void> => {
-    const res = await fetch(`${API_BASE}/scrcpy/start/${deviceId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: config ? JSON.stringify(config) : undefined,
-    })
-    const data: ApiResponse<void> = await res.json()
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || data.message || "Failed to start scrcpy")
-    }
-  },
-
-  // 停止設備的 scrcpy
-  stop: async (deviceId: string): Promise<void> => {
-    const res = await fetch(`${API_BASE}/scrcpy/stop/${deviceId}`, {
-      method: "POST",
-    })
-    const data: ApiResponse<void> = await res.json()
-    if (!data.success) throw new Error(data.error || "Failed to stop scrcpy")
-  },
-
-  // 批量啟動多個設備的 scrcpy
-  startBatch: async (request: ScrcpyBatchStartRequest): Promise<ScrcpyBatchStartResponse> => {
-    const res = await fetch(`${API_BASE}/scrcpy/batch/start`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
-    })
-    return await res.json()
-  },
-
-  // 獲取所有活躍的 scrcpy 會話
-  getSessions: async (): Promise<ScrcpySession[]> => {
-    const res = await fetch(`${API_BASE}/scrcpy/sessions`)
-    const data: ApiResponse<ScrcpySession[]> = await res.json()
-    return data.data || []
-  },
-
-  // 刷新會話狀態
-  refreshSessions: async (): Promise<ScrcpySession[]> => {
-    const res = await fetch(`${API_BASE}/scrcpy/sessions/refresh`, {
-      method: "POST",
-    })
-    const data: ApiResponse<ScrcpySession[]> = await res.json()
-    return data.data || []
-  },
-
-  // 獲取 scrcpy 配置
+  // 獲取 WebRTC scrcpy 串流配置
   getConfig: async (): Promise<ScrcpyConfig> => {
     const res = await fetch(`${API_BASE}/scrcpy/config`)
     const data: ApiResponse<ScrcpyConfig> = await res.json()
     return data.data!
   },
 
-  // 更新 scrcpy 配置
+  // 更新 WebRTC scrcpy 串流配置
   updateConfig: async (config: ScrcpyConfig): Promise<void> => {
     const res = await fetch(`${API_BASE}/scrcpy/config`, {
       method: "PUT",

@@ -306,64 +306,6 @@ export interface ScrcpyConfig {
   max_size: number // 最大螢幕寬度
   max_fps: number // 最大幀率
   video_codec_options: string // 額外 video codec options，主要用於 WebRTC 即時畫面
-  window_width?: number // 視窗寬度
-  window_height?: number // 視窗高度
-  window_x?: number // 視窗 X 位置
-  window_y?: number // 視窗 Y 位置
-  stay_awake: boolean // 保持設備清醒
-  show_touches: boolean // 顯示觸控點
-  fullscreen: boolean // 全螢幕模式
-  always_on_top: boolean // 視窗置頂
-  turn_screen_off: boolean // 關閉設備螢幕
-  enable_audio: boolean // 啟用音訊轉發
-  render_driver: string // 渲染驅動
-}
-
-// Scrcpy 會話
-export interface ScrcpySession {
-  device_id: string // 設備 ID
-  process_id: number // 進程 PID
-  started_at: string // 啟動時間
-  is_running: boolean // 是否運行中
-}
-
-// Scrcpy 系統信息
-export interface ScrcpySystemInfo {
-  installed: boolean // 是否已安裝
-  version: string // 版本號
-  path: string // 執行檔路徑
-  error_message: string // 錯誤訊息
-}
-
-// Scrcpy 批量啟動請求
-export interface ScrcpyBatchStartRequest {
-  device_ids: string[]
-  config?: ScrcpyConfig
-  layout?: {
-    mode?: "tile" | "manual"
-    columns?: number
-    screen_width?: number
-    screen_height?: number
-    padding_x?: number
-    padding_y?: number
-    base_x?: number
-    base_y?: number
-    gap_x?: number
-    gap_y?: number
-    frame_margin_x?: number
-    frame_margin_y?: number
-    window_width?: number
-    window_height?: number
-  }
-}
-
-// Scrcpy 批量啟動響應（最小型別：目前 UI 只依賴 success_count / failed_count）
-export interface ScrcpyBatchStartResponse {
-  success: boolean
-  total?: number
-  success_count: number
-  failed_count: number
-  results?: unknown[]
 }
 
 // 使用者偏好

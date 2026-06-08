@@ -11,8 +11,6 @@ import {
   mockPreference,
   mockRooms,
   mockScrcpyConfig,
-  mockScrcpySessions,
-  mockScrcpySystemInfo,
   mockUsbDevices,
 } from "../../../tests/fixtures/mock-data"
 
@@ -111,11 +109,7 @@ const monitoringApi = {
 }
 
 const scrcpyApi = {
-  getSystemInfo: (async () => mockScrcpySystemInfo) satisfies AsyncValue<typeof mockScrcpySystemInfo>,
   getConfig: (async () => mockScrcpyConfig) satisfies AsyncValue<typeof mockScrcpyConfig>,
-  getSessions: (async () => mockScrcpySessions) satisfies AsyncValue<typeof mockScrcpySessions>,
-  refreshSessions: (async () => mockScrcpySessions) satisfies AsyncValue<typeof mockScrcpySessions>,
-  stop: voidAsync,
   updateConfig: voidAsync,
 }
 
