@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"log"
 	"strings"
 	"vrcontrol/server/service"
@@ -41,6 +42,12 @@ func SetActivityService(svc *service.ActivityService) {
 
 func createRoomRuntime(roomID string) *sockets.Room {
 	room := sockets.NewRoom(roomID)
+	room.Parameters = make(map[string]any)
+	if roomServiceRef != nil {
+		if persistedRoom, err := roomServiceRef.GetRoom(roomID); err == nil && persistedRoom != nil {
+			room.Parameters = cloneRoomParameters(persistedRoom.Parameters)
+		}
+	}
 	room.AssignedSequence = getAssignedSequences(roomID)
 	room.SetActivityService(activityServiceRef)
 	if activityServiceRef != nil {
@@ -51,6 +58,32 @@ func createRoomRuntime(roomID string) *sockets.Room {
 		}
 	}
 	return room
+}
+
+func cloneRoomParameters(parameters map[string]any) map[string]any {
+	if parameters == nil {
+		return make(map[string]any)
+	}
+	bytes, err := json.Marshal(parameters)
+	if err != nil {
+		cloned := make(map[string]any, len(parameters))
+		for key, value := range parameters {
+			cloned[key] = value
+		}
+		return cloned
+	}
+	var cloned map[string]any
+	if err := json.Unmarshal(bytes, &cloned); err != nil {
+		fallback := make(map[string]any, len(parameters))
+		for key, value := range parameters {
+			fallback[key] = value
+		}
+		return fallback
+	}
+	if cloned == nil {
+		return make(map[string]any)
+	}
+	return cloned
 }
 
 func init() {
