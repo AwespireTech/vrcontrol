@@ -69,6 +69,8 @@ func (c *RoomController) CreateRoom(ctx *gin.Context) {
 		return
 	}
 
+	refreshDeviceRoomMapFromService()
+
 	ctx.JSON(http.StatusCreated, gin.H{
 		"success": true,
 		"data":    room,
@@ -98,6 +100,9 @@ func (c *RoomController) UpdateRoom(ctx *gin.Context) {
 		})
 		return
 	}
+
+	syncRoomRuntimeFromStore(roomID, true)
+	refreshDeviceRoomMapFromService()
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -129,6 +134,9 @@ func (c *RoomController) PatchRoom(ctx *gin.Context) {
 		})
 		return
 	}
+	_ = updated
+	syncRoomRuntimeFromStore(roomID, true)
+	refreshDeviceRoomMapFromService()
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -148,6 +156,9 @@ func (c *RoomController) DeleteRoom(ctx *gin.Context) {
 		})
 		return
 	}
+
+	roomRuntimeManager.RemoveRoom(roomID)
+	refreshDeviceRoomMapFromService()
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,

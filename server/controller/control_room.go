@@ -32,8 +32,9 @@ func SetDeviceService(svc *service.DeviceService) {
 
 func SetActivityService(svc *service.ActivityService) {
 	activityServiceRef = svc
-	for _, room := range RoomList {
-		if room == nil {
+	for _, roomID := range roomRuntimeManager.ListRoomIDs() {
+		room, ok := roomRuntimeManager.GetRoom(roomID)
+		if !ok || room == nil {
 			continue
 		}
 		room.SetActivityService(svc)
@@ -58,6 +59,10 @@ func createRoomRuntime(roomID string) *sockets.Room {
 		}
 	}
 	return room
+}
+
+func syncRoomRuntimeFromStore(roomID string, broadcast bool) *sockets.Room {
+	return roomRuntimeManager.SyncRoomFromStore(roomID, broadcast)
 }
 
 func cloneRoomParameters(parameters map[string]any) map[string]any {
@@ -103,10 +108,7 @@ func init() {
 }
 
 func refreshDeviceRoomMapFromService() {
-	if roomServiceRef == nil {
-		return
-	}
-	DeviceRoomMap = roomServiceRef.BuildAssignedRoomMap()
+	roomRuntimeManager.RefreshDeviceRoomMapFromService()
 }
 
 func GetRoomList(c *gin.Context) {
@@ -125,12 +127,7 @@ func GetRoomList(c *gin.Context) {
 		}
 	}
 
-	lis := make([]string, len(RoomList))
-	i := 0
-	for k := range RoomList {
-		lis[i] = k
-		i++
-	}
+	lis := roomRuntimeManager.ListRoomIDs()
 	c.JSON(200, gin.H{"rooms": lis})
 
 }
@@ -205,14 +202,16 @@ func AssignConnectedPlayerToRoom(roomId, deviceId string) {
 		}
 	}
 
-	room, ok := RoomList[roomId]
+	room, ok := roomRuntimeManager.GetRoom(roomId)
 	if !ok {
-		if len(RoomList) > MaxRoomCount {
+		var created bool
+		room, created = roomRuntimeManager.GetOrCreateRoom(roomId)
+		if room == nil {
 			return
 		}
-		room = createRoomRuntime(roomId)
-		RoomList[roomId] = room
-		go room.Run()
+		if created {
+			go room.Run()
+		}
 	}
 
 	player.Room = room
@@ -245,7 +244,11 @@ func DisconnectWSByDeviceID(deviceId string) {
 	}
 
 	// 2) 處理房間內玩家
-	for _, room := range RoomList {
+	for _, roomID := range roomRuntimeManager.ListRoomIDs() {
+		room, ok := roomRuntimeManager.GetRoom(roomID)
+		if !ok || room == nil {
+			continue
+		}
 		if room == nil {
 			continue
 		}
@@ -270,7 +273,7 @@ func DetachConnectedPlayerFromRoom(roomId, deviceId string) {
 	if deviceId == "" {
 		return
 	}
-	room, ok := RoomList[roomId]
+	room, ok := roomRuntimeManager.GetRoom(roomId)
 	if !ok || room == nil {
 		return
 	}
