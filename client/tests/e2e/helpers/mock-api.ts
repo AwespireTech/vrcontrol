@@ -6,8 +6,6 @@ import {
   mockPreference,
   mockRooms,
   mockScrcpyConfig,
-  mockScrcpySessions,
-  mockScrcpySystemInfo,
   mockUsbDevices,
 } from "../../fixtures/mock-data"
 
@@ -57,13 +55,8 @@ export async function registerMockApiRoutes(page: Page) {
         return fulfillJson(route, { success: true, data: { running: true } })
       case "/api/preferences":
         return fulfillJson(route, { success: true, data: mockPreference })
-      case "/api/scrcpy/system-info":
-        return fulfillJson(route, { success: true, data: mockScrcpySystemInfo })
       case "/api/scrcpy/config":
         return fulfillJson(route, { success: true, data: mockScrcpyConfig })
-      case "/api/scrcpy/sessions":
-      case "/api/scrcpy/sessions/refresh":
-        return fulfillJson(route, { success: true, data: mockScrcpySessions })
       default:
         return fulfillJson(route, { success: true, data: null })
     }

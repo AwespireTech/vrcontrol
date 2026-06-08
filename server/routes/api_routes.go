@@ -18,7 +18,6 @@ func SetupRoutes(router *gin.Engine, dataDir string) {
 	// 初始化 Managers
 	adbManager := adb.NewADBManager("", 30*time.Second)
 	pingManager := adb.NewPingManager(2 * time.Second)
-	scrcpyManager := scrcpy.NewManager()
 	scrcpyStreamManager := scrcpy.NewStreamManager()
 
 	// 初始化 Repositories
@@ -76,7 +75,6 @@ func SetupRoutes(router *gin.Engine, dataDir string) {
 	actionService := service.NewActionService(actionRepo, deviceRepo, adbManager)
 	activityService := service.NewActivityService(activityRepo, dataDir+"/activities")
 	monitoringService := service.NewMonitoringService(deviceRepo, pingManager, adbManager, preferenceRepo)
-	scrcpyService := service.NewScrcpyService(scrcpyManager, deviceRepo, scrcpyConfigRepo)
 	scrcpyStreamService := service.NewScrcpyStreamService(scrcpyStreamManager, deviceRepo, scrcpyConfigRepo)
 	preferenceService := service.NewPreferenceService(preferenceRepo)
 
@@ -99,8 +97,7 @@ func SetupRoutes(router *gin.Engine, dataDir string) {
 	actionController := controller.NewActionController(actionService)
 	activityController := controller.NewActivityController(activityService, roomService)
 	monitoringController := controller.NewMonitoringController(monitoringService)
-	scrcpyController := controller.NewScrcpyController(scrcpyService)
-	scrcpyStreamController := controller.NewScrcpyStreamController(scrcpyStreamService)
+	scrcpyController := controller.NewScrcpyController(scrcpyConfigRepo)
 	webrtcStreamController := controller.NewWebRTCStreamController(scrcpyStreamService)
 	preferenceController := controller.NewPreferenceController(preferenceService)
 	controller.SetRoomService(roomService)
@@ -204,18 +201,11 @@ func SetupRoutes(router *gin.Engine, dataDir string) {
 			monitoring.POST("/run-once", monitoringController.RunOnce)
 		}
 
-		// Scrcpy 螢幕鏡像路由
+		// Scrcpy WebRTC 串流設定路由
 		scrcpyGroup := api.Group("/scrcpy")
 		{
-			scrcpyGroup.GET("/system-info", scrcpyController.GetSystemInfo)
-			scrcpyGroup.POST("/start/:id", scrcpyController.StartScrcpy)
-			scrcpyGroup.POST("/stop/:id", scrcpyController.StopScrcpy)
-			scrcpyGroup.POST("/batch/start", scrcpyController.StartScrcpyBatch)
-			scrcpyGroup.GET("/sessions", scrcpyController.GetSessions)
-			scrcpyGroup.POST("/sessions/refresh", scrcpyController.RefreshSessions)
 			scrcpyGroup.GET("/config", scrcpyController.GetConfig)
 			scrcpyGroup.PUT("/config", scrcpyController.UpdateConfig)
-			scrcpyGroup.GET("/stream/:id", scrcpyStreamController.Stream)
 		}
 
 		// 使用者偏好路由

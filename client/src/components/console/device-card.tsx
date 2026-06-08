@@ -11,14 +11,11 @@ interface DeviceCardProps {
   onEdit?: (deviceId: string) => void
   onDelete?: (deviceId: string) => void
   onPing?: (deviceId: string) => void
-  onMonitor?: (deviceId: string) => void
-  scrcpyInstalled?: boolean
   statusErrorType?: StatusErrorType
   pingTooltipText?: string
   connectLoading?: boolean
   disconnectLoading?: boolean
   pingLoading?: boolean
-  monitorLoading?: boolean
   deleteLoading?: boolean
 }
 
@@ -29,14 +26,11 @@ export default function DeviceCard({
   onEdit,
   onDelete,
   onPing,
-  onMonitor,
-  scrcpyInstalled = false,
   statusErrorType = "idle",
   pingTooltipText,
   connectLoading,
   disconnectLoading,
   pingLoading,
-  monitorLoading,
   deleteLoading,
 }: DeviceCardProps) {
   const getAutoReconnectDisabledReasonText = (
@@ -207,21 +201,6 @@ export default function DeviceCard({
             disabled={pingLoading}
           >
             Ping
-          </Button>
-        )}
-        {isOnline && onMonitor && (
-          <Button
-            onClick={() => onMonitor(device.device_id)}
-            disabled={!scrcpyInstalled || monitorLoading}
-            loading={monitorLoading}
-            className={`ui-btn ui-btn-xs ${
-              scrcpyInstalled
-                ? "ui-btn-accent"
-                : "cursor-not-allowed bg-muted/50 text-foreground/50"
-            }`}
-            title={scrcpyInstalled ? "啟動螢幕監看" : "Scrcpy 未安裝"}
-          >
-            監看
           </Button>
         )}
         {onEdit && (

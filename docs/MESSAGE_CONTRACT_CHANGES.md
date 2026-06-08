@@ -4,9 +4,11 @@
 
 ## 2026-05-23 Shared Live View Source
 
+> 2026-06-08 更新：legacy raw H264 WebSocket `/api/scrcpy/stream/:id` 已移除；目前只保留 `/api/ws/webrtc/:deviceId` WebRTC signaling。
+
 ### 背景
 
-- 同一台 device 的 WebRTC live view 與 legacy raw H264 WebSocket 現在共享單一後端 scrcpy/H264 source。
+- 同一台 device 的多個 WebRTC live view 現在共享單一後端 scrcpy/H264 source。
 - 每個 WebRTC viewer 仍維持獨立 PeerConnection；這次沒有變更 `/api/ws/webrtc/:deviceId` 的 signaling message shape。
 
 ### WebRTC Signaling
@@ -24,20 +26,7 @@ Server 仍回傳 `answer`、`ice`、`error`，client 仍可送 `close`。接收�
 
 ### Raw H264 WebSocket
 
-`GET /api/scrcpy/stream/:id` 的連線流程維持：
-
-1. server 先送 text frame stream header。
-2. server 再送 binary H264 Annex-B data。
-
-行為變更：
-
-- binary frame 現在對齊 H264 access unit，而不是任意 TCP read chunk。
-- 多個 raw client 連到同一台 device 時共享同一個 source。
-- 新 client 在收到 IDR 前不會收到 delta frame；server 會嘗試請求新的 keyframe。
-
-接收方同步事項：
-
-- 若 client 只把 binary payload 當連續 Annex-B bytes 丟給 decoder，通常不需修改。
+`GET /api/scrcpy/stream/:id` 已移除。接收方應改用 `/api/ws/webrtc/:deviceId` WebRTC signaling。
 - 若 client 依賴舊的任意 chunk boundary，需改成接受「每個 binary frame 是一個 access unit」。
 
 ## 2026-05-15 Activity as Session

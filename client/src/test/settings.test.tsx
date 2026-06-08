@@ -23,8 +23,7 @@ describe("SettingsPage", () => {
     renderRoute("/settings")
 
     expect(await screen.findByRole("heading", { name: "系統設定" })).toBeInTheDocument()
-    expect(await screen.findByText("Scrcpy 螢幕鏡像")).toBeInTheDocument()
-    expect(screen.getByText("✗ Scrcpy 未安裝")).toBeInTheDocument()
+  expect(await screen.findByText("Scrcpy WebRTC 串流")).toBeInTheDocument()
 
     await user.click(screen.getByRole("button", { name: "應用" }))
 

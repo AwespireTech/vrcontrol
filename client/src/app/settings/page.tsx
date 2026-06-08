@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import MonitoringManagementSection from "@/components/console/monitoring-management-section"
 import { monitoringApi, scrcpyApi, preferenceApi } from "@/services/api"
 import { ScrcpyConfigForm } from "@/components/console/scrcpy-config-form"
-import type { ScrcpyConfig, ScrcpySystemInfo, UserPreference } from "@/services/api-types"
+import type { ScrcpyConfig, UserPreference } from "@/services/api-types"
 import PageShell from "@/components/console/page-shell"
 import Button from "@/components/button"
 import {
@@ -15,8 +15,7 @@ export default function SettingsPage() {
   const [monitoringInterval, setMonitoringInterval] = useState(10)
   const [loading, setLoading] = useState(true)
 
-  // Scrcpy 相關狀態
-  const [scrcpySystemInfo, setScrcpySystemInfo] = useState<ScrcpySystemInfo | null>(null)
+  // Scrcpy 串流設定狀態
   const [scrcpyConfig, setScrcpyConfig] = useState<ScrcpyConfig | null>(null)
   const [scrcpyConfigChanged, setScrcpyConfigChanged] = useState(false)
 
@@ -29,10 +28,6 @@ export default function SettingsPage() {
 
   const loadSettings = async () => {
     try {
-      // 載入 scrcpy 系統信息
-      const systemInfo = await scrcpyApi.getSystemInfo()
-      setScrcpySystemInfo(systemInfo)
-
       // 載入 scrcpy 配置
       const config = await scrcpyApi.getConfig()
       setScrcpyConfig(config)
@@ -302,43 +297,12 @@ export default function SettingsPage() {
 
         <MonitoringManagementSection />
 
-        {/* Scrcpy 螢幕鏡像設定 */}
+        {/* Scrcpy WebRTC 串流設定 */}
         <div className="surface-card p-6">
-          <h2 className="mb-4 text-xl font-bold text-foreground">Scrcpy 螢幕鏡像</h2>
-
-          {/* 系統檢查區塊 */}
-          {scrcpySystemInfo && (
-            <div
-              className={`mb-6 rounded-[18px] p-4 ${
-                scrcpySystemInfo.installed
-                  ? "border border-success/60 bg-success/10"
-                  : "border border-border/70 bg-surface/60"
-              }`}
-            >
-              {scrcpySystemInfo.installed ? (
-                <div>
-                  <p className="mb-1 font-semibold text-success">✓ Scrcpy 已安裝</p>
-                  <p className="text-sm text-success">版本: {scrcpySystemInfo.version}</p>
-                  <p className="mt-1 text-xs text-success">路徑: {scrcpySystemInfo.path}</p>
-                </div>
-              ) : (
-                <div>
-                  <p className="mb-2 font-semibold text-foreground">✗ Scrcpy 未安裝</p>
-                  <p className="mb-3 text-sm text-foreground/70">
-                    {scrcpySystemInfo.error_message}
-                  </p>
-                  <a
-                    href="https://github.com/Genymobile/scrcpy"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 underline hover:text-blue-700"
-                  >
-                    前往 Scrcpy GitHub 頁面查看安裝指引 →
-                  </a>
-                </div>
-              )}
-            </div>
-          )}
+          <h2 className="mb-4 text-xl font-bold text-foreground">Scrcpy WebRTC 串流</h2>
+          <p className="mb-6 text-sm text-foreground/60">
+            這些參數會套用到後端啟動的 scrcpy standalone server，供頁內即時畫面使用。
+          </p>
 
           {/* 配置表單 */}
           {scrcpyConfig && (
