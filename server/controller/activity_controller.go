@@ -121,10 +121,12 @@ func (c *ActivityController) StartActivity(ctx *gin.Context) {
 		activity = updated
 	}
 
-	room, ok := RoomList[activity.RoomID]
-	if !ok || room == nil {
-		room = createRoomRuntime(activity.RoomID)
-		RoomList[activity.RoomID] = room
+	room, created := roomRuntimeManager.GetOrCreateRoom(activity.RoomID)
+	if room == nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"success": false, "error": "failed to create room runtime"})
+		return
+	}
+	if created {
 		go room.Run()
 	}
 	if room.HasRunningActivity() {
@@ -161,7 +163,7 @@ func (c *ActivityController) EndActivity(ctx *gin.Context) {
 	var summary *model.ActivitySummary
 	var qaSnapshot *model.ActivityQAResult
 	var lanternSnapshot *model.ActivityLanternResult
-	if room, ok := RoomList[activity.RoomID]; ok && room != nil && room.CurrentActivity != nil && room.CurrentActivity.ActivityID == activityID {
+	if room, ok := roomRuntimeManager.GetRoom(activity.RoomID); ok && room != nil && room.CurrentActivity != nil && room.CurrentActivity.ActivityID == activityID {
 		qaSnapshot = room.BuildQASnapshot(activityID)
 		lanternSnapshot = room.BuildLanternSnapshot(activityID)
 		summary = room.EndActivity()
@@ -205,7 +207,7 @@ func (c *ActivityController) CancelActivity(ctx *gin.Context) {
 		ctx.JSON(http.StatusNotFound, gin.H{"success": false, "error": err.Error()})
 		return
 	}
-	if room, ok := RoomList[activity.RoomID]; ok && room != nil && room.CurrentActivity != nil && room.CurrentActivity.ActivityID == activityID {
+	if room, ok := roomRuntimeManager.GetRoom(activity.RoomID); ok && room != nil && room.CurrentActivity != nil && room.CurrentActivity.ActivityID == activityID {
 		room.EndActivity()
 	}
 	cancelled, err := c.activityService.CancelActivity(activityID)

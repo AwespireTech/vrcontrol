@@ -29,12 +29,6 @@ func ConnectToRoomSocket(c *gin.Context) {
 		playerId = deviceId
 	}
 	p := sockets.HandlePlayerConnect(conn, playerId, StandbyPlayerDisconnect)
-	if p == nil {
-		log.Println("Failed to handle player connection for deviceId:", clientId)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to handle player connection"})
-		return
-	}
-
 	if !valid {
 		recordIsolation(clientId, clientIP, false, "", false, false)
 		StandbyPlayerMap[playerId] = p
@@ -72,15 +66,13 @@ func ConnectToRoomSocket(c *gin.Context) {
 	} else {
 		log.Println("Device assigned to room:", roomId)
 
-		room, ok := RoomList[roomId]
-		if !ok {
-			if len(RoomList) > MaxRoomCount {
-				log.Println("Room List is full, please try again later.")
-				conn.Close()
-				return
-			}
-			room = createRoomRuntime(roomId)
-			RoomList[roomId] = room
+		room, created := roomRuntimeManager.GetOrCreateRoom(roomId)
+		if room == nil {
+			log.Println("Room runtime creation failed or room limit reached:", roomId)
+			StandbyPlayerMap[playerId] = p
+			return
+		}
+		if created {
 			go room.Run()
 			log.Println("Room Created: ", roomId)
 		}
@@ -92,15 +84,13 @@ func ConnectToRoomControlSocket(c *gin.Context) {
 	roomId := c.Param("roomId")
 
 	// Check if the deviceId is valid
-	room, ok := RoomList[roomId]
-	if !ok {
-		if len(RoomList) > MaxRoomCount {
-			log.Println("Room List is full, please try again later.")
-			c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Room List is full, please try again later."})
-			return
-		}
-		room = createRoomRuntime(roomId)
-		RoomList[roomId] = room
+	room, created := roomRuntimeManager.GetOrCreateRoom(roomId)
+	if room == nil {
+		log.Println("Room runtime creation failed or room limit reached:", roomId)
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Room List is full, please try again later."})
+		return
+	}
+	if created {
 		go room.Run()
 		log.Println("Room Created: ", roomId)
 	}
