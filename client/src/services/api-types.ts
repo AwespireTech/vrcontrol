@@ -302,7 +302,7 @@ export interface LiveStreamTarget {
 
 // Scrcpy 配置
 export interface ScrcpyConfig {
-  bitrate: string // 視訊位元率 (e.g., "8M", "16M")
+  bitrate: string // 視訊位元率，可自由輸入，例如 "800k", "1M", "2M"
   max_size: number // 最大螢幕寬度
   max_fps: number // 最大幀率
   video_codec_options: string // 額外 video codec options，主要用於 WebRTC 即時畫面
