@@ -5,6 +5,7 @@ import (
 
 	"vrcontrol/server/model"
 	"vrcontrol/server/repository"
+	"vrcontrol/server/scrcpy"
 
 	"github.com/gin-gonic/gin"
 )
@@ -49,6 +50,15 @@ func (c *ScrcpyController) UpdateConfig(ctx *gin.Context) {
 			"success": false,
 			"error":   "invalid_config",
 			"message": err.Error(),
+		})
+		return
+	}
+
+	if err := scrcpy.ValidateBitrate(config.Bitrate); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"error":   "invalid_bitrate",
+			"message": "bitrate must be a positive integer with an optional k or M suffix",
 		})
 		return
 	}

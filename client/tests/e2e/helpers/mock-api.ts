@@ -9,6 +9,8 @@ import {
   mockUsbDevices,
 } from "../../fixtures/mock-data"
 
+let currentScrcpyConfig = { ...mockScrcpyConfig }
+
 function fulfillJson(route: Route, payload: unknown) {
   return route.fulfill({
     status: 200,
@@ -18,6 +20,8 @@ function fulfillJson(route: Route, payload: unknown) {
 }
 
 export async function registerMockApiRoutes(page: Page) {
+  currentScrcpyConfig = { ...mockScrcpyConfig }
+
   await page.route("**/api/**", async (route) => {
     const requestUrl = new URL(route.request().url())
     const { pathname } = requestUrl
@@ -56,7 +60,15 @@ export async function registerMockApiRoutes(page: Page) {
       case "/api/preferences":
         return fulfillJson(route, { success: true, data: mockPreference })
       case "/api/scrcpy/config":
-        return fulfillJson(route, { success: true, data: mockScrcpyConfig })
+        if (route.request().method() === "PUT") {
+          const nextConfig = route.request().postDataJSON()
+          currentScrcpyConfig = { ...currentScrcpyConfig, ...nextConfig }
+          return fulfillJson(route, {
+            success: true,
+            message: "Configuration updated successfully",
+          })
+        }
+        return fulfillJson(route, { success: true, data: currentScrcpyConfig })
       default:
         return fulfillJson(route, { success: true, data: null })
     }

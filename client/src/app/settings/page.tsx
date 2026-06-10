@@ -18,6 +18,7 @@ export default function SettingsPage() {
   // Scrcpy 串流設定狀態
   const [scrcpyConfig, setScrcpyConfig] = useState<ScrcpyConfig | null>(null)
   const [scrcpyConfigChanged, setScrcpyConfigChanged] = useState(false)
+  const [scrcpyConfigValid, setScrcpyConfigValid] = useState(true)
 
   // 使用者偏好狀態
   const [preference, setPreference] = useState<UserPreference | null>(null)
@@ -65,6 +66,10 @@ export default function SettingsPage() {
     setScrcpyConfigChanged(true)
   }
 
+  const handleScrcpyConfigValidityChange = (isValid: boolean) => {
+    setScrcpyConfigValid(isValid)
+  }
+
   const handleSaveScrcpyConfig = async () => {
     if (!scrcpyConfig) return
     if (savingScrcpyConfig) return
@@ -108,8 +113,8 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-xl text-foreground">載入中…</div>
+      <div className="bg-background flex min-h-screen items-center justify-center">
+        <div className="text-foreground text-xl">載入中…</div>
       </div>
     )
   }
@@ -119,12 +124,12 @@ export default function SettingsPage() {
       <div className="space-y-6">
         {/* 設備狀態設定 */}
         <div className="surface-card p-6">
-          <h2 className="mb-4 text-xl font-bold text-foreground">設備狀態</h2>
+          <h2 className="text-foreground mb-4 text-xl font-bold">設備狀態</h2>
 
           {preference && (
             <div className="space-y-4">
               <div className="surface-panel p-4">
-                <p className="mb-3 font-semibold text-foreground">狀態更新間隔</p>
+                <p className="text-foreground mb-3 font-semibold">狀態更新間隔</p>
                 <div className="flex items-center gap-3">
                   <input
                     type="number"
@@ -141,13 +146,13 @@ export default function SettingsPage() {
                   />
                   <span className="text-foreground/70">秒</span>
                 </div>
-                <p className="mt-2 text-xs text-foreground/50">
+                <p className="text-foreground/50 mt-2 text-xs">
                   設定設備頁自動更新設備狀態的時間間隔（5–300 秒）
                 </p>
               </div>
 
               <div className="surface-panel p-4">
-                <p className="mb-3 font-semibold text-foreground">批次數量</p>
+                <p className="text-foreground mb-3 font-semibold">批次數量</p>
                 <div className="flex items-center gap-3">
                   <input
                     type="number"
@@ -164,11 +169,11 @@ export default function SettingsPage() {
                   />
                   <span className="text-foreground/70">台</span>
                 </div>
-                <p className="mt-2 text-xs text-foreground/50">每次批次查詢的設備數量（1–50 台）</p>
+                <p className="text-foreground/50 mt-2 text-xs">每次批次查詢的設備數量（1–50 台）</p>
               </div>
 
               <div className="surface-panel p-4">
-                <p className="mb-3 font-semibold text-foreground">最大併發</p>
+                <p className="text-foreground mb-3 font-semibold">最大併發</p>
                 <div className="flex items-center gap-3">
                   <input
                     type="number"
@@ -185,13 +190,13 @@ export default function SettingsPage() {
                   />
                   <span className="text-foreground/70">個</span>
                 </div>
-                <p className="mt-2 text-xs text-foreground/50">
+                <p className="text-foreground/50 mt-2 text-xs">
                   同時查詢設備狀態的最大並行數（1–20 個）
                 </p>
               </div>
 
               <div className="surface-panel p-4">
-                <p className="mb-3 font-semibold text-foreground">自動重連冷卻</p>
+                <p className="text-foreground mb-3 font-semibold">自動重連冷卻</p>
                 <div className="flex items-center gap-3">
                   <input
                     type="number"
@@ -209,13 +214,13 @@ export default function SettingsPage() {
                   />
                   <span className="text-foreground/70">秒</span>
                 </div>
-                <p className="mt-2 text-xs text-foreground/50">
+                <p className="text-foreground/50 mt-2 text-xs">
                   設備離線後，兩次自動重連嘗試之間的等待時間（5–3600 秒）
                 </p>
               </div>
 
               <div className="surface-panel p-4">
-                <p className="mb-3 font-semibold text-foreground">自動重連上限</p>
+                <p className="text-foreground mb-3 font-semibold">自動重連上限</p>
                 <div className="flex items-center gap-3">
                   <input
                     type="number"
@@ -233,7 +238,7 @@ export default function SettingsPage() {
                   />
                   <span className="text-foreground/70">次</span>
                 </div>
-                <p className="mt-2 text-xs text-foreground/50">
+                <p className="text-foreground/50 mt-2 text-xs">
                   0 代表不進行自動重連；達到上限後會標記為「自動重連已停用」（0–20 次）
                 </p>
               </div>
@@ -246,7 +251,7 @@ export default function SettingsPage() {
                   className={`ui-btn-md transition-colors ${
                     preferenceChanged
                       ? "ui-btn-primary"
-                      : "cursor-not-allowed bg-muted/50 text-foreground/50"
+                      : "bg-muted/50 text-foreground/50 cursor-not-allowed"
                   }`}
                 >
                   保存設定
@@ -258,18 +263,18 @@ export default function SettingsPage() {
 
         {/* 監控服務設定 */}
         <div className="surface-card p-6">
-          <h2 className="mb-4 text-xl font-bold text-foreground">網路監控服務</h2>
+          <h2 className="text-foreground mb-4 text-xl font-bold">網路監控服務</h2>
 
           <div className="space-y-4">
             <div className="surface-panel p-4">
-              <p className="mb-2 font-semibold text-foreground">說明</p>
-              <p className="text-sm text-foreground/70">
+              <p className="text-foreground mb-2 font-semibold">說明</p>
+              <p className="text-foreground/70 text-sm">
                 監控的啟動、執行與設備管理已集中到下方 Monitoring 區塊，這裡保留服務層級設定。
               </p>
             </div>
 
             <div className="surface-panel p-4">
-              <p className="mb-3 font-semibold text-foreground">監控間隔</p>
+              <p className="text-foreground mb-3 font-semibold">監控間隔</p>
               <div className="flex items-center gap-3">
                 <input
                   type="number"
@@ -288,7 +293,7 @@ export default function SettingsPage() {
                   應用
                 </Button>
               </div>
-              <p className="mt-2 text-xs text-foreground/50">
+              <p className="text-foreground/50 mt-2 text-xs">
                 設定監控服務檢查設備連線狀態的時間間隔（1–300 秒）
               </p>
             </div>
@@ -299,8 +304,8 @@ export default function SettingsPage() {
 
         {/* Scrcpy WebRTC 串流設定 */}
         <div className="surface-card p-6">
-          <h2 className="mb-4 text-xl font-bold text-foreground">Scrcpy WebRTC 串流</h2>
-          <p className="mb-6 text-sm text-foreground/60">
+          <h2 className="text-foreground mb-4 text-xl font-bold">Scrcpy WebRTC 串流</h2>
+          <p className="text-foreground/60 mb-6 text-sm">
             這些參數會套用到後端啟動的 scrcpy standalone server，供頁內即時畫面使用。
           </p>
 
@@ -310,17 +315,18 @@ export default function SettingsPage() {
               <ScrcpyConfigForm
                 value={scrcpyConfig}
                 onChange={handleScrcpyConfigChange}
+                onValidityChange={handleScrcpyConfigValidityChange}
               />
 
               <div className="mt-6 flex justify-end">
                 <Button
                   onClick={handleSaveScrcpyConfig}
-                  disabled={!scrcpyConfigChanged || savingScrcpyConfig}
+                  disabled={!scrcpyConfigChanged || savingScrcpyConfig || !scrcpyConfigValid}
                   loading={savingScrcpyConfig}
                   className={`ui-btn ui-btn-md transition-colors ${
-                    scrcpyConfigChanged
+                    scrcpyConfigChanged && scrcpyConfigValid
                       ? "ui-btn-primary"
-                      : "cursor-not-allowed bg-muted/50 text-foreground/50"
+                      : "bg-muted/50 text-foreground/50 cursor-not-allowed"
                   }`}
                 >
                   保存配置
@@ -332,34 +338,34 @@ export default function SettingsPage() {
 
         {/* 系統信息 */}
         <div className="surface-card p-6">
-          <h2 className="mb-4 text-xl font-bold text-foreground">系統資訊</h2>
+          <h2 className="text-foreground mb-4 text-xl font-bold">系統資訊</h2>
           <div className="space-y-3 text-sm">
-            <div className="flex justify-between border-b border-border py-2">
+            <div className="border-border flex justify-between border-b py-2">
               <span className="text-foreground/70">API 端點:</span>
-              <span className="font-mono text-foreground">/api</span>
+              <span className="text-foreground font-mono">/api</span>
             </div>
-            <div className="flex justify-between border-b border-border py-2">
+            <div className="border-border flex justify-between border-b py-2">
               <span className="text-foreground/70">Socket 連線埠範圍:</span>
-              <span className="font-mono text-foreground">3000-3100</span>
+              <span className="text-foreground font-mono">3000-3100</span>
             </div>
-            <div className="flex justify-between border-b border-border py-2">
+            <div className="border-border flex justify-between border-b py-2">
               <span className="text-foreground/70">資料儲存:</span>
-              <span className="font-mono text-foreground">JSON 檔案</span>
+              <span className="text-foreground font-mono">JSON 檔案</span>
             </div>
             <div className="flex justify-between py-2">
               <span className="text-foreground/70">前端更新間隔:</span>
-              <span className="font-mono text-foreground">5 秒</span>
+              <span className="text-foreground font-mono">5 秒</span>
             </div>
           </div>
         </div>
 
         {/* 關於 */}
         <div className="surface-card p-6">
-          <h2 className="mb-4 text-xl font-bold text-foreground">關於</h2>
-          <p className="mb-2 text-foreground/70">
+          <h2 className="text-foreground mb-4 text-xl font-bold">關於</h2>
+          <p className="text-foreground/70 mb-2">
             本控制模組提供完整的 Meta Quest 設備管理功能，包括：
           </p>
-          <ul className="ml-4 list-inside list-disc space-y-1 text-foreground/70">
+          <ul className="text-foreground/70 ml-4 list-inside list-disc space-y-1">
             <li>設備連線與狀態監控</li>
             <li>房間管理與 Socket Server</li>
             <li>動作執行與批次操作</li>
