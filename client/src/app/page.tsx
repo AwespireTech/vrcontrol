@@ -1,26 +1,20 @@
 import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
-import { actionApi, deviceApi, roomApi } from "@/services/api"
-import type { Action, Device, Room } from "@/services/api-types"
-import { useMonitoringStatus } from "@/hooks/useMonitoringStatus"
+import { LuHouse, LuSmartphone } from "react-icons/lu"
+import { deviceApi, roomApi } from "@/services/api"
+import type { Device, Room } from "@/services/api-types"
 import PageShell from "@/components/console/page-shell"
+import DashboardLinkCard from "@/components/console/dashboard-link-card"
+import DashboardStatCard from "@/components/console/dashboard-stat-card"
 
 export default function DashboardPage() {
   const [devices, setDevices] = useState<Device[]>([])
   const [rooms, setRooms] = useState<Room[]>([])
-  const [actions, setActions] = useState<Action[]>([])
-  const monitoring = useMonitoringStatus()
 
   const loadData = async () => {
     try {
-      const [devicesData, roomsData, actionsData] = await Promise.all([
-        deviceApi.getAll(),
-        roomApi.getAll(),
-        actionApi.getAll(),
-      ])
+      const [devicesData, roomsData] = await Promise.all([deviceApi.getAll(), roomApi.getAll()])
       setDevices(devicesData)
       setRooms(roomsData)
-      setActions(actionsData)
     } catch (error) {
       console.error("Failed to load dashboard data:", error)
     }
@@ -30,84 +24,78 @@ export default function DashboardPage() {
     loadData()
   }, [])
 
-  const onlineDevices = devices.filter((d) => d.status === "online").length
   const totalDevices = devices.length
+
+  const summaryCards = [
+    {
+      label: "Devices 裝置總數",
+      value: totalDevices,
+      icon: LuSmartphone,
+      tone: "primary",
+    },
+    {
+      label: "Groups 群組總數",
+      value: rooms.length,
+      icon: LuHouse,
+      tone: "default",
+    },
+  ] as const
+
+  const managementCards = [
+    {
+      to: "/devices",
+      title: "Manage Devices",
+      subtitle: "裝置管理 >",
+      description: "建立、編輯與管理裝置，查看裝置狀態與裝置配置。",
+      icon: LuSmartphone,
+    },
+    {
+      to: "/rooms",
+      title: "Manage Groups",
+      subtitle: "群組管理 >",
+      description: "建立群組，分配裝置並管理後續連線與控制流程。",
+      icon: LuHouse,
+    },
+  ] as const
 
   return (
     <PageShell
-      title="設備控制台"
-      subtitle="管理 VR 設備、房間與動作"
-      actions={
-        <Link
-          to="/settings"
-          className="ui-btn ui-btn-md ui-btn-outline inline-flex items-center gap-2"
-        >
-          ⚙️ 系統設定
-        </Link>
-      }
+      title="Dashboard 總覽"
+      subtitle=""
+      eyebrow=""
+      maxWidth="md"
+      headerVariant="plain"
+      titleVariant="compact"
     >
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        {[
-          { label: "設備總數", value: totalDevices, icon: "📱" },
-          { label: "在線設備", value: onlineDevices, icon: "✅", accent: "text-success" },
-          { label: "房間數量", value: rooms.length, icon: "🏠" },
-          { label: "動作數量", value: actions.length, icon: "⚡" },
-        ].map((item) => (
-          <div key={item.label} className="surface-card p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-foreground/60">{item.label}</p>
-                <p className={`text-3xl font-bold ${item.accent ?? "text-foreground"}`}>
-                  {item.value}
-                </p>
-              </div>
-              <div className="text-4xl">{item.icon}</div>
-            </div>
+      <div className="max-w-[900px] space-y-5">
+        <section className="console-section">
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+            {summaryCards.map((item) => (
+              <DashboardStatCard
+                key={item.label}
+                label={item.label}
+                value={item.value}
+                icon={item.icon}
+                tone={item.tone}
+              />
+            ))}
           </div>
-        ))}
-      </div>
+        </section>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        {[
-          {
-            to: "/devices",
-            icon: "📱",
-            title: "設備管理",
-            desc: "建立、編輯與管理設備，查看設備狀態",
-          },
-          {
-            to: "/rooms",
-            icon: "🏠",
-            title: "房間管理",
-            desc: "建立房間，分配設備並管理 Socket 連線",
-          },
-          {
-            to: "/actions",
-            icon: "⚡",
-            title: "動作管理",
-            desc: "建立與執行設備動作，支援批次操作",
-          },
-          {
-            to: "/monitoring",
-            icon: "🛰️",
-            title: "網絡監控",
-            desc: "背景監控會定期 Ping 設備 IP，並在設備恢復可達時嘗試 ADB 重連",
-            meta: `目前狀態：${
-              !monitoring.known ? "未知" : monitoring.running ? "運行中" : "已停止"
-            }（詳情與控制請到監控頁）`,
-          },
-        ].map((item) => (
-          <Link
-            key={item.title}
-            to={item.to}
-            className="group rounded-2xl border border-border/70 bg-surface/50 p-6 transition hover:border-primary/60 hover:bg-surface/70"
-          >
-            <div className="text-4xl">{item.icon}</div>
-            <h2 className="mt-4 text-lg font-semibold text-foreground">{item.title}</h2>
-            <p className="mt-2 text-sm text-foreground/70">{item.desc}</p>
-            {item.meta ? <p className="mt-3 text-xs text-foreground/50">{item.meta}</p> : null}
-          </Link>
-        ))}
+        <section className="console-section">
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+            {managementCards.map((item) => (
+              <DashboardLinkCard
+                key={item.title}
+                to={item.to}
+                title={item.title}
+                subtitle={item.subtitle}
+                description={item.description}
+                icon={item.icon}
+              />
+            ))}
+          </div>
+        </section>
       </div>
     </PageShell>
   )

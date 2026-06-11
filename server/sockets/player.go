@@ -21,6 +21,9 @@ type Player struct {
 	Room              *Room
 	Stage             int
 	ReadyToMove       bool
+	WaitToSync        bool
+	Status            model.PlayStatusEnum
+	WaitSnapShot      bool
 	InChannel         chan []byte
 	Sequence          int
 	LastUpdate        time.Time
@@ -101,6 +104,19 @@ func (p *Player) read() {
 			p.DeiviceID = utils.NormalizeDeviceIDKey(heartbeat.DeviceID)
 			p.Message = heartbeat.Message
 			p.LastUpdate = utilities.TicksToDateTime(heartbeat.Timestamp)
+		case model.MessageTypePlayStatus:
+			playStatus := playerMessage.PlayStatus
+			if playStatus.Status == model.PS_SnapShot {
+				p.WaitSnapShot = true
+				spshot, allReadySnapShot := CheckSnapShot(p.Room)
+				// Do Something Here
+				if allReadySnapShot {
+					log.Println("All Players Ready to Take A SnapShot")
+					p.Room.SnapShotControl <- spshot
+				}
+			} else {
+				p.Status = playStatus.Status
+			}
 		case model.MessageTypeReadyToMove:
 			readyToMove := playerMessage.ReadyToMove
 			p.Stage = readyToMove.Stage
@@ -113,7 +129,21 @@ func (p *Player) read() {
 			if action {
 				p.Room.MoveControl <- mov
 			}
+		case model.MessageTypeWaitToSync:
+			waitToSync := playerMessage.WaitToSync
+			p.RawDeviceID = waitToSync.DeviceID
+			p.DeiviceID = utils.NormalizeDeviceIDKey(waitToSync.DeviceID)
+			p.WaitToSync = true
 
+			syn, action := SyncCheck(p.Room, p, waitToSync.Stage)
+			if action {
+				p.Room.SyncControl <- syn
+			}
+		case model.MessagesTypeQA:
+			qaData := playerMessage.QA
+			if qaData != nil && ComposeQAResult(p.Room, p, qaData.QuestionID, qaData.AnswerID) {
+				p.Room.recordActivityEvent(string(model.EventTypeQA))
+			}
 		default:
 			// Other is broadcast message
 			// Send to the room

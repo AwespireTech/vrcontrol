@@ -5,27 +5,29 @@ import {
   type IsolationDevice,
   type USBDevice,
   type Room,
+  type Activity,
+  type ActivityContext,
+  type ActivityResults,
   type Action,
   type BatchExecuteRequest,
   type BatchExecuteResponse,
   type MonitoringStatus,
   type ExecutionResult,
   type ScrcpyConfig,
-  type ScrcpySession,
-  type ScrcpySystemInfo,
-  type ScrcpyBatchStartRequest,
-  type ScrcpyBatchStartResponse,
   type UserPreference,
   type BatchStatusResponse,
   type WebRTCStreamErrorCode,
 } from "./api-types"
 import { SERVER } from "@/environment"
+import { buildWebSocketUrl } from "@/lib/utils/server-url"
 
 const CONTROL_BASE = `${API_BASE}/control`
 const SIMPLE_BASE = `${API_BASE}/simple`
 
 const webrtcErrorMessages: Record<WebRTCStreamErrorCode, string> = {
   invalid_signal: "即時畫面連線資料無效。",
+  invalid_offer_sdp: "即時畫面請求格式無效，請重新嘗試。",
+  invalid_answer_sdp: "即時畫面回應格式無效，請重新嘗試。",
   source_server_exited_with_error: "串流來源異常結束。",
   source_server_exited: "串流來源已結束。",
   source_backend_not_ready: "串流後端尚未準備完成。",
@@ -38,9 +40,6 @@ const webrtcErrorMessages: Record<WebRTCStreamErrorCode, string> = {
 }
 
 function normalizeServerUrl() {
-  if (typeof window !== "undefined") {
-    return new URL(SERVER, window.location.href)
-  }
   return new URL(SERVER)
 }
 
@@ -345,6 +344,87 @@ export const roomApi = {
   },
 }
 
+export const activityApi = {
+  createDraft: async (
+    roomId: string,
+    payload: { name: string; activity_context: ActivityContext },
+  ): Promise<Activity> => {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/activities`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+    const data: ApiResponse<Activity> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to create activity draft")
+    return data.data!
+  },
+
+  listByRoom: async (roomId: string): Promise<Activity[]> => {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/activities`)
+    const data: ApiResponse<Activity[]> = await res.json()
+    return data.data || []
+  },
+
+  getCurrentByRoom: async (roomId: string): Promise<Activity | null> => {
+    const res = await fetch(`${API_BASE}/rooms/${roomId}/current-activity`)
+    const data: ApiResponse<Activity | null> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to load current activity")
+    return data.data || null
+  },
+
+  get: async (activityId: string): Promise<Activity | null> => {
+    const res = await fetch(`${API_BASE}/activities/${activityId}`)
+    const data: ApiResponse<Activity> = await res.json()
+    return data.data || null
+  },
+
+  start: async (
+    activityId: string,
+    payload?: { name?: string; activity_context?: ActivityContext; seed?: number },
+  ): Promise<Activity> => {
+    const res = await fetch(`${API_BASE}/activities/${activityId}/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload || {}),
+    })
+    const data: ApiResponse<Activity> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to start activity")
+    return data.data!
+  },
+
+  end: async (activityId: string): Promise<Activity> => {
+    const res = await fetch(`${API_BASE}/activities/${activityId}/end`, {
+      method: "POST",
+    })
+    const data: ApiResponse<Activity> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to end activity")
+    return data.data!
+  },
+
+  cancel: async (activityId: string): Promise<Activity> => {
+    const res = await fetch(`${API_BASE}/activities/${activityId}/cancel`, {
+      method: "POST",
+    })
+    const data: ApiResponse<Activity> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to cancel activity")
+    return data.data!
+  },
+
+  getResults: async (activityId: string): Promise<ActivityResults> => {
+    const res = await fetch(`${API_BASE}/activities/${activityId}/results`)
+    const data: ApiResponse<ActivityResults> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to load activity results")
+    return data.data!
+  },
+
+  getContext: async (activityId: string): Promise<ActivityContext> => {
+    const res = await fetch(`${API_BASE}/activities/${activityId}/context`)
+    const data: ApiResponse<ActivityContext> = await res.json()
+    if (!data.success) throw new Error(data.error || "Failed to load activity context")
+    return data.data || {}
+  },
+}
+
 // ============ 控制 API（鏡像 /control） ============
 
 export const controlApi = {
@@ -520,69 +600,14 @@ export const monitoringApi = {
 // ============ Scrcpy API ============
 
 export const scrcpyApi = {
-  // 獲取 scrcpy 系統信息（檢查是否已安裝）
-  getSystemInfo: async (): Promise<ScrcpySystemInfo> => {
-    const res = await fetch(`${API_BASE}/scrcpy/system-info`)
-    const data: ApiResponse<ScrcpySystemInfo> = await res.json()
-    return data.data!
-  },
-
-  // 啟動單個設備的 scrcpy
-  start: async (deviceId: string, config?: Partial<ScrcpyConfig>): Promise<void> => {
-    const res = await fetch(`${API_BASE}/scrcpy/start/${deviceId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: config ? JSON.stringify(config) : undefined,
-    })
-    const data: ApiResponse<void> = await res.json()
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || data.message || "Failed to start scrcpy")
-    }
-  },
-
-  // 停止設備的 scrcpy
-  stop: async (deviceId: string): Promise<void> => {
-    const res = await fetch(`${API_BASE}/scrcpy/stop/${deviceId}`, {
-      method: "POST",
-    })
-    const data: ApiResponse<void> = await res.json()
-    if (!data.success) throw new Error(data.error || "Failed to stop scrcpy")
-  },
-
-  // 批量啟動多個設備的 scrcpy
-  startBatch: async (request: ScrcpyBatchStartRequest): Promise<ScrcpyBatchStartResponse> => {
-    const res = await fetch(`${API_BASE}/scrcpy/batch/start`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
-    })
-    return await res.json()
-  },
-
-  // 獲取所有活躍的 scrcpy 會話
-  getSessions: async (): Promise<ScrcpySession[]> => {
-    const res = await fetch(`${API_BASE}/scrcpy/sessions`)
-    const data: ApiResponse<ScrcpySession[]> = await res.json()
-    return data.data || []
-  },
-
-  // 刷新會話狀態
-  refreshSessions: async (): Promise<ScrcpySession[]> => {
-    const res = await fetch(`${API_BASE}/scrcpy/sessions/refresh`, {
-      method: "POST",
-    })
-    const data: ApiResponse<ScrcpySession[]> = await res.json()
-    return data.data || []
-  },
-
-  // 獲取 scrcpy 配置
+  // 獲取 WebRTC scrcpy 串流配置
   getConfig: async (): Promise<ScrcpyConfig> => {
     const res = await fetch(`${API_BASE}/scrcpy/config`)
     const data: ApiResponse<ScrcpyConfig> = await res.json()
     return data.data!
   },
 
-  // 更新 scrcpy 配置
+  // 更新 WebRTC scrcpy 串流配置
   updateConfig: async (config: ScrcpyConfig): Promise<void> => {
     const res = await fetch(`${API_BASE}/scrcpy/config`, {
       method: "PUT",
@@ -619,12 +644,7 @@ export const preferenceApi = {
 
 export const webrtcApi = {
   getSignalUrl: (deviceId: string): string => {
-    const baseUrl = normalizeServerUrl()
-    baseUrl.protocol = baseUrl.protocol === "https:" ? "wss:" : "ws:"
-    baseUrl.pathname = `/api/ws/webrtc/${encodeURIComponent(deviceId)}`
-    baseUrl.search = ""
-    baseUrl.hash = ""
-    return baseUrl.toString()
+    return buildWebSocketUrl(`/api/ws/webrtc/${encodeURIComponent(deviceId)}`)
   },
 
   getErrorMessage: (error?: string): string => {

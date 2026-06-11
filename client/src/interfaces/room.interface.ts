@@ -23,6 +23,11 @@ export interface PlayerData {
 
 export interface RoomInfoData {
   room_id: string
+  current_activity_id?: string
+  activity_name?: string
+  activity_status?: "draft" | "running" | "ended" | "cancelled"
+  activity_started_at?: string
+  activity_seed?: number
   players: PlayerData[]
   player_count: number
 }

@@ -10,13 +10,13 @@ import (
 	"sync/atomic"
 	"time"
 
-	"vrcontrol/server/scrcpy"
+	"vrcontrol/server/h264stream"
 	"vrcontrol/server/service"
-	questwebrtc "vrcontrol/server/webrtc"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	pion "github.com/pion/webrtc/v3"
+	"github.com/pion/webrtc/v3/pkg/media"
 )
 
 type WebRTCStreamController struct {
@@ -50,7 +50,6 @@ func (c *WebRTCStreamController) Stream(ctx *gin.Context) {
 	var (
 		pc        *pion.PeerConnection
 		session   *webrtcSession
-		cancel    context.CancelFunc
 		writeLock sync.Mutex
 		cleanupMu sync.Mutex
 		cleanupFn func()
@@ -96,39 +95,60 @@ func (c *WebRTCStreamController) Stream(ctx *gin.Context) {
 		case "offer":
 			cleanup()
 
-			once := &sync.Once{}
-			setCleanup(func() {
-				once.Do(func() {
-					if cancel != nil {
-						cancel()
-						cancel = nil
-					}
-					if session != nil {
-						session.Stop()
-						session = nil
-					}
-					if pc != nil {
-						_ = pc.Close()
-						pc = nil
-					}
-				})
-			})
+			var (
+				currentPC      *pion.PeerConnection
+				currentSession *webrtcSession
+				currentCancel  context.CancelFunc
+			)
 
-			sessionData, err := c.streamService.StartStream(deviceID)
+			subscription, err := c.streamService.SubscribeStream(deviceID)
 			if err != nil {
 				sendSignal(signalMessage{Type: "error", Error: classifyStreamError(err)})
 				setCleanup(func() {})
 				continue
 			}
-			session = &webrtcSession{session: sessionData}
+			currentSession = &webrtcSession{subscription: subscription}
+			session = currentSession
 
-			pc, err = newPeerConnection(deviceID, session, sendSignal)
+			if reason := validateOfferSDP(msg.SDP); reason != "" {
+				sdpHead := msg.SDP
+				if len(sdpHead) > 200 {
+					sdpHead = sdpHead[:200]
+				}
+				log.Printf("[WebRTC][server] invalid offer sdp for device=%s reason=%s len=%d head=%q",
+					deviceID, reason, len(msg.SDP), sdpHead)
+				sendSignal(signalMessage{Type: "error", Error: "invalid_offer_sdp"})
+				cleanup()
+				setCleanup(func() {})
+				continue
+			}
+
+			currentPC, err = newPeerConnection(deviceID, currentSession, sendSignal)
 			if err != nil {
 				sendSignal(signalMessage{Type: "error", Error: err.Error()})
 				cleanup()
 				setCleanup(func() {})
 				continue
 			}
+			pc = currentPC
+
+			currentOnce := &sync.Once{}
+			setCleanup(func() {
+				currentOnce.Do(func() {
+					if currentCancel != nil {
+						currentCancel()
+						currentCancel = nil
+					}
+					if currentSession != nil {
+						currentSession.Stop()
+						currentSession = nil
+					}
+					if currentPC != nil {
+						_ = currentPC.Close()
+						currentPC = nil
+					}
+				})
+			})
 
 			pc.OnConnectionStateChange(func(state pion.PeerConnectionState) {
 				switch state {
@@ -168,7 +188,24 @@ func (c *WebRTCStreamController) Stream(ctx *gin.Context) {
 				continue
 			}
 
-			sendSignal(signalMessage{Type: "answer", SDP: answer.SDP})
+			localDescription := pc.LocalDescription()
+			if localDescription == nil {
+				sendSignal(signalMessage{Type: "error", Error: "local description unavailable after SetLocalDescription"})
+				cleanup()
+				setCleanup(func() {})
+				continue
+			}
+
+			if reason := validateAnswerSDP(localDescription.SDP); reason != "" {
+				log.Printf("[WebRTC][server] invalid answer sdp for device=%s reason=%s len=%d",
+					deviceID, reason, len(localDescription.SDP))
+				sendSignal(signalMessage{Type: "error", Error: "invalid_answer_sdp"})
+				cleanup()
+				setCleanup(func() {})
+				continue
+			}
+
+			sendSignal(signalMessage{Type: "answer", SDP: localDescription.SDP})
 
 			// Drain RTCP packets from sender to keep Pion sender feedback path healthy.
 			if session.sender != nil {
@@ -192,15 +229,15 @@ func (c *WebRTCStreamController) Stream(ctx *gin.Context) {
 			}(session.localCandidateCount)
 
 			streamCtx, cancelFn := context.WithCancel(context.Background())
-			cancel = cancelFn
-			go func() {
-				fps := session.session.Header.FPS
-				if err := questwebrtc.StreamH264(streamCtx, session.session, session.track, fps); err != nil && streamCtx.Err() == nil {
-					classified := classifyStreamError(err)
-					log.Printf("[WebRTC] stream error for %s: %v (%s)", deviceID, err, classified)
-					sendSignal(signalMessage{Type: "error", Error: classified})
-				}
-			}()
+			currentCancel = cancelFn
+			go runWebRTCStreamForwarder(
+				streamCtx,
+				currentSession.subscription.Units,
+				currentSession.subscription.Err,
+				currentSession.track.WriteSample,
+				sendSignal,
+				deviceID,
+			)
 
 		case "ice":
 			if pc == nil {
@@ -222,6 +259,83 @@ func (c *WebRTCStreamController) Stream(ctx *gin.Context) {
 			return
 		}
 	}
+}
+
+func runWebRTCStreamForwarder(
+	streamCtx context.Context,
+	units <-chan h264stream.AccessUnit,
+	getErr func() error,
+	writeSample func(media.Sample) error,
+	sendSignal func(signalMessage),
+	deviceID string,
+) {
+	if units == nil || getErr == nil || writeSample == nil {
+		return
+	}
+
+	for {
+		select {
+		case <-streamCtx.Done():
+			return
+		case accessUnit, ok := <-units:
+			if !ok {
+				if err := getErr(); err != nil && streamCtx.Err() == nil {
+					classified := classifyStreamError(err)
+					log.Printf("[WebRTC] stream error for %s: %v (%s)", deviceID, err, classified)
+					sendSignal(signalMessage{Type: "error", Error: classified})
+				}
+				return
+			}
+
+			if err := writeSample(media.Sample{Data: accessUnit.Data, Duration: accessUnit.Duration}); err != nil {
+				if streamCtx.Err() == nil {
+					classified := classifyStreamError(err)
+					log.Printf("[WebRTC] track write error for %s: %v (%s)", deviceID, err, classified)
+					sendSignal(signalMessage{Type: "error", Error: classified})
+				}
+				return
+			}
+		}
+	}
+}
+
+// validateOfferSDP returns an empty string when the SDP looks like a usable
+// WebRTC offer (non-empty, has at least one m=video section, and contains both
+// ICE ufrag and pwd attributes either at session-level or any media-level).
+// Otherwise it returns a short reason describing the first missing requirement,
+// suitable for logging and signaling an invalid_offer_sdp error code.
+func validateOfferSDP(sdp string) string {
+	if strings.TrimSpace(sdp) == "" {
+		return "empty"
+	}
+	if !strings.Contains(sdp, "m=video") {
+		return "missing_m_video"
+	}
+	if !strings.Contains(sdp, "a=ice-ufrag:") {
+		return "missing_ice_ufrag"
+	}
+	if !strings.Contains(sdp, "a=ice-pwd:") {
+		return "missing_ice_pwd"
+	}
+	return ""
+}
+
+// validateAnswerSDP performs the same kind of structural check on a Pion-built
+// answer before we trust it back over signaling. Pion should always produce a
+// valid answer once SetLocalDescription succeeds, but treating a missing
+// ufrag/pwd as a hard error gives us a precise alarm if a future Pion upgrade
+// or codec change regresses this guarantee.
+func validateAnswerSDP(sdp string) string {
+	if strings.TrimSpace(sdp) == "" {
+		return "empty"
+	}
+	if !strings.Contains(sdp, "a=ice-ufrag:") {
+		return "missing_ice_ufrag"
+	}
+	if !strings.Contains(sdp, "a=ice-pwd:") {
+		return "missing_ice_pwd"
+	}
+	return ""
 }
 
 func classifyStreamError(err error) string {
@@ -255,17 +369,17 @@ func classifyStreamError(err error) string {
 }
 
 type webrtcSession struct {
-	session             *scrcpy.StreamSession
+	subscription        *service.StreamSubscription
 	track               *pion.TrackLocalStaticSample
 	sender              *pion.RTPSender
 	localCandidateCount *atomic.Int32
 }
 
 func (s *webrtcSession) Stop() {
-	if s == nil || s.session == nil {
+	if s == nil || s.subscription == nil {
 		return
 	}
-	s.session.Stop()
+	s.subscription.Close()
 }
 
 func newPeerConnection(deviceID string, session *webrtcSession, sendSignal func(signalMessage)) (*pion.PeerConnection, error) {

@@ -1,8 +1,9 @@
 package controller
 
 import (
+	"encoding/json"
+	"log"
 	"strings"
-	"vrcontrol/server/consts"
 	"vrcontrol/server/service"
 	"vrcontrol/server/sockets"
 	"vrcontrol/server/utils"
@@ -18,6 +19,7 @@ var StandbyPlayerMap map[string]*sockets.Player = make(map[string]*sockets.Playe
 var StandbyPlayerDisconnect = make(chan string)
 var roomServiceRef *service.RoomService
 var deviceServiceRef *service.DeviceService
+var activityServiceRef *service.ActivityService
 
 func SetRoomService(svc *service.RoomService) {
 	roomServiceRef = svc
@@ -26,6 +28,67 @@ func SetRoomService(svc *service.RoomService) {
 
 func SetDeviceService(svc *service.DeviceService) {
 	deviceServiceRef = svc
+}
+
+func SetActivityService(svc *service.ActivityService) {
+	activityServiceRef = svc
+	for _, roomID := range roomRuntimeManager.ListRoomIDs() {
+		room, ok := roomRuntimeManager.GetRoom(roomID)
+		if !ok || room == nil {
+			continue
+		}
+		room.SetActivityService(svc)
+	}
+}
+
+func createRoomRuntime(roomID string) *sockets.Room {
+	room := sockets.NewRoom(roomID)
+	room.Parameters = make(map[string]any)
+	if roomServiceRef != nil {
+		if persistedRoom, err := roomServiceRef.GetRoom(roomID); err == nil && persistedRoom != nil {
+			room.Parameters = cloneRoomParameters(persistedRoom.Parameters)
+		}
+	}
+	room.AssignedSequence = getAssignedSequences(roomID)
+	room.SetActivityService(activityServiceRef)
+	if activityServiceRef != nil {
+		if activity, err := activityServiceRef.GetRunningActivityByRoom(roomID); err == nil && activity != nil {
+			if err := room.RestoreActivity(activity); err != nil {
+				log.Printf("[room] restore running activity failed for %s: %v", roomID, err)
+			}
+		}
+	}
+	return room
+}
+
+func syncRoomRuntimeFromStore(roomID string, broadcast bool) *sockets.Room {
+	return roomRuntimeManager.SyncRoomFromStore(roomID, broadcast)
+}
+
+func cloneRoomParameters(parameters map[string]any) map[string]any {
+	if parameters == nil {
+		return make(map[string]any)
+	}
+	bytes, err := json.Marshal(parameters)
+	if err != nil {
+		cloned := make(map[string]any, len(parameters))
+		for key, value := range parameters {
+			cloned[key] = value
+		}
+		return cloned
+	}
+	var cloned map[string]any
+	if err := json.Unmarshal(bytes, &cloned); err != nil {
+		fallback := make(map[string]any, len(parameters))
+		for key, value := range parameters {
+			fallback[key] = value
+		}
+		return fallback
+	}
+	if cloned == nil {
+		return make(map[string]any)
+	}
+	return cloned
 }
 
 func init() {
@@ -45,10 +108,7 @@ func init() {
 }
 
 func refreshDeviceRoomMapFromService() {
-	if roomServiceRef == nil {
-		return
-	}
-	DeviceRoomMap = roomServiceRef.BuildAssignedRoomMap()
+	roomRuntimeManager.RefreshDeviceRoomMapFromService()
 }
 
 func GetRoomList(c *gin.Context) {
@@ -67,33 +127,10 @@ func GetRoomList(c *gin.Context) {
 		}
 	}
 
-	lis := make([]string, len(RoomList))
-	i := 0
-	for k := range RoomList {
-		lis[i] = k
-		i++
-	}
+	lis := roomRuntimeManager.ListRoomIDs()
 	c.JSON(200, gin.H{"rooms": lis})
 
 }
-
-func GetLanternJson(c *gin.Context) {
-	roomID := c.Param("roomId")
-	roomHash := c.Param("roomHash")
-
-	if roomID == "" {
-		c.JSON(400, gin.H{"error": "Room ID is required"})
-		return
-	}
-
-	if roomHash == "" {
-		c.JSON(400, gin.H{"error": "Room Hash is required"})
-		return
-	}
-
-	c.JSON(200, gin.H{"data": consts.LoadAssignedLanternData(roomID, roomHash)})
-}
-
 func updateAssignedSequence(roomId string, deviceId string, seq int) {
 	if roomServiceRef == nil {
 		return
@@ -165,15 +202,16 @@ func AssignConnectedPlayerToRoom(roomId, deviceId string) {
 		}
 	}
 
-	room, ok := RoomList[roomId]
+	room, ok := roomRuntimeManager.GetRoom(roomId)
 	if !ok {
-		if len(RoomList) > MaxRoomCount {
+		var created bool
+		room, created = roomRuntimeManager.GetOrCreateRoom(roomId)
+		if room == nil {
 			return
 		}
-		room = sockets.NewRoom(roomId)
-		room.AssignedSequence = getAssignedSequences(roomId)
-		RoomList[roomId] = room
-		go room.Run()
+		if created {
+			go room.Run()
+		}
 	}
 
 	player.Room = room
@@ -206,7 +244,11 @@ func DisconnectWSByDeviceID(deviceId string) {
 	}
 
 	// 2) 處理房間內玩家
-	for _, room := range RoomList {
+	for _, roomID := range roomRuntimeManager.ListRoomIDs() {
+		room, ok := roomRuntimeManager.GetRoom(roomID)
+		if !ok || room == nil {
+			continue
+		}
 		if room == nil {
 			continue
 		}
@@ -231,7 +273,7 @@ func DetachConnectedPlayerFromRoom(roomId, deviceId string) {
 	if deviceId == "" {
 		return
 	}
-	room, ok := RoomList[roomId]
+	room, ok := roomRuntimeManager.GetRoom(roomId)
 	if !ok || room == nil {
 		return
 	}

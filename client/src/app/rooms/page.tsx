@@ -1,17 +1,26 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { LuMonitorPlay, LuPencilLine, LuPlus, LuSmartphone, LuTrash2 } from "react-icons/lu"
 import { roomApi, deviceApi } from "@/services/api"
 import type { Room } from "@/services/api-types"
 import { getDisplayName } from "@/lib/utils/device"
+import {
+  MONITORING_WINDOW_BLOCKED_MESSAGE,
+  openRoomMonitoringWindow,
+} from "@/lib/utils/monitoring-window"
 import PageShell from "@/components/console/page-shell"
+import ListShell from "@/components/console/list-shell"
+import ConsoleListRow from "@/components/console/console-list-row"
+import IconActionButton from "@/components/console/icon-action-button"
 import Button from "@/components/button"
+import { DEFAULT_POLL_INTERVAL_SECONDS } from "@/environment"
 
 export default function RoomsPage() {
   const navigate = useNavigate()
   const [rooms, setRooms] = useState<Room[]>([])
   const [deviceNameMap, setDeviceNameMap] = useState<Map<string, string>>(new Map())
   const [loading, setLoading] = useState(true)
-  const [countdown, setCountdown] = useState(5)
+  const [countdown, setCountdown] = useState(DEFAULT_POLL_INTERVAL_SECONDS)
   const [roomPending, setRoomPending] = useState<Record<string, "delete">>({})
 
   const loadData = async () => {
@@ -39,7 +48,7 @@ export default function RoomsPage() {
       setCountdown((prev) => {
         if (prev === 1) {
           loadData()
-          return 5
+          return DEFAULT_POLL_INTERVAL_SECONDS
         }
         return prev - 1
       })
@@ -67,104 +76,156 @@ export default function RoomsPage() {
     }
   }
 
+  const handleOpenMonitoring = (roomId: string) => {
+    const popup = openRoomMonitoringWindow(roomId, { display: "wall", layout: "grid" })
+
+    if (!popup) {
+      alert(MONITORING_WINDOW_BLOCKED_MESSAGE)
+    }
+  }
+
+  const sortedRooms = useMemo(
+    () => rooms.slice().sort((left, right) => left.name.localeCompare(right.name)),
+    [rooms],
+  )
+
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-xl text-foreground">載入中…</div>
+      <div className="bg-background flex min-h-screen items-center justify-center">
+        <div className="text-foreground text-xl">載入中…</div>
       </div>
     )
   }
 
   return (
     <PageShell
-      title="房間管理"
+      title="Groups 群組管理"
       subtitle={`下次更新 ${countdown} 秒`}
+      eyebrow=""
+      maxWidth="lg"
+      headerVariant="plain"
+      titleVariant="compact"
       actions={
-        <button
+        <Button
           onClick={() => navigate("/rooms/new")}
-          className="ui-btn ui-btn-md ui-btn-primary"
+          className="ui-btn-sm ui-btn-primary px-5 whitespace-nowrap"
         >
-          + 建立房間
-        </button>
+          <LuPlus className="h-4 w-4" />
+          Add Group 新增群組
+        </Button>
       }
     >
-      {rooms.length === 0 ? (
-        <div className="surface-card p-10 text-center">
-          <div className="text-5xl">🏠</div>
-          <div className="mt-4 text-lg font-semibold text-foreground">尚無房間</div>
-          <div className="mt-2 text-sm text-foreground/70">點擊上方按鈕建立第一個房間</div>
-        </div>
-      ) : (
-        <div className="surface-card overflow-hidden">
-          <div className="grid grid-cols-12 gap-3 border-b border-border bg-surface/50 px-4 py-3 text-xs text-foreground/60">
-            <div className="col-span-4">房間</div>
-            <div className="col-span-4">設備</div>
-            <div className="col-span-1">數量</div>
-            <div className="col-span-3 text-right">操作</div>
+      <ListShell
+        title="群組列表"
+        className="gap-2"
+        variant="compact"
+        headerVariant="compact"
+        headingVariant="compact"
+        columns={
+          sortedRooms.length > 0 ? (
+            <>
+              <div className="col-span-3">Name 名稱</div>
+              <div className="col-span-5">Devices 裝置</div>
+              <div className="col-span-4">Active 動作</div>
+            </>
+          ) : undefined
+        }
+        emptyState={
+          <div className="console-empty-state">
+            <div className="console-empty-state__title">尚無群組</div>
+            <p className="console-empty-state__description">
+              點擊右上角按鈕建立第一個群組，之後即可分配裝置並進入控制流程。
+            </p>
           </div>
-          {rooms.map((room) => (
-            <div
-              key={room.room_id}
-              className="grid grid-cols-12 items-start gap-3 border-b border-border px-4 py-3 transition-colors last:border-b-0 hover:bg-surface/40"
-            >
-              <div className="col-span-4">
-                <div className="font-semibold text-foreground">{room.name}</div>
-                <div className="font-mono text-xs text-foreground/50">{room.room_id}</div>
-                {room.description ? (
-                  <div className="mt-1 text-xs text-foreground/70">{room.description}</div>
-                ) : null}
-              </div>
-              <div className="col-span-4">
-                {room.device_ids.length === 0 ? (
-                  <div className="text-xs text-foreground/50">尚未分配設備</div>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {room.device_ids.slice(0, 3).map((deviceId) => (
-                      <span key={deviceId} className="ui-badge ui-badge-primary">
-                        {deviceNameMap.get(deviceId) || deviceId}
-                      </span>
-                    ))}
-                    {room.device_ids.length > 3 && (
-                      <span className="ui-badge ui-badge-muted">
-                        +{room.device_ids.length - 3} 更多
-                      </span>
+        }
+      >
+        {sortedRooms.length > 0
+          ? sortedRooms.map((room) => {
+              const isDeleting = roomPending[room.room_id] === "delete"
+
+              return (
+                <ConsoleListRow
+                  key={room.room_id}
+                  variant="compact"
+                  className="grid-cols-12 items-start"
+                >
+                  <div className="col-span-3">
+                    <div className="console-table-title">{room.name}</div>
+                    <div className="console-meta mt-1">{room.room_id}</div>
+                    {room.description ? (
+                      <div className="console-meta text-text-secondary mt-1">
+                        {room.description}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="col-span-5 pt-0.5">
+                    {room.device_ids.length === 0 ? (
+                      <div className="console-meta pt-1">尚未分配裝置</div>
+                    ) : (
+                      <div className="grid gap-x-5 gap-y-2 sm:grid-cols-2">
+                        {room.device_ids.slice(0, 6).map((deviceId) => (
+                          <div
+                            key={deviceId}
+                            className="text-text-primary flex items-center gap-2 text-sm"
+                          >
+                            <LuSmartphone className="text-text-muted h-3 w-3 shrink-0" />
+                            <span className="truncate">
+                              {deviceNameMap.get(deviceId) || deviceId}
+                            </span>
+                          </div>
+                        ))}
+                        {room.device_ids.length > 6 ? (
+                          <div className="console-meta">+{room.device_ids.length - 6} 更多</div>
+                        ) : null}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
-              <div className="col-span-1 text-sm text-foreground/80">{room.device_ids.length}</div>
-              <div className="col-span-3 flex flex-wrap items-start justify-end gap-2">
-                <button
-                  onClick={() => navigate(`/rooms/${room.room_id}/control`)}
-                  className="ui-btn ui-btn-xs ui-btn-primary"
-                >
-                  控制
-                </button>
-                <button
-                  onClick={() => navigate(`/rooms/${room.room_id}/devices`)}
-                  className="ui-btn ui-btn-xs ui-btn-muted"
-                >
-                  管理設備
-                </button>
-                <button
-                  onClick={() => navigate(`/rooms/${room.room_id}`)}
-                  className="ui-btn ui-btn-xs ui-btn-muted"
-                >
-                  編輯
-                </button>
-                <Button
-                  onClick={() => handleDelete(room.room_id)}
-                  className="ui-btn-xs ui-btn-danger"
-                  loading={roomPending[room.room_id] === "delete"}
-                  disabled={!!roomPending[room.room_id]}
-                >
-                  刪除
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+
+                  <div className="console-action-stack console-action-stack--fit col-span-4">
+                    <div className="console-action-stack__controls console-action-stack__controls--fit">
+                      <Button
+                        onClick={() => navigate(`/rooms/${room.room_id}/control`)}
+                        className="console-button-pill console-button-pill--fit ui-btn-sm ui-btn-primary"
+                      >
+                        進入控制頁
+                      </Button>
+                      <Button
+                        onClick={() => handleOpenMonitoring(room.room_id)}
+                        className="console-button-pill console-button-pill--fit ui-btn-sm ui-btn-primary"
+                        title="開新監控視窗"
+                      >
+                        <LuMonitorPlay className="h-4 w-4" />
+                        開啟監控
+                      </Button>
+                    </div>
+
+                    <div className="console-action-stack__icons">
+                      <IconActionButton
+                        onClick={() => navigate(`/rooms/${room.room_id}`)}
+                        disabled={isDeleting}
+                        aria-label={`編輯 ${room.name}`}
+                        title="編輯"
+                      >
+                        <LuPencilLine className="h-4 w-4" />
+                      </IconActionButton>
+                      <IconActionButton
+                        onClick={() => handleDelete(room.room_id)}
+                        danger
+                        loading={isDeleting}
+                        disabled={isDeleting}
+                        aria-label={`刪除 ${room.name}`}
+                        title="刪除"
+                      >
+                        <LuTrash2 className="h-4 w-4" />
+                      </IconActionButton>
+                    </div>
+                  </div>
+                </ConsoleListRow>
+              )
+            })
+          : null}
+      </ListShell>
     </PageShell>
   )
 }

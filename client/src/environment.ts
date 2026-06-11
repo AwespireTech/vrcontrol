@@ -1,4 +1,12 @@
-export const SERVER = "http://localhost:8080"
+/// <reference types="vite/client" />
+
+import { getServerOrigin } from "@/lib/utils/server-url"
+
+export const SERVER =
+  import.meta.env.VITE_API_SERVER ||
+  (typeof window !== "undefined"
+    ? getServerOrigin(undefined, window.location.origin)
+    : "http://localhost:8080")
 
 // Safe fallback values (last resort only). Source: previously hard-coded defaults in UI.
 export const DEFAULT_POLL_INTERVAL_SECONDS = 5
@@ -14,7 +22,3 @@ export const LIVE_VIEW_WINDOW_STAGE_PADDING = 16
 export const LIVE_VIEW_WINDOW_MIN_WIDTH = 320
 export const LIVE_VIEW_WINDOW_MIN_HEIGHT = 220
 export const LIVE_VIEW_WINDOW_HEADER_HEIGHT = 54
-export const LIVE_STREAM_POPUP_DEFAULT_WIDTH = 1440
-export const LIVE_STREAM_POPUP_DEFAULT_HEIGHT = 960
-export const LIVE_STREAM_POPUP_DEFAULT_LEFT = 96
-export const LIVE_STREAM_POPUP_DEFAULT_TOP = 72

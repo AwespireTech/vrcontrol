@@ -1,18 +1,46 @@
 import { useState, useEffect } from "react"
 import type { ScrcpyConfig } from "@/services/api-types"
 
+const bitratePresets = ["800k", "1M", "2M", "4M"]
+
+function validateBitrate(value: string): string | null {
+  const trimmed = value.trim()
+  if (trimmed.length === 0) {
+    return "位元率不能為空"
+  }
+
+  if (!/^\d+(?:[kKmM])?$/.test(trimmed)) {
+    return "位元率格式需為整數加上 k 或 M，例如 800k、1M"
+  }
+
+  return null
+}
+
 interface ScrcpyConfigFormProps {
   value: ScrcpyConfig
   onChange: (config: ScrcpyConfig) => void
+  onValidityChange?: (isValid: boolean) => void
   disabled?: boolean
 }
 
-export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyConfigFormProps) {
+export function ScrcpyConfigForm({
+  value,
+  onChange,
+  onValidityChange,
+  disabled = false,
+}: ScrcpyConfigFormProps) {
   const [config, setConfig] = useState<ScrcpyConfig>(value)
+  const [bitrateTouched, setBitrateTouched] = useState(false)
+  const bitrateError = validateBitrate(config.bitrate)
 
   useEffect(() => {
     setConfig(value)
+    setBitrateTouched(false)
   }, [value])
+
+  useEffect(() => {
+    onValidityChange?.(bitrateError === null)
+  }, [bitrateError, onValidityChange])
 
   const handleChange = (field: keyof ScrcpyConfig, fieldValue: unknown) => {
     const newConfig = { ...config, [field]: fieldValue }
@@ -20,36 +48,66 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
     onChange(newConfig)
   }
 
-  const handleNumberChange = (field: keyof ScrcpyConfig, stringValue: string) => {
-    const numValue = stringValue === "" ? undefined : parseInt(stringValue)
-    handleChange(field, numValue)
+  const handleBitrateChange = (nextBitrate: string) => {
+    setBitrateTouched(true)
+    handleChange("bitrate", nextBitrate)
   }
+
+  const shouldShowBitrateError = bitrateTouched || value.bitrate.trim().length > 0
 
   return (
     <div className="space-y-6">
       {/* 視訊品質設定 */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-foreground">視訊品質</h3>
+        <h3 className="text-foreground text-lg font-semibold">視訊品質</h3>
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">位元率</label>
-            <select
-              value={config.bitrate}
-              onChange={(e) => handleChange("bitrate", e.target.value)}
-              disabled={disabled}
-              className="ui-select w-full px-3 py-2"
+            <label
+              htmlFor="scrcpy-bitrate"
+              className="text-foreground mb-1 block text-sm font-medium"
             >
-              <option value="2M">2M (低畫質)</option>
-              <option value="4M">4M (中畫質)</option>
-              <option value="8M">8M (標準)</option>
-              <option value="16M">16M (高畫質)</option>
-              <option value="32M">32M (超高畫質)</option>
-            </select>
+              位元率
+            </label>
+            <input
+              id="scrcpy-bitrate"
+              type="text"
+              value={config.bitrate}
+              onChange={(e) => handleBitrateChange(e.target.value)}
+              disabled={disabled}
+              className="ui-input w-full px-3 py-2"
+              placeholder="例如 800k、1M、2M"
+              list="scrcpy-bitrate-presets"
+            />
+            <datalist id="scrcpy-bitrate-presets">
+              {bitratePresets.map((preset) => (
+                <option key={preset} value={preset} />
+              ))}
+            </datalist>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {bitratePresets.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => handleBitrateChange(preset)}
+                  disabled={disabled}
+                  className="ui-btn ui-btn-xs ui-btn-outline"
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+            {shouldShowBitrateError && bitrateError ? (
+              <p className="mt-2 text-xs text-red-500">{bitrateError}</p>
+            ) : (
+              <p className="text-foreground/50 mt-2 text-xs">
+                建議先從 800k、1M 或 2M 開始，必要時再往上調整。
+              </p>
+            )}
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">
+            <label className="text-foreground mb-1 block text-sm font-medium">
               最大解析度 (px)
             </label>
             <input
@@ -64,7 +122,7 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">最大幀率 (FPS)</label>
+            <label className="text-foreground mb-1 block text-sm font-medium">最大幀率 (FPS)</label>
             <input
               type="number"
               value={config.max_fps}
@@ -78,161 +136,12 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
         </div>
       </div>
 
-      {/* 視窗設定 */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-foreground">視窗設定</h3>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">
-              視窗寬度 (選填)
-            </label>
-            <input
-              type="number"
-              value={config.window_width ?? ""}
-              onChange={(e) => handleNumberChange("window_width", e.target.value)}
-              disabled={disabled}
-              className="ui-input w-full px-3 py-2"
-              placeholder="自動"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">
-              視窗高度 (選填)
-            </label>
-            <input
-              type="number"
-              value={config.window_height ?? ""}
-              onChange={(e) => handleNumberChange("window_height", e.target.value)}
-              disabled={disabled}
-              className="ui-input w-full px-3 py-2"
-              placeholder="自動"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">
-              視窗 X 位置 (選填)
-            </label>
-            <input
-              type="number"
-              value={config.window_x ?? ""}
-              onChange={(e) => handleNumberChange("window_x", e.target.value)}
-              disabled={disabled}
-              className="ui-input w-full px-3 py-2"
-              placeholder="自動"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-foreground">
-              視窗 Y 位置 (選填)
-            </label>
-            <input
-              type="number"
-              value={config.window_y ?? ""}
-              onChange={(e) => handleNumberChange("window_y", e.target.value)}
-              disabled={disabled}
-              className="ui-input w-full px-3 py-2"
-              placeholder="自動"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* 顯示選項 */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-foreground">顯示選項</h3>
-
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <label className="flex cursor-pointer items-center space-x-2 text-foreground/80">
-            <input
-              type="checkbox"
-              checked={config.fullscreen}
-              onChange={(e) => handleChange("fullscreen", e.target.checked)}
-              disabled={disabled}
-              className="h-4 w-4"
-            />
-            <span className="text-sm">全螢幕模式</span>
-          </label>
-
-          <label className="flex cursor-pointer items-center space-x-2 text-foreground/80">
-            <input
-              type="checkbox"
-              checked={config.always_on_top}
-              onChange={(e) => handleChange("always_on_top", e.target.checked)}
-              disabled={disabled}
-              className="h-4 w-4"
-            />
-            <span className="text-sm">視窗置頂</span>
-          </label>
-
-          <label className="flex cursor-pointer items-center space-x-2 text-foreground/80">
-            <input
-              type="checkbox"
-              checked={config.show_touches}
-              onChange={(e) => handleChange("show_touches", e.target.checked)}
-              disabled={disabled}
-              className="h-4 w-4"
-            />
-            <span className="text-sm">顯示觸控點</span>
-          </label>
-
-          <label className="flex cursor-pointer items-center space-x-2 text-foreground/80">
-            <input
-              type="checkbox"
-              checked={config.turn_screen_off}
-              onChange={(e) => handleChange("turn_screen_off", e.target.checked)}
-              disabled={disabled}
-              className="h-4 w-4"
-            />
-            <span className="text-sm">關閉設備螢幕</span>
-          </label>
-        </div>
-      </div>
-
-      {/* 設備選項 */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-foreground">設備選項</h3>
-
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          <label className="flex cursor-pointer items-center space-x-2 text-foreground/80">
-            <input
-              type="checkbox"
-              checked={config.stay_awake}
-              onChange={(e) => handleChange("stay_awake", e.target.checked)}
-              disabled={disabled}
-              className="h-4 w-4"
-            />
-            <span className="text-sm">保持設備清醒</span>
-          </label>
-
-          <label className="flex cursor-pointer items-center space-x-2 text-foreground/80">
-            <input
-              type="checkbox"
-              checked={config.enable_audio}
-              onChange={(e) => handleChange("enable_audio", e.target.checked)}
-              disabled={disabled}
-              className="h-4 w-4"
-            />
-            <span className="text-sm">啟用音訊轉發</span>
-          </label>
-        </div>
-
-        <div className="rounded-xl border border-warning/40 bg-warning/10 p-3">
-          <p className="text-sm text-warning">
-            ⚠️ 建議關閉「啟用音訊轉發」以保留裝置的內建音訊功能
-          </p>
-        </div>
-      </div>
-
       {/* 進階設定 */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-foreground">進階設定</h3>
+        <h3 className="text-foreground text-lg font-semibold">進階設定</h3>
 
         <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">
+          <label className="text-foreground mb-1 block text-sm font-medium">
             Video codec options (選填)
           </label>
           <input
@@ -243,23 +152,8 @@ export function ScrcpyConfigForm({ value, onChange, disabled = false }: ScrcpyCo
             className="ui-input w-full px-3 py-2"
             placeholder="例如 i-frame-interval:int=1"
           />
-          <p className="mt-1 text-xs text-foreground/50">
-            主要影響 WebRTC 即時畫面的首幀等待時間，不會改變既有外部 Scrcpy 監看視窗。錯誤值可能導致即時畫面來源啟動失敗。
-          </p>
-        </div>
-
-        <div>
-          <label className="mb-1 block text-sm font-medium text-foreground">渲染驅動 (選填)</label>
-          <input
-            type="text"
-            value={config.render_driver}
-            onChange={(e) => handleChange("render_driver", e.target.value)}
-            disabled={disabled}
-            className="ui-input w-full px-3 py-2"
-            placeholder="預設 (opengl, metal, direct3d)"
-          />
-          <p className="mt-1 text-xs text-foreground/50">
-            留空使用系統預設，Windows 可選 direct3d，macOS 可選 metal
+          <p className="text-foreground/50 mt-1 text-xs">
+            主要影響 WebRTC 即時畫面的首幀等待時間。錯誤值可能導致即時畫面來源啟動失敗。
           </p>
         </div>
       </div>

@@ -462,11 +462,22 @@ export default function LiveStreamPlayer({
 
       const peer = new RTCPeerConnection()
       peerRef.current = peer
+      try {
+        peer.addTransceiver("video", { direction: "recvonly" })
+      } catch (error) {
+        applyErrorState(
+          error instanceof Error ? error.message : "無法建立即時畫面接收通道。",
+          "transceiver",
+        )
+        return
+      }
       peer.ontrack = attachTrack
       updatePeerDiagnostics(peer)
       startStatsPolling(peer)
 
       peer.onicecandidate = (event) => {
+        if (!mounted || closedRef.current) return
+        if (peerRef.current !== peer) return
         const message: WebRTCSignalMessage = {
           type: "ice",
           candidate: event.candidate?.toJSON(),
@@ -524,6 +535,8 @@ export default function LiveStreamPlayer({
       updateDiagnostics({ websocketState: String(socket.readyState), lastEvent: "ws:init" })
 
       socket.onmessage = async (event) => {
+        if (!mounted || closedRef.current) return
+        if (socketRef.current !== socket || peerRef.current !== peer) return
         let message: WebRTCSignalMessage
         try {
           message = JSON.parse(event.data) as WebRTCSignalMessage
@@ -579,12 +592,14 @@ export default function LiveStreamPlayer({
 
       socket.onerror = () => {
         if (!mounted || closedRef.current) return
+        if (socketRef.current !== socket) return
         updateDiagnostics({ websocketState: "error", lastEvent: "ws:error" })
         applyErrorState("即時畫面 WebSocket 連線失敗。", "ws")
       }
 
       socket.onclose = () => {
         if (!mounted || closedRef.current) return
+        if (socketRef.current !== socket) return
         updateDiagnostics({ websocketState: "closed", lastEvent: "ws:close" })
         setStatus((current) => {
           if (current === "error") return current
@@ -596,16 +611,25 @@ export default function LiveStreamPlayer({
       }
 
       socket.onopen = async () => {
+        if (!mounted || closedRef.current) return
+        if (socketRef.current !== socket || peerRef.current !== peer) return
         try {
           lifecycleRef.current.socketOpenedAt = lifecycleRef.current.socketOpenedAt ?? performance.now()
           updateDiagnostics({ websocketState: "open", lastEvent: "ws:open" })
           updateTimingDiagnostics()
           flushSignals()
-          const offer = await peer.createOffer({ offerToReceiveVideo: true })
+          const offer = await peer.createOffer()
           await peer.setLocalDescription(offer)
+          if (!mounted || closedRef.current) return
+          if (socketRef.current !== socket || peerRef.current !== peer) return
+          const localSdp = peer.localDescription?.sdp
+          if (!localSdp) {
+            applyErrorState("無法產生即時畫面協商內容。", "offer:no-local-sdp")
+            return
+          }
           const message: WebRTCSignalMessage = {
             type: "offer",
-            sdp: peer.localDescription?.sdp || offer.sdp,
+            sdp: localSdp,
           }
           sendSignal(message)
         } catch (error) {
@@ -655,7 +679,7 @@ export default function LiveStreamPlayer({
 
   return (
     <div className="surface-panel overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 px-4 py-3">
+      <div className="flex items-center justify-between gap-3 border-b border-border/70 px-4 py-3">
         <div>
           <div className="text-sm font-semibold text-foreground">{title}</div>
           {subtitle ? <div className="text-xs text-foreground/60">{subtitle}</div> : null}

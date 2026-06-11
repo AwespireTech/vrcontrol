@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"maps"
+	"sync"
 	"time"
 
 	"vrcontrol/server/model"
@@ -18,31 +19,65 @@ type Controller struct {
 	Room           *Room
 	Connection     *websocket.Conn
 	UpdateStopChan chan struct{}
+	stopOnce       sync.Once
+}
+
+func (c *Controller) stopRoomUpdater() {
+	if c == nil {
+		return
+	}
+	c.stopOnce.Do(func() {
+		close(c.UpdateStopChan)
+	})
 }
 
 func (r *Room) GetRoomUpdate() model.RoomUpdate {
+	activityID := ""
+	activityName := ""
+	activityStatus := model.ActivityStatus("")
+	activitySeed := 0
+	var activityStartedAt *time.Time
+	if r != nil && r.CurrentActivity != nil {
+		activityID = r.CurrentActivity.ActivityID
+		activityName = r.CurrentActivity.Name
+		activityStatus = r.CurrentActivity.Status
+		activitySeed = r.CurrentActivity.Seed
+		activityStartedAt = r.CurrentActivity.StartedAt
+	}
 	if r == nil {
 		log.Println("GetRoomUpdate called on nil room")
 		return model.RoomUpdate{
-			RoomID:      "",
-			RoomHash:    "",
-			PlayerCount: 0,
-			Players:     []model.PlayerStatus{},
+			RoomID:            "",
+			CurrentActivityID: activityID,
+			ActivityName:      activityName,
+			ActivityStatus:    activityStatus,
+			ActivityStartedAt: activityStartedAt,
+			ActivitySeed:      activitySeed,
+			PlayerCount:       0,
+			Players:           []model.PlayerStatus{},
 		}
 	}
 	if len(r.Players) == 0 {
 		return model.RoomUpdate{
-			RoomID:      r.RoomID,
-			RoomHash:    r.RoomHash,
-			PlayerCount: 0,
-			Players:     []model.PlayerStatus{},
+			RoomID:            r.RoomID,
+			CurrentActivityID: activityID,
+			ActivityName:      activityName,
+			ActivityStatus:    activityStatus,
+			ActivityStartedAt: activityStartedAt,
+			ActivitySeed:      activitySeed,
+			PlayerCount:       0,
+			Players:           []model.PlayerStatus{},
 		}
 	}
 
 	return model.RoomUpdate{
-		RoomID:      r.RoomID,
-		RoomHash:    r.RoomHash,
-		PlayerCount: len(r.Players),
+		RoomID:            r.RoomID,
+		CurrentActivityID: activityID,
+		ActivityName:      activityName,
+		ActivityStatus:    activityStatus,
+		ActivityStartedAt: activityStartedAt,
+		ActivitySeed:      activitySeed,
+		PlayerCount:       len(r.Players),
 		Players: utilities.Fold2(maps.All(r.Players), make([]model.PlayerStatus, 0, len(r.Players)), func(_l []model.PlayerStatus, p *Player, inuse bool) []model.PlayerStatus {
 			if !inuse {
 				return _l
@@ -109,7 +144,7 @@ func (c *Controller) write() {
 	ticker := time.NewTicker(PingPeriod)
 	defer func() {
 		ticker.Stop()
-		c.UpdateStopChan <- struct{}{}
+		c.stopRoomUpdater()
 		c.Connection.Close()
 	}()
 	for {
@@ -161,6 +196,7 @@ func (c *Controller) RoomUpdater(stop chan struct{}) {
 			case c.InChannel <- data:
 			default:
 				log.Println("RoomUpdater: InChannel is full, diconnecting controller")
+				c.stopRoomUpdater()
 				c.Connection.Close()
 				return
 			}

@@ -117,8 +117,103 @@ export interface Room {
   socket_port: number
   socket_running: boolean
   parameters: Record<string, unknown>
+  operation_profile: RoomOperationProfile
   created_at: string
   updated_at: string
+}
+
+export interface RoomActivityDefaults {
+  name: string
+  activity_context: Record<string, unknown>
+  seed?: number
+}
+
+export interface RoomOperationProfile {
+  activity_defaults: RoomActivityDefaults
+  batch_action_ids: string[]
+  launch_action_id?: string
+  stop_action_id?: string
+  allow_activity_name_override: boolean
+  allow_seed_override: boolean
+}
+
+export type ActivityStatus = "draft" | "running" | "ended" | "cancelled"
+
+export interface ActivityQAContext {
+  questionSetId?: string
+  questionOrder?: string[]
+  timeLimitSec?: number
+  allowRetry?: boolean
+  scoreMode?: string
+  display?: Record<string, unknown>
+  resumePolicy?: string
+  questions?: Record<string, unknown>[]
+  [key: string]: unknown
+}
+
+export interface ActivityContext {
+  qa?: ActivityQAContext
+  [key: string]: unknown
+}
+
+export interface ActivityQAResult {
+  activity_id: string
+  room_id: string
+  current_qid?: string
+  answers: Record<string, Record<string, string>>
+  question_locked?: Record<string, boolean>
+  qa_context?: ActivityQAContext
+  captured_at: string
+}
+
+export interface ActivityLanternResult {
+  activity_id: string
+  room_id: string
+  events: Record<string, unknown[]>
+  captured_at: string
+}
+
+export interface ActivityRuntimeInfo {
+  seed?: number
+  player_count: number
+  last_event_at?: string
+  last_updated_at?: string
+  context_version?: string
+  context_delivered: boolean
+}
+
+export interface ActivitySummary {
+  participant_count: number
+  event_counts?: Record<string, number>
+  duration_sec: number
+}
+
+export interface ActivityArtifactRef {
+  name: string
+  path: string
+  type?: string
+}
+
+export interface Activity {
+  activity_id: string
+  room_id: string
+  name: string
+  status: ActivityStatus
+  activity_context: ActivityContext
+  runtime_snapshot?: ActivityRuntimeInfo
+  result_summary?: ActivitySummary
+  artifact_refs?: ActivityArtifactRef[]
+  created_at: string
+  updated_at: string
+  started_at?: string
+  ended_at?: string
+}
+
+export interface ActivityResults {
+  activity_id: string
+  status: ActivityStatus
+  result_summary?: ActivitySummary
+  artifact_refs?: ActivityArtifactRef[]
 }
 
 // 動作類型
@@ -176,16 +271,12 @@ export interface MonitoringStatus {
 
 export type WebRTCSignalMessageType = "offer" | "answer" | "ice" | "close" | "error"
 
-export type WebRTCStreamStatus =
-  | "idle"
-  | "connecting"
-  | "live"
-  | "stalled"
-  | "error"
-  | "closed"
+export type WebRTCStreamStatus = "idle" | "connecting" | "live" | "stalled" | "error" | "closed"
 
 export type WebRTCStreamErrorCode =
   | "invalid_signal"
+  | "invalid_offer_sdp"
+  | "invalid_answer_sdp"
   | "source_server_exited_with_error"
   | "source_server_exited"
   | "source_backend_not_ready"
@@ -211,68 +302,10 @@ export interface LiveStreamTarget {
 
 // Scrcpy 配置
 export interface ScrcpyConfig {
-  bitrate: string // 視訊位元率 (e.g., "8M", "16M")
+  bitrate: string // 視訊位元率，可自由輸入，例如 "800k", "1M", "2M"
   max_size: number // 最大螢幕寬度
   max_fps: number // 最大幀率
   video_codec_options: string // 額外 video codec options，主要用於 WebRTC 即時畫面
-  window_width?: number // 視窗寬度
-  window_height?: number // 視窗高度
-  window_x?: number // 視窗 X 位置
-  window_y?: number // 視窗 Y 位置
-  stay_awake: boolean // 保持設備清醒
-  show_touches: boolean // 顯示觸控點
-  fullscreen: boolean // 全螢幕模式
-  always_on_top: boolean // 視窗置頂
-  turn_screen_off: boolean // 關閉設備螢幕
-  enable_audio: boolean // 啟用音訊轉發
-  render_driver: string // 渲染驅動
-}
-
-// Scrcpy 會話
-export interface ScrcpySession {
-  device_id: string // 設備 ID
-  process_id: number // 進程 PID
-  started_at: string // 啟動時間
-  is_running: boolean // 是否運行中
-}
-
-// Scrcpy 系統信息
-export interface ScrcpySystemInfo {
-  installed: boolean // 是否已安裝
-  version: string // 版本號
-  path: string // 執行檔路徑
-  error_message: string // 錯誤訊息
-}
-
-// Scrcpy 批量啟動請求
-export interface ScrcpyBatchStartRequest {
-  device_ids: string[]
-  config?: ScrcpyConfig
-  layout?: {
-    mode?: "tile" | "manual"
-    columns?: number
-    screen_width?: number
-    screen_height?: number
-    padding_x?: number
-    padding_y?: number
-    base_x?: number
-    base_y?: number
-    gap_x?: number
-    gap_y?: number
-    frame_margin_x?: number
-    frame_margin_y?: number
-    window_width?: number
-    window_height?: number
-  }
-}
-
-// Scrcpy 批量啟動響應（最小型別：目前 UI 只依賴 success_count / failed_count）
-export interface ScrcpyBatchStartResponse {
-  success: boolean
-  total?: number
-  success_count: number
-  failed_count: number
-  results?: unknown[]
 }
 
 // 使用者偏好

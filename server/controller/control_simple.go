@@ -14,7 +14,13 @@ import (
 
 func AssignSequence(c *gin.Context) {
 
-	r := RoomList[c.Param("roomId")]
+	r, ok := roomRuntimeManager.GetRoom(c.Param("roomId"))
+	if !ok || r == nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Room not found",
+		})
+		return
+	}
 	clientID := utils.NormalizeDeviceIDKey(c.Param("clientId"))
 	p := r.GetPlayerByDeviceID(clientID)
 	if p == nil {
@@ -45,7 +51,13 @@ func AssignSequence(c *gin.Context) {
 }
 func ForceMove(c *gin.Context) {
 
-	r := RoomList[c.Param("roomId")]
+	r, ok := roomRuntimeManager.GetRoom(c.Param("roomId"))
+	if !ok || r == nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Room not found",
+		})
+		return
+	}
 	p := r.GetPlayerByDeviceID(c.Param("clientId"))
 	dest, err := strconv.Atoi(c.Param("dest"))
 	if err != nil || dest < 0 {
@@ -74,7 +86,13 @@ func ForceMove(c *gin.Context) {
 
 func ForceAllMove(c *gin.Context) {
 
-	r := RoomList[c.Param("roomId")]
+	r, ok := roomRuntimeManager.GetRoom(c.Param("roomId"))
+	if !ok || r == nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Room not found",
+		})
+		return
+	}
 	dest, err := strconv.Atoi(c.Param("dest"))
 	if err != nil || dest < 0 {
 		c.JSON(http.StatusBadRequest, gin.H{

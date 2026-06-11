@@ -4,25 +4,40 @@ type EventType string
 
 const (
 	EventMoveCommand       EventType = "move_command"
+	EventPlayCommand       EventType = "play_command"
+	EventSyncCommand       EventType = "sync_command"
 	EventTypeShotEvent     EventType = "shot_event"
 	EventTypeLatern        EventType = "lantern"
 	EventTypeQA            EventType = "qa"
 	EventTypeAsignSequence EventType = "assign_sequence"
 	EventTypeResumeQA      EventType = "resume_qa"
+	EventTypeConfig        EventType = "config"
 )
 
 type EventMessage struct {
 	EventType   EventType            `json:"event_type"`
 	MoveCommand *MoveCommandMessage  `json:"move_command,omitempty"`
+	PlayCommand *PlayCommandMessage  `json:"play_command,omitempty"`
+	SyncCommand *SyncCommandMessage  `json:"sync_command,omitempty"`
 	ShotEvent   *ShotEventMessage    `json:"shot_event,omitempty"`
 	Latern      *LanternEventMessage `json:"lantern,omitempty"`
 	QA          *QAEventMessage      `json:"qa,omitempty"`
 	Sequence    *int                 `json:"sequence,omitempty"`
+	Config      *RoomConfigMessage   `json:"config,omitempty"`
 }
 
 type MoveCommandMessage struct {
 	Force            bool `json:"force"`
 	DestinationStage int  `json:"chapter"`
+}
+
+type PlayCommandMessage struct {
+	PlayerCount int  `json:"pcnt"`
+	IsStart     bool `json:"isstart"`
+}
+
+type SyncCommandMessage struct {
+	PlayerCount int `json:"pcnt"`
 }
 
 type LanternEventMessage struct {
@@ -38,7 +53,14 @@ type ShotEventMessage struct {
 }
 
 type QAEventMessage struct {
-	QuestionID int  `json:"question_id"`
-	StateID    int  `json:"state_id"`
-	State      bool `json:"state"`
+	QuestionID string            `json:"qid"`
+	Answers    map[string]string `json:"answers"`
+}
+
+type RoomConfigMessage struct {
+	RoomID              string         `json:"room_id"`
+	ActivityID          string         `json:"activity_id,omitempty"`
+	ActivityContextPath string         `json:"activity_context_path,omitempty"`
+	Seed                int            `json:"seed,omitempty"`
+	Parameters          map[string]any `json:"parameters,omitempty"`
 }

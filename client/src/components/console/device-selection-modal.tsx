@@ -1,4 +1,5 @@
 import Button from "@/components/button"
+import OverlayCard from "@/components/console/overlay-card"
 
 export type DeviceSelectionTarget = {
   id: string
@@ -42,8 +43,12 @@ export default function DeviceSelectionModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90">
-      <div className="surface-card mx-4 max-h-[80vh] w-full max-w-2xl overflow-y-auto p-6">
+    <OverlayCard
+      open={open}
+      onClose={onClose}
+      containerClassName="items-center justify-center"
+      panelClassName="max-h-[80vh] max-w-2xl overflow-y-auto p-6"
+    >
         <h2 className="mb-4 text-2xl font-bold text-foreground">{title}</h2>
 
         <div className="mb-4">
@@ -97,7 +102,6 @@ export default function DeviceSelectionModal({
             {confirmText} ({selectedIds.length} 個設備)
           </Button>
         </div>
-      </div>
-    </div>
+    </OverlayCard>
   )
 }

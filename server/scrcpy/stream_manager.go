@@ -204,7 +204,11 @@ func startStandaloneBootstrap(deviceSerial, deviceServerPath, version string, co
 	}
 	log.Printf("[Stream] adb forward created %s -> localabstract:scrcpy", forward)
 
-	serverArgs := buildStandaloneServerArgs(deviceSerial, deviceServerPath, version, config, useControl)
+	serverArgs, err := buildStandaloneServerArgs(deviceSerial, deviceServerPath, version, config, useControl)
+	if err != nil {
+		_ = runADBCommand(deviceSerial, "forward", "--remove", forward)
+		return nil, 0, err
+	}
 	log.Printf("[Stream] starting scrcpy standalone server with args: %s", strings.Join(serverArgs, " "))
 
 	serverCmd := exec.Command("adb", serverArgs...)
@@ -257,7 +261,7 @@ func stopStandaloneBootstrap(deviceSerial string, bootstrap *streamBootstrap) {
 	}
 }
 
-func buildStandaloneServerArgs(deviceSerial, deviceServerPath, version string, config *model.ScrcpyConfig, useControl bool) []string {
+func buildStandaloneServerArgs(deviceSerial, deviceServerPath, version string, config *model.ScrcpyConfig, useControl bool) ([]string, error) {
 	args := []string{
 		"-s", deviceSerial,
 		"shell",
@@ -281,7 +285,11 @@ func buildStandaloneServerArgs(deviceSerial, deviceServerPath, version string, c
 
 	if config != nil {
 		if config.Bitrate != "" {
-			args = append(args, "video_bit_rate="+strconv.Itoa(parseBitrate(config.Bitrate)))
+			bitrate, err := ParseBitrate(config.Bitrate)
+			if err != nil {
+				return nil, fmt.Errorf("invalid bitrate %q: %w", config.Bitrate, err)
+			}
+			args = append(args, "video_bit_rate="+strconv.Itoa(bitrate))
 		}
 		if config.MaxSize > 0 {
 			args = append(args, "max_size="+strconv.Itoa(config.MaxSize))
@@ -294,28 +302,7 @@ func buildStandaloneServerArgs(deviceSerial, deviceServerPath, version string, c
 		}
 	}
 
-	return args
-}
-
-func parseBitrate(s string) int {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return 0
-	}
-	unit := 1
-	switch {
-	case strings.HasSuffix(s, "k"), strings.HasSuffix(s, "K"):
-		unit = 1000
-		s = s[:len(s)-1]
-	case strings.HasSuffix(s, "m"), strings.HasSuffix(s, "M"):
-		unit = 1000 * 1000
-		s = s[:len(s)-1]
-	}
-	value, err := strconv.Atoi(s)
-	if err != nil {
-		return 0
-	}
-	return value * unit
+	return args, nil
 }
 
 func buildStreamHeader(config *model.ScrcpyConfig) StreamHeader {

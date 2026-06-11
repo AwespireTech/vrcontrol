@@ -25,7 +25,7 @@
 ## 常見注意事項
 
 - `keep_awake` 目前尚未實作
-- ADB 與 scrcpy 必須在 `PATH` 中
+- ADB 必須在 `PATH` 中；WebRTC live view 需要 `vendor/scrcpy/scrcpy-server-v*` artifact
 - JSON 數值在 Go 中會解析為 `float64`
 
 ## 文件同步要求（修改後務必更新）
@@ -44,7 +44,7 @@
 - **新增/變更資料儲存結構（JSON 欄位）**
 	- 更新：[docs/ARCHITECTURE.md](ARCHITECTURE.md) 的資料儲存段落
 	- 如影響 API 契約，更新：[docs/API.md](API.md)
-	- 若欄位會同時影響 scrcpy 外部監看與 WebRTC live view，需明確寫出邊界；例如 `video_codec_options` 目前只影響 live view 的 standalone stream 路徑
+	- 若欄位會影響 scrcpy WebRTC standalone server 啟播，需明確寫出適用路徑；例如 `video_codec_options` 只影響 WebRTC live view
 
 - **新增/變更 WebRTC live view / 播放器行為**
 	- 更新：[docs/API.md](API.md) 的 `/api/ws/webrtc/:deviceId` signaling 契約與錯誤碼

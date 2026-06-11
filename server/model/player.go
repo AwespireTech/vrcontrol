@@ -5,10 +5,22 @@ type MessageType string
 const (
 	MessageTypeHeartbeat   MessageType = "heartbeat"
 	MessageTypeReadyToMove MessageType = "ready_to_move"
+	MessageTypeWaitToSync  MessageType = "wait_to_sync"
+	MessageTypePlayStatus  MessageType = "play_status"
 	MessageTypeShotEvent   MessageType = "shot_event"
 	MessageTypeLantern     MessageType = "lantern"
 	MessagesTypeQA         MessageType = "qa"
 	MessageTypeResumeQA    MessageType = "resume_qa"
+)
+
+type PlayStatusEnum int
+
+const (
+	PS_Idle PlayStatusEnum = iota
+	PS_Playing
+	PS_Pause
+	PS_Stop
+	PS_SnapShot
 )
 
 type Vector3f struct {
@@ -20,9 +32,11 @@ type Vector3f struct {
 type PlayerMessage struct {
 	MessageType MessageType  `json:"message_type"`
 	Heartbeat   *Heartbeat   `json:"heartbeat,omitempty"`
+	PlayStatus  *PlayStatus  `json:"play_status,omitempty"`
 	ShotEvent   *ShotEvent   `json:"shot_event,omitempty"`
 	Latern      *Lantern     `json:"lantern,omitempty"`
 	ReadyToMove *ReadyToMove `json:"ready_to_move,omitempty"`
+	WaitToSync  *WaitToSync  `json:"wait_to_sync,omitempty"`
 	QA          *QA          `json:"qa,omitempty"`
 	ResumeQA    *bool        `json:"resume_qa,omitempty"`
 }
@@ -40,6 +54,11 @@ type Heartbeat struct {
 	RightHandForward Vector3f `json:"right_hand_forward,omitempty"`
 	LeftHandAvail    bool     `json:"left_hand_available"`
 	RightHandAvail   bool     `json:"right_hand_available"`
+}
+
+type PlayStatus struct {
+	Timestamp int64          `json:"timestamp"`
+	Status    PlayStatusEnum `json:"status"`
 }
 
 type ShotEvent struct {
@@ -64,8 +83,14 @@ type ReadyToMove struct {
 	Stage     int    `json:"chapter"`
 }
 
+type WaitToSync struct {
+	Timestamp int64  `json:"timestamp"`
+	DeviceID  string `json:"device_id"`
+	Stage     int    `json:"chapter"`
+}
+
 type QA struct {
-	QuestionID int  `json:"question_id"`
-	StateBool  bool `json:"state_bool"`
-	StateInt   int  `json:"state_int"`
+	Timestamp  int64  `json:"timestamp"`
+	QuestionID string `json:"qid"`
+	AnswerID   string `json:"aid"`
 }
