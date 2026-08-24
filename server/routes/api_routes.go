@@ -70,19 +70,23 @@ func SetupRoutes(router *gin.Engine, dataDir string) {
 	}
 
 	// 初始化 Services
-	deviceService := service.NewDeviceService(deviceRepo, adbManager, pingManager)
+	connectionService := service.NewDeviceConnectionService(deviceRepo, adbManager)
+	deviceService := service.NewDeviceService(deviceRepo, adbManager, pingManager, connectionService)
 	roomService := service.NewRoomService(roomRepo, deviceRepo)
 	actionService := service.NewActionService(actionRepo, deviceRepo, adbManager)
 	activityService := service.NewActivityService(activityRepo, dataDir+"/activities")
-	monitoringService := service.NewMonitoringService(deviceRepo, pingManager, adbManager, preferenceRepo)
+	monitoringService := service.NewMonitoringService(deviceRepo, pingManager, connectionService, preferenceRepo)
 	scrcpyStreamService := service.NewScrcpyStreamService(scrcpyStreamManager, deviceRepo, scrcpyConfigRepo)
 	preferenceService := service.NewPreferenceService(preferenceRepo)
 
 	// 啟動時以 ADB 清單校正在線狀態（僅更新 Status）
 	deviceService.SyncOnlineStatusFromADBAtStartup()
-	// 啟動時校正 WS 狀態（僅更新狀態欄位，不自動啟動監控）
+	// 啟動時校正 WS 狀態
 	deviceService.SyncWSStatusAtStartup()
 	roomService.SyncSocketStatusAtStartup()
+	if err := monitoringService.Start(); err != nil {
+		log.Printf("[API] 啟動 ADB 連線監控失敗: %v\n", err)
+	}
 
 	// 啟動時以 DeviceIDs 去重並整理房間關聯（不再寫入 assigned_room.json）
 	if assigned, err := roomService.ReconcileDeviceAssignmentsByRoomUpdate(); err != nil {
@@ -92,11 +96,11 @@ func SetupRoutes(router *gin.Engine, dataDir string) {
 	}
 
 	// 初始化 Controllers
-	deviceController := controller.NewDeviceController(deviceService, roomService)
+	deviceController := controller.NewDeviceController(deviceService, roomService, connectionService)
 	roomController := controller.NewRoomController(roomService)
 	actionController := controller.NewActionController(actionService)
 	activityController := controller.NewActivityController(activityService, roomService)
-	monitoringController := controller.NewMonitoringController(monitoringService)
+	monitoringController := controller.NewMonitoringController(monitoringService, connectionService)
 	scrcpyController := controller.NewScrcpyController(scrcpyConfigRepo)
 	webrtcStreamController := controller.NewWebRTCStreamController(scrcpyStreamService)
 	preferenceController := controller.NewPreferenceController(preferenceService)
@@ -130,6 +134,7 @@ func SetupRoutes(router *gin.Engine, dataDir string) {
 		devices := api.Group("/devices")
 		{
 			devices.GET("", deviceController.GetAllDevices)
+			devices.GET("/connection-status", deviceController.GetConnectionStatus)
 			devices.GET("/isolation", controller.GetIsolationDevices)
 			devices.GET("/usb", deviceController.GetUSBDevices)
 			devices.GET("/:id", deviceController.GetDevice)

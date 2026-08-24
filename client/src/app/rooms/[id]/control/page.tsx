@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useParams } from "react-router-dom"
 import { LuX } from "react-icons/lu"
 import {
@@ -37,7 +37,8 @@ import OverlayCard from "@/components/console/overlay-card"
 import { useRoomMinimapConfig } from "@/hooks/useRoomMinimapConfig"
 import { buildRoomMinimapDisplayMarkers } from "@/lib/room-minimap/display"
 import { buildRoomMinimapMarkers } from "@/lib/room-minimap/mappers"
-import { getDisplayName } from "@/lib/utils/device"
+import { getDisplayName, mergeDeviceConnectionStatus } from "@/lib/utils/device"
+import { useDeviceConnectionStatuses } from "@/hooks/useDeviceConnectionStatuses"
 import type { PlayerData, RoomInfoData } from "@/interfaces/room.interface"
 import {
   MONITORING_WINDOW_BLOCKED_MESSAGE,
@@ -134,6 +135,8 @@ export default function RoomControlPage() {
     [roomId],
   )
   const minimapConfig = useRoomMinimapConfig(roomId)
+  const connectionStatuses = useDeviceConnectionStatuses()
+  const connectionStatusesRef = useRef(connectionStatuses.statuses)
 
   const [playerData, setPlayerData] = useState<PlayerData[]>([])
   const [deviceMap, setDeviceMap] = useState<Map<string, Device>>(new Map())
@@ -171,6 +174,20 @@ export default function RoomControlPage() {
   const [executePending, setExecutePending] = useState(false)
   const [liveWindows, setLiveWindows] = useState<LiveStreamWindowState[]>([])
   const [liveStreamLayout, setLiveStreamLayout] = useState<LiveStreamLayout>("grid")
+
+  useEffect(() => {
+    connectionStatusesRef.current = connectionStatuses.statuses
+    setDeviceMap((currentMap) => {
+      const nextMap = new Map(currentMap)
+      for (const [deviceId, device] of nextMap) {
+        nextMap.set(
+          deviceId,
+          mergeDeviceConnectionStatus(device, connectionStatuses.statuses[deviceId]),
+        )
+      }
+      return nextMap
+    })
+  }, [connectionStatuses.statuses])
 
   // Batch monitoring state
   const [batchMonitoringModalOpen, setBatchMonitoringModalOpen] = useState(false)
@@ -290,7 +307,12 @@ export default function RoomControlPage() {
         roomId ? activityApi.getCurrentByRoom(roomId).catch(() => null) : Promise.resolve(null),
         preferenceApi.get().catch(() => null),
       ])
-      const nextDeviceMap = new Map(devices.map((device) => [device.device_id, device]))
+      const nextDeviceMap = new Map(
+        devices.map((device) => [
+          device.device_id,
+          mergeDeviceConnectionStatus(device, connectionStatusesRef.current[device.device_id]),
+        ]),
+      )
       const batchSize =
         typeof preference?.batch_size === "number" && preference.batch_size > 0
           ? preference.batch_size
@@ -475,8 +497,9 @@ export default function RoomControlPage() {
     if (deviceActionPending[deviceId]) return
     setDeviceActionPending((prev) => ({ ...prev, [deviceId]: "connect" }))
     try {
-      await deviceApi.connect(deviceId)
-      await loadControlData()
+      const updated = await deviceApi.connect(deviceId)
+      setDeviceMap((currentMap) => new Map(currentMap).set(deviceId, updated))
+      await connectionStatuses.refresh()
     } catch (error) {
       console.error("Failed to connect device:", error)
       alert("連線失敗，請稍後再試")
@@ -497,8 +520,9 @@ export default function RoomControlPage() {
       if (device?.status === DEVICE_STATUS.ONLINE) {
         await deviceApi.disconnect(deviceId)
       }
-      await deviceApi.connect(deviceId)
-      await loadControlData()
+      const updated = await deviceApi.connect(deviceId)
+      setDeviceMap((currentMap) => new Map(currentMap).set(deviceId, updated))
+      await connectionStatuses.refresh()
     } catch (error) {
       console.error("Failed to reconnect device:", error)
       alert("重新連線失敗，請稍後再試")
@@ -859,7 +883,7 @@ export default function RoomControlPage() {
                   </div>
                   <div className="font-display text-text-primary mt-2 text-[2rem] leading-none font-semibold wrap-break-word tabular-nums">
                     {leadMessage.primary}
-                    {leadMessage.secondary ? (` / ${leadMessage.secondary}`) : null}
+                    {leadMessage.secondary ? ` / ${leadMessage.secondary}` : null}
                   </div>
                 </div>
               </div>

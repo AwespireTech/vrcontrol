@@ -57,6 +57,8 @@ go run main.go
 
 後端預設運行於 `http://localhost:8080`。
 
+後端啟動後會自動常駐校正 ADB 連線狀態，固定每 5 秒以 `adb devices -l` 更新一次；不需要另外啟動監控服務。每台裝置的自動重連仍可獨立停用。
+
 ### 前端啟動 (Vite + React)
 
 ```bash

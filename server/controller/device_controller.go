@@ -12,16 +12,36 @@ import (
 
 // DeviceController 設備控制器
 type DeviceController struct {
-	deviceService *service.DeviceService
-	roomService   *service.RoomService
+	deviceService     *service.DeviceService
+	roomService       *service.RoomService
+	connectionService *service.DeviceConnectionService
 }
 
 // NewDeviceController 創建新的設備控制器
-func NewDeviceController(deviceService *service.DeviceService, roomService *service.RoomService) *DeviceController {
+func NewDeviceController(deviceService *service.DeviceService, roomService *service.RoomService, connectionService *service.DeviceConnectionService) *DeviceController {
 	return &DeviceController{
-		deviceService: deviceService,
-		roomService:   roomService,
+		deviceService:     deviceService,
+		roomService:       roomService,
+		connectionService: connectionService,
 	}
+}
+
+// GetConnectionStatus 立即以 ADB 清單校正並回傳輕量連線快照。
+func (c *DeviceController) GetConnectionStatus(ctx *gin.Context) {
+	snapshot, err := c.connectionService.ReconcileADBStatuses()
+	if err != nil {
+		ctx.JSON(http.StatusServiceUnavailable, gin.H{
+			"success": false,
+			"error":   err.Error(),
+			"data":    c.connectionService.Health(),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    snapshot,
+	})
 }
 
 // GetAllDevices 獲取所有設備
@@ -252,8 +272,10 @@ func (c *DeviceController) DisconnectDevice(ctx *gin.Context) {
 		return
 	}
 
+	device, _ := c.deviceService.GetDevice(deviceID)
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
+		"data":    device,
 		"message": "Device disconnected successfully",
 	})
 }

@@ -44,31 +44,33 @@ func classifyAdbError(err error) string {
 
 // MonitoringService 監控服務
 type MonitoringService struct {
-	deviceRepo     *repository.DeviceRepository
-	pingManager    *adb.PingManager
-	adbManager     *adb.ADBManager
-	preferenceRepo *repository.PreferenceRepository
-	interval       time.Duration
-	stopChan       chan struct{}
-	running        bool
-	mutex          sync.RWMutex
-	monitorMu      sync.Mutex
+	deviceRepo        *repository.DeviceRepository
+	pingManager       *adb.PingManager
+	connectionService *DeviceConnectionService
+	preferenceRepo    *repository.PreferenceRepository
+	interval          time.Duration
+	stopChan          chan struct{}
+	running           bool
+	mutex             sync.RWMutex
+	monitorMu         sync.Mutex
 }
+
+const DeviceConnectionObservationInterval = 5 * time.Second
 
 // NewMonitoringService 創建新的監控服務
 func NewMonitoringService(
 	deviceRepo *repository.DeviceRepository,
 	pingManager *adb.PingManager,
-	adbManager *adb.ADBManager,
+	connectionService *DeviceConnectionService,
 	preferenceRepo *repository.PreferenceRepository,
 ) *MonitoringService {
 	return &MonitoringService{
-		deviceRepo:     deviceRepo,
-		pingManager:    pingManager,
-		adbManager:     adbManager,
-		preferenceRepo: preferenceRepo,
-		interval:       10 * time.Second, // 預設 10 秒
-		stopChan:       make(chan struct{}),
+		deviceRepo:        deviceRepo,
+		pingManager:       pingManager,
+		connectionService: connectionService,
+		preferenceRepo:    preferenceRepo,
+		interval:          DeviceConnectionObservationInterval,
+		stopChan:          make(chan struct{}),
 	}
 }
 
@@ -77,6 +79,12 @@ func (s *MonitoringService) SetInterval(interval time.Duration) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	s.interval = interval
+}
+
+func (s *MonitoringService) Interval() time.Duration {
+	s.mutex.RLock()
+	defer s.mutex.RUnlock()
+	return s.interval
 }
 
 // Start 啟動監控服務
@@ -147,6 +155,11 @@ func (s *MonitoringService) monitorLoop() {
 
 // performMonitoring 執行一次監控
 func (s *MonitoringService) performMonitoring() {
+	if _, err := s.connectionService.ReconcileADBStatuses(); err != nil {
+		log.Printf("[MonitoringService] ADB status reconciliation failed: %v\n", err)
+		return
+	}
+
 	devices := s.deviceRepo.GetAll()
 
 	// 讀取自動重連設定（可調）
@@ -159,19 +172,6 @@ func (s *MonitoringService) performMonitoring() {
 		}
 		if pref.ReconnectMaxRetries >= 0 {
 			maxRetries = pref.ReconnectMaxRetries
-		}
-	}
-
-	// 以 ADB 裝置清單作為主要在線判斷
-	adbDevices, adbErr := s.adbManager.GetDevices()
-	if adbErr != nil {
-		log.Printf("[MonitoringService] Failed to get ADB device list: %v\n", adbErr)
-	}
-
-	onlineSerials := make(map[string]struct{}, len(adbDevices))
-	for _, d := range adbDevices {
-		if d.State == "device" {
-			onlineSerials[d.Serial] = struct{}{}
 		}
 	}
 
@@ -204,20 +204,14 @@ func (s *MonitoringService) performMonitoring() {
 		oldStatus := device.Status
 		now := time.Now()
 
-		adbOnline := s.isDeviceOnlineInADB(device, onlineSerials)
+		adbOnline := device.Status == model.DeviceStatusOnline
 		if adbOnline {
 			if device.Status != model.DeviceStatusOnline {
 				device.Status = model.DeviceStatusOnline
 				_ = s.deviceRepo.UpdateStatus(device.DeviceID, device.Status)
 			}
 			// 若已在線，清理重連狀態
-			if device.AutoReconnectRetryCount > 0 || device.AutoReconnectDisabledReason != "" || device.AutoReconnectLastError != "" {
-				device.AutoReconnectRetryCount = 0
-				device.AutoReconnectDisabledReason = ""
-				device.AutoReconnectNextAttemptAt = nil
-				device.AutoReconnectLastError = ""
-				_ = s.deviceRepo.Update(device)
-			}
+			_ = s.connectionService.ClearReconnectStateIfOnline(device.DeviceID)
 		} else {
 			// ADB 未連線，視為不可操作
 			if device.Status != model.DeviceStatusOffline && device.Status != model.DeviceStatusError {
@@ -234,60 +228,23 @@ func (s *MonitoringService) performMonitoring() {
 			} else if maxRetries == 0 {
 				// no-op
 			} else if device.AutoReconnectRetryCount >= maxRetries {
-				reason := classifyAdbErrorMessage(device.AutoReconnectLastError)
-				if reason == "unknown" {
-					reason = "max_retries_exhausted"
-				}
-				device.Status = model.DeviceStatusError
-				device.AutoReconnectDisabledReason = reason
-				device.AutoReconnectNextAttemptAt = nil
-				_ = s.deviceRepo.Update(device)
+				_ = s.connectionService.MarkReconnectExhausted(device.DeviceID, maxRetries)
 			} else if device.AutoReconnectNextAttemptAt != nil && now.Before(*device.AutoReconnectNextAttemptAt) {
 				// cooldown 中
 			} else {
 				log.Printf("[MonitoringService] Device %s attempting reconnect\n", device.GetDisplayName())
-				if err := s.tryReconnectDevice(device); err != nil {
-					reason := classifyAdbError(err)
-					device.AutoReconnectRetryCount++
-					device.AutoReconnectLastError = err.Error()
-
-					// adb 不存在：直接轉 error 並停用後續自動重連
-					if reason == "adb_not_found" {
-						device.Status = model.DeviceStatusError
-						device.AutoReconnectDisabledReason = reason
-						device.AutoReconnectNextAttemptAt = nil
-						_ = s.deviceRepo.Update(device)
-						goto statusLog
-					}
-
-					next := now.Add(cooldown)
-					device.AutoReconnectNextAttemptAt = &next
-					if device.AutoReconnectRetryCount >= maxRetries {
-						device.Status = model.DeviceStatusError
-						if reason == "unknown" {
-							reason = "max_retries_exhausted"
-						}
-						device.AutoReconnectDisabledReason = reason
-						device.AutoReconnectNextAttemptAt = nil
-					} else {
-						device.Status = model.DeviceStatusOffline
-					}
-					_ = s.deviceRepo.Update(device)
+				if _, err := s.connectionService.ReconnectDevice(device.DeviceID); err != nil {
+					_ = s.connectionService.RecordReconnectFailure(device.DeviceID, err, cooldown, maxRetries)
 				} else {
-					// 連線成功，清除重試狀態
-					device.AutoReconnectRetryCount = 0
-					device.AutoReconnectDisabledReason = ""
-					device.AutoReconnectNextAttemptAt = nil
-					device.AutoReconnectLastError = ""
-					_ = s.deviceRepo.Update(device)
+					log.Printf("[MonitoringService] Device %s reconnected successfully\n", device.GetDisplayName())
 				}
 			}
 		}
 
-	statusLog:
-		if oldStatus != device.Status {
+		currentDevice, _ := s.deviceRepo.GetByID(device.DeviceID)
+		if currentDevice != nil && oldStatus != currentDevice.Status {
 			log.Printf("[MonitoringService] Device %s status changed: %s -> %s\n",
-				device.GetDisplayName(), oldStatus, device.Status)
+				device.GetDisplayName(), oldStatus, currentDevice.Status)
 		}
 	}
 
@@ -360,48 +317,6 @@ func (s *MonitoringService) isDeviceOnlineInADB(device *model.Device, onlineSeri
 	}
 
 	return false
-}
-
-// tryReconnectDevice 嘗試重新連接設備
-func (s *MonitoringService) tryReconnectDevice(device *model.Device) error {
-	// 更新為連接中狀態
-	s.deviceRepo.UpdateStatus(device.DeviceID, model.DeviceStatusConnecting)
-
-	port := device.Port
-	if port == 0 {
-		port = 5555
-	}
-
-	// 嘗試連接
-	if err := s.adbManager.Connect(device.IP, port); err != nil {
-		log.Printf("[MonitoringService] Failed to reconnect device %s: %v\n", device.GetDisplayName(), err)
-		s.deviceRepo.UpdateStatus(device.DeviceID, model.DeviceStatusOffline)
-		return err
-	}
-
-	address := fmt.Sprintf("%s:%d", device.IP, port)
-
-	connected, err := s.adbManager.ResolveConnectedDevice(address, 5, 300*time.Millisecond)
-	if err != nil {
-		log.Printf("[MonitoringService] Device %s not found in device list for target %s: %v\n", device.GetDisplayName(), address, err)
-		s.deviceRepo.UpdateStatus(device.DeviceID, model.DeviceStatusOffline)
-		return err
-	}
-
-	// 更新設備信息
-	device.Serial = connected.Serial
-	if connected.Model != "" {
-		device.Model = connected.Model
-	}
-	device.Status = model.DeviceStatusOnline
-
-	if err := s.deviceRepo.Update(device); err != nil {
-		log.Printf("[MonitoringService] Failed to update device %s: %v\n", device.GetDisplayName(), err)
-		return err
-	}
-
-	log.Printf("[MonitoringService] Device %s reconnected successfully\n", device.GetDisplayName())
-	return nil
 }
 
 // MonitorOnce 手動執行一次監控

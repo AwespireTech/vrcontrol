@@ -3,10 +3,6 @@ import userEvent from "@testing-library/user-event"
 import { describe, expect, it, vi } from "vitest"
 import { renderRoute } from "./render-app"
 
-const { setIntervalMock } = vi.hoisted(() => ({
-  setIntervalMock: vi.fn(async () => undefined),
-}))
-
 const { updateScrcpyConfigMock } = vi.hoisted(() => ({
   updateScrcpyConfigMock: vi.fn(async () => undefined),
 }))
@@ -14,9 +10,6 @@ const { updateScrcpyConfigMock } = vi.hoisted(() => ({
 vi.mock("@/services/api", async () => {
   const { createApiModuleMock } = await import("./mocks/api-module")
   return createApiModuleMock({
-    monitoringApi: {
-      setInterval: setIntervalMock,
-    },
     scrcpyApi: {
       updateConfig: updateScrcpyConfigMock,
     },
@@ -24,17 +17,13 @@ vi.mock("@/services/api", async () => {
 })
 
 describe("SettingsPage", () => {
-  it("renders settings sections and applies the monitoring interval", async () => {
-    const user = userEvent.setup()
-
+  it("renders always-on ADB monitoring semantics", async () => {
     renderRoute("/settings")
 
     expect(await screen.findByRole("heading", { name: "系統設定" })).toBeInTheDocument()
     expect(await screen.findByText("Scrcpy WebRTC 串流")).toBeInTheDocument()
-
-    await user.click(screen.getByRole("button", { name: "應用" }))
-
-    expect(setIntervalMock).toHaveBeenCalledWith(10)
+    expect(screen.getByText("常駐服務 · 每 5 秒")).toBeInTheDocument()
+    expect(screen.queryByRole("button", { name: "應用" })).not.toBeInTheDocument()
   })
 
   it("allows custom bitrate input and saves it", async () => {

@@ -15,59 +15,27 @@ import (
 
 // DeviceService 設備管理服務
 type DeviceService struct {
-	deviceRepo  *repository.DeviceRepository
-	adbManager  *adb.ADBManager
-	pingManager *adb.PingManager
-	mu          sync.RWMutex
+	deviceRepo        *repository.DeviceRepository
+	adbManager        *adb.ADBManager
+	pingManager       *adb.PingManager
+	connectionService *DeviceConnectionService
 }
 
 // NewDeviceService 創建新的設備服務
-func NewDeviceService(deviceRepo *repository.DeviceRepository, adbManager *adb.ADBManager, pingManager *adb.PingManager) *DeviceService {
+func NewDeviceService(deviceRepo *repository.DeviceRepository, adbManager *adb.ADBManager, pingManager *adb.PingManager, connectionService *DeviceConnectionService) *DeviceService {
 	return &DeviceService{
-		deviceRepo:  deviceRepo,
-		adbManager:  adbManager,
-		pingManager: pingManager,
+		deviceRepo:        deviceRepo,
+		adbManager:        adbManager,
+		pingManager:       pingManager,
+		connectionService: connectionService,
 	}
 }
 
 // SyncOnlineStatusFromADBAtStartup 啟動時用 ADB 裝置清單校正「在線」狀態（僅更新 Status）
 func (s *DeviceService) SyncOnlineStatusFromADBAtStartup() {
-	adbDevices, err := s.adbManager.GetDevices()
-	if err != nil {
-		log.Printf("[DeviceService] 啟動校正失敗: 取得 ADB 裝置清單錯誤 - %v\n", err)
-		return
+	if _, err := s.connectionService.ReconcileADBStatuses(); err != nil {
+		log.Printf("[DeviceService] 啟動校正失敗: %v\n", err)
 	}
-
-	onlineSerials := make(map[string]struct{}, len(adbDevices))
-	for _, d := range adbDevices {
-		if d.State == "device" {
-			onlineSerials[d.Serial] = struct{}{}
-		}
-	}
-
-	checked := 0
-	offlined := 0
-	devices := s.deviceRepo.GetAll()
-	for _, device := range devices {
-		if device.Status != model.DeviceStatusOnline {
-			continue
-		}
-
-		checked++
-		if s.isDeviceOnlineInADB(device, onlineSerials) {
-			continue
-		}
-
-		device.Status = model.DeviceStatusOffline
-		if err := s.deviceRepo.Update(device); err != nil {
-			log.Printf("[DeviceService] 啟動校正失敗: 更新裝置 %s 狀態錯誤 - %v\n", device.DeviceID, err)
-			continue
-		}
-		offlined++
-		log.Printf("[DeviceService] 啟動校正: 裝置 %s 不在 ADB 清單，已設為離線\n", device.GetDisplayName())
-	}
-
-	log.Printf("[DeviceService] 啟動校正完成: 檢查在線=%d, 轉離線=%d\n", checked, offlined)
 }
 
 // SyncWSStatusAtStartup 啟動時校正設備 WS 狀態（僅更新 ws_status）
@@ -91,30 +59,6 @@ func (s *DeviceService) SyncWSStatusAtStartup() {
 	}
 
 	log.Printf("[DeviceService] WS 啟動校正完成: 檢查=%d, 已重設=%d\n", checked, updated)
-}
-
-func (s *DeviceService) isDeviceOnlineInADB(device *model.Device, onlineSerials map[string]struct{}) bool {
-	if device.Serial != "" {
-		if _, ok := onlineSerials[device.Serial]; ok {
-			return true
-		}
-	}
-
-	if device.IP == "" {
-		return false
-	}
-
-	port := device.Port
-	if port == 0 {
-		port = 5555
-	}
-
-	addr := fmt.Sprintf("%s:%d", device.IP, port)
-	if _, ok := onlineSerials[addr]; ok {
-		return true
-	}
-
-	return false
 }
 
 // GetAllDevices 獲取所有設備
@@ -329,107 +273,14 @@ func (s *DeviceService) DeleteDevice(deviceID string) error {
 
 // ConnectDevice 連接設備
 func (s *DeviceService) ConnectDevice(deviceID string) error {
-	device, err := s.deviceRepo.GetByID(deviceID)
-	if err != nil {
-		return err
-	}
-
-	port := device.Port
-	if port == 0 {
-		port = 5555
-	}
-	target := fmt.Sprintf("%s:%d", device.IP, port)
-
-	// 使用者手動連接：清除自動重連停用/重試狀態
-	device.AutoReconnectDisabledReason = ""
-	device.AutoReconnectRetryCount = 0
-	device.AutoReconnectNextAttemptAt = nil
-	device.AutoReconnectLastError = ""
-
-	// 更新狀態為連接中
-	device.Status = model.DeviceStatusConnecting
-	s.deviceRepo.Update(device)
-
-	// 執行連接
-	if err := s.adbManager.Connect(device.IP, port); err != nil {
-		device.Status = model.DeviceStatusError
-		s.deviceRepo.Update(device)
-		return fmt.Errorf("failed to connect: %w", err)
-	}
-
-	// 關鍵：先綁定到本設備 target，避免誤用其他設備 serial。
-	device.Serial = target
-
-	// 只匹配該設備自己的 serial（ip:port），避免抓到其他在線設備。
-	connected, err := s.adbManager.ResolveConnectedDevice(target, 5, 300*time.Millisecond)
-	if err != nil {
-		log.Printf("Warning: connected target %s not yet resolvable in adb list: %v", target, err)
-	} else {
-		device.Serial = connected.Serial
-		if connected.Model != "" {
-			device.Model = connected.Model
-		}
-	}
-
-	// 嘗試獲取設備詳細資訊
-	if device.Serial != "" {
-		if info, err := s.adbManager.GetDeviceInfo(device.Serial); err == nil {
-			if info.Model != "" {
-				device.Model = info.Model
-			}
-			// 不再自動更新 Name，保持用戶設定或 ADB 初次連接時的值
-			// if info.Name != "" {
-			// 	device.Name = info.Name
-			// }
-			if info.AndroidVersion != "" {
-				device.AndroidVersion = info.AndroidVersion
-			}
-		}
-	}
-
-	// 更新狀態為在線
-	device.Status = model.DeviceStatusOnline
-	device.LastSeen = time.Now()
-
-	if err := s.deviceRepo.Update(device); err != nil {
-		return err
-	}
-
-	// 連接成功後立即查詢設備狀態（電量、溫度）
-	if device.Serial != "" {
-		status, err := s.adbManager.GetDeviceStatus(device.Serial)
-		if err != nil {
-			log.Printf("[DeviceService] 警告: 連接後查詢設備狀態失敗 - %v\n", err)
-		} else {
-			device.Battery = status.Battery
-			device.Temperature = status.Temperature
-			device.IsCharging = status.IsCharging
-			s.deviceRepo.Update(device)
-			log.Printf("[DeviceService] 設備 %s 狀態更新: 電量=%d%%, 溫度=%.1f°C\n", device.DeviceID, status.Battery, status.Temperature)
-		}
-	}
-
-	return nil
+	_, err := s.connectionService.ConnectDevice(deviceID)
+	return err
 }
 
 // DisconnectDevice 斷開設備連接
 func (s *DeviceService) DisconnectDevice(deviceID string) error {
-	device, err := s.deviceRepo.GetByID(deviceID)
-	if err != nil {
-		return err
-	}
-
-	if err := s.adbManager.Disconnect(device.IP, device.Port); err != nil {
-		return err
-	}
-
-	device.Status = model.DeviceStatusDisconnected
-	// disconnected 代表使用者手動斷開：停用自動重連
-	device.AutoReconnectDisabledReason = "manual_disconnect"
-	device.AutoReconnectRetryCount = 0
-	device.AutoReconnectNextAttemptAt = nil
-	device.AutoReconnectLastError = ""
-	return s.deviceRepo.Update(device)
+	_, err := s.connectionService.DisconnectDevice(deviceID)
+	return err
 }
 
 // GetDeviceStatus 獲取設備狀態

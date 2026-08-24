@@ -1,12 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
-import {
-  LuCircleAlert,
-  LuPencilLine,
-  LuTrash2,
-  LuUsb,
-} from "react-icons/lu"
+import { LuCircleAlert, LuPencilLine, LuTrash2, LuUsb } from "react-icons/lu"
 import { getDisplayName } from "@/lib/utils/device"
+import { useDeviceConnectionStatuses } from "@/hooks/useDeviceConnectionStatuses"
 import { deviceApi, preferenceApi, roomApi } from "@/services/api"
 import {
   DEVICE_STATUS,
@@ -32,6 +28,7 @@ type IsolationDraft = { alias: string; roomId: string }
 
 export default function DevicesPage() {
   const navigate = useNavigate()
+  const connectionStatuses = useDeviceConnectionStatuses()
   const [devices, setDevices] = useState<Device[]>([])
   const [rooms, setRooms] = useState<Array<{ room_id: string; name: string }>>([])
   const [roomNameMap, setRoomNameMap] = useState<Map<string, string>>(new Map())
@@ -51,6 +48,22 @@ export default function DevicesPage() {
 
   const statusIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const devicesRef = useRef<Device[]>([])
+  const connectionStatusesRef = useRef(connectionStatuses.statuses)
+
+  useEffect(() => {
+    connectionStatusesRef.current = connectionStatuses.statuses
+    setDevices((currentDevices) =>
+      currentDevices.map((device) => {
+        const status = connectionStatuses.statuses[device.device_id]
+        return status
+          ? {
+              ...device,
+              ...status,
+            }
+          : device
+      }),
+    )
+  }, [connectionStatuses.statuses])
 
   useEffect(() => {
     devicesRef.current = devices
@@ -72,7 +85,12 @@ export default function DevicesPage() {
         setUSBDevices([])
       }
 
-      setDevices(devicesData)
+      setDevices(
+        devicesData.map((device) => {
+          const status = connectionStatusesRef.current[device.device_id]
+          return status ? { ...device, ...status } : device
+        }),
+      )
       setRooms(roomsData.map((room) => ({ room_id: room.room_id, name: room.name })))
       setRoomNameMap(new Map(roomsData.map((room) => [room.room_id, room.name])))
       setIsolationDevices(isolationData)
@@ -420,8 +438,11 @@ export default function DevicesPage() {
 
     setDeviceActionPending((prev) => ({ ...prev, [deviceId]: "connect" }))
     try {
-      await deviceApi.connect(deviceId)
-      await loadDevices()
+      const updated = await deviceApi.connect(deviceId)
+      setDevices((currentDevices) =>
+        currentDevices.map((device) => (device.device_id === deviceId ? updated : device)),
+      )
+      await connectionStatuses.refresh()
     } catch (error) {
       console.error("Failed to connect device:", error)
       alert("連線失敗，請稍後再試")
@@ -439,8 +460,11 @@ export default function DevicesPage() {
 
     setDeviceActionPending((prev) => ({ ...prev, [deviceId]: "disconnect" }))
     try {
-      await deviceApi.disconnect(deviceId)
-      await loadDevices()
+      const updated = await deviceApi.disconnect(deviceId)
+      setDevices((currentDevices) =>
+        currentDevices.map((device) => (device.device_id === deviceId ? updated : device)),
+      )
+      await connectionStatuses.refresh()
     } catch (error) {
       console.error("Failed to disconnect device:", error)
       alert("中斷失敗，請稍後再試")
@@ -491,8 +515,8 @@ export default function DevicesPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-xl text-foreground">載入中…</div>
+      <div className="bg-background flex min-h-screen items-center justify-center">
+        <div className="text-foreground text-xl">載入中…</div>
       </div>
     )
   }
@@ -506,6 +530,15 @@ export default function DevicesPage() {
       headerVariant="plain"
       titleVariant="compact"
     >
+      {connectionStatuses.error ? (
+        <section className="devices-alert-shell" role="status">
+          <div className="devices-alert-heading">
+            <LuCircleAlert className="h-4 w-4" />
+            <div className="text-[13px]">ADB 狀態暫時無法確認，顯示最後一次成功結果</div>
+          </div>
+        </section>
+      ) : null}
+
       {isolationDevices.length > 0 ? (
         <section className="devices-alert-shell">
           <div className="devices-alert-heading">
@@ -525,19 +558,23 @@ export default function DevicesPage() {
               return (
                 <div key={entry.client_id} className="devices-alert-grid">
                   <div>
-                    <div className="console-field__label">
-                      Info 資訊
+                    <div className="console-field__label">Info 資訊</div>
+                    <div className="text-text-primary text-sm font-semibold">{entry.ip || "—"}</div>
+                    <div className="console-meta">
+                      {valid ? `DEV-${entry.client_id.toUpperCase()}` : entry.client_id}
                     </div>
-                    <div className="text-sm font-semibold text-text-primary">{entry.ip || "—"}</div>
-                    <div className="console-meta">{valid ? `DEV-${entry.client_id.toUpperCase()}` : entry.client_id}</div>
                     {matched ? (
-                      <div className="mt-2 text-[11px] text-msg-warning">已匹配現有設備，可更新 IP</div>
+                      <div className="text-msg-warning mt-2 text-[11px]">
+                        已匹配現有設備，可更新 IP
+                      </div>
                     ) : null}
                     {!valid ? (
-                      <div className="mt-2 text-[11px] text-msg-danger">Client ID 格式錯誤，需為 8 位英數</div>
+                      <div className="text-msg-danger mt-2 text-[11px]">
+                        Client ID 格式錯誤，需為 8 位英數
+                      </div>
                     ) : null}
                     {valid && !entry.id_matched ? (
-                      <div className="mt-2 text-[11px] text-text-secondary">可建立為新設備</div>
+                      <div className="text-text-secondary mt-2 text-[11px]">可建立為新設備</div>
                     ) : null}
                   </div>
 
@@ -573,7 +610,7 @@ export default function DevicesPage() {
                     {matched ? (
                       <Button
                         onClick={() => handleUpdateFromIsolation(entry)}
-                        className="ui-btn-sm ui-btn-accent min-w-[128px]"
+                        className="ui-btn-sm ui-btn-accent min-w-32"
                         disabled={!valid || !!isolationPending[entry.client_id]}
                         loading={isolationPending[entry.client_id] === "update"}
                       >
@@ -582,7 +619,7 @@ export default function DevicesPage() {
                     ) : (
                       <Button
                         onClick={() => handleCreateFromIsolation(entry)}
-                        className="ui-btn-sm ui-btn-primary min-w-[128px]"
+                        className="ui-btn-sm ui-btn-primary min-w-32"
                         disabled={!valid || entry.id_matched || !!isolationPending[entry.client_id]}
                         loading={isolationPending[entry.client_id] === "create"}
                       >
@@ -616,135 +653,143 @@ export default function DevicesPage() {
         emptyState={
           <div className="console-empty-state">
             <div className="console-empty-state__title">尚無裝置</div>
-            <p className="console-empty-state__description">目前沒有已建立的設備，待偵測到新裝置後即可加入列表。</p>
+            <p className="console-empty-state__description">
+              目前沒有已建立的設備，待偵測到新裝置後即可加入列表。
+            </p>
           </div>
         }
       >
         {devices.length > 0
           ? devices.map((device) => {
-          const pendingAction = deviceActionPending[device.device_id]
-          const isConnecting = device.status === DEVICE_STATUS.CONNECTING
-          const isOnline = device.status === DEVICE_STATUS.ONLINE
-          const disabledReasonText = getAutoReconnectDisabledReasonText(
-            device.auto_reconnect_disabled_reason,
-          )
-          const statusErrorType = statusErrors[device.device_id] || "idle"
-          const statusFootnote =
-            statusErrorType === "timeout"
-              ? "ADB 狀態查詢逾時"
-              : statusErrorType === "adb-error"
-                ? "ADB 狀態查詢失敗"
-                : disabledReasonText
+              const pendingAction = deviceActionPending[device.device_id]
+              const isConnecting = device.status === DEVICE_STATUS.CONNECTING
+              const isOnline = device.status === DEVICE_STATUS.ONLINE
+              const disabledReasonText = getAutoReconnectDisabledReasonText(
+                device.auto_reconnect_disabled_reason,
+              )
+              const statusErrorType = statusErrors[device.device_id] || "idle"
+              const statusFootnote =
+                statusErrorType === "timeout"
+                  ? "ADB 狀態查詢逾時"
+                  : statusErrorType === "adb-error"
+                    ? "ADB 狀態查詢失敗"
+                    : disabledReasonText
 
-          return (
-            <ConsoleListRow key={device.device_id} variant="compact" className="grid-cols-12 items-center">
-              <div className="col-span-4">
-                <div className="console-table-title">{getDisplayName(device)}</div>
-                <div className="console-meta mt-1">{device.ip}:{device.port}</div>
-                <div className="console-meta">{device.device_id}</div>
-                {statusFootnote ? (
-                  <div className="mt-1.5 text-[11px] text-msg-warning">{statusFootnote}</div>
-                ) : null}
-              </div>
-
-              <div className="col-span-2">
-                <div className="console-status-stack">
-                  <div className="console-status-line">
-                    <span className="console-status-label">
-                      WS
-                    </span>
-                    <span className={`ui-badge console-status-badge ${getWsStatusBadgeClass(device.ws_status)}`}>
-                      {getWsStatusText(device.ws_status)}
-                    </span>
-                  </div>
-                  <div className="console-status-line">
-                    <span className="console-status-label">
-                      ADB
-                    </span>
-                    <span className={`ui-badge console-status-badge ${getAdbStatusBadgeClass(device.status)}`}>
-                      {getStatusText(device.status)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="col-span-2">
-                {device.room_id ? (
-                  <button
-                    onClick={() => navigate(`/rooms/${device.room_id}/control`)}
-                    className="console-link-muted"
-                  >
-                    <div className="text-sm font-semibold text-text-primary">
-                      {roomNameMap.get(device.room_id) || device.room_id}
+              return (
+                <ConsoleListRow
+                  key={device.device_id}
+                  variant="compact"
+                  className="grid-cols-12 items-center"
+                >
+                  <div className="col-span-4">
+                    <div className="console-table-title">{getDisplayName(device)}</div>
+                    <div className="console-meta mt-1">
+                      {device.ip}:{device.port}
                     </div>
-                    <div className="console-meta mt-1">{device.room_id}</div>
-                  </button>
-                ) : (
-                  <div className="text-sm font-semibold text-text-secondary">-</div>
-                )}
-              </div>
+                    <div className="console-meta">{device.device_id}</div>
+                    {statusFootnote ? (
+                      <div className="text-msg-warning mt-1.5 text-[11px]">{statusFootnote}</div>
+                    ) : null}
+                  </div>
 
-              <div className="col-span-4 console-action-stack">
-                <div className="console-action-stack__controls">
-                  <select
-                    value={device.room_id || ""}
-                    onChange={(event) => handleAssignRoom(device, event.target.value)}
-                    disabled={roomUpdatingIds[device.device_id]}
-                    className="console-control--compact console-control--select text-sm"
-                  >
-                    <option value="">未指派</option>
-                    {sortedRooms.map((room) => (
-                      <option key={room.room_id} value={room.room_id}>
-                        {room.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="col-span-2">
+                    <div className="console-status-stack">
+                      <div className="console-status-line">
+                        <span className="console-status-label">WS</span>
+                        <span
+                          className={`ui-badge console-status-badge ${getWsStatusBadgeClass(device.ws_status)}`}
+                        >
+                          {getWsStatusText(device.ws_status)}
+                        </span>
+                      </div>
+                      <div className="console-status-line">
+                        <span className="console-status-label">ADB</span>
+                        <span
+                          className={`ui-badge console-status-badge ${getAdbStatusBadgeClass(device.status)}`}
+                        >
+                          {getStatusText(device.status)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
 
-                  {!isOnline && !isConnecting ? (
-                    <Button
-                      onClick={() => handleConnect(device.device_id)}
-                      className="console-button-pill ui-btn-sm ui-btn-primary"
-                      loading={pendingAction === "connect"}
-                      disabled={!!pendingAction}
-                    >
-                      ADB 連線
-                    </Button>
-                  ) : (
-                    <Button
-                      onClick={() => handleDisconnect(device.device_id)}
-                      className="console-button-pill ui-btn-sm ui-btn-muted"
-                      loading={pendingAction === "disconnect"}
-                      disabled={!!pendingAction && pendingAction !== "disconnect"}
-                    >
-                      {isConnecting ? "ADB 連線中" : "中斷 ADB"}
-                    </Button>
-                  )}
-                </div>
+                  <div className="col-span-2">
+                    {device.room_id ? (
+                      <button
+                        onClick={() => navigate(`/rooms/${device.room_id}/control`)}
+                        className="console-link-muted"
+                      >
+                        <div className="text-text-primary text-sm font-semibold">
+                          {roomNameMap.get(device.room_id) || device.room_id}
+                        </div>
+                        <div className="console-meta mt-1">{device.room_id}</div>
+                      </button>
+                    ) : (
+                      <div className="text-text-secondary text-sm font-semibold">-</div>
+                    )}
+                  </div>
 
-                <div className="console-action-stack__icons">
-                  <IconActionButton
-                    onClick={() => navigate(`/devices/${device.device_id}`)}
-                    disabled={!!pendingAction}
-                    aria-label={`編輯 ${getDisplayName(device)}`}
-                    title="編輯"
-                  >
-                    <LuPencilLine className="h-4 w-4" />
-                  </IconActionButton>
-                  <IconActionButton
-                    onClick={() => handleDelete(device.device_id)}
-                    danger
-                    loading={pendingAction === "delete"}
-                    disabled={!!pendingAction && pendingAction !== "delete"}
-                    aria-label={`刪除 ${getDisplayName(device)}`}
-                    title="刪除"
-                  >
-                    <LuTrash2 className="h-4 w-4" />
-                  </IconActionButton>
-                </div>
-              </div>
-            </ConsoleListRow>
-          )
-        })
+                  <div className="console-action-stack col-span-4">
+                    <div className="console-action-stack__controls">
+                      <select
+                        value={device.room_id || ""}
+                        onChange={(event) => handleAssignRoom(device, event.target.value)}
+                        disabled={roomUpdatingIds[device.device_id]}
+                        className="console-control--compact console-control--select text-sm"
+                      >
+                        <option value="">未指派</option>
+                        {sortedRooms.map((room) => (
+                          <option key={room.room_id} value={room.room_id}>
+                            {room.name}
+                          </option>
+                        ))}
+                      </select>
+
+                      {!isOnline && !isConnecting ? (
+                        <Button
+                          onClick={() => handleConnect(device.device_id)}
+                          className="console-button-pill ui-btn-sm ui-btn-primary"
+                          loading={pendingAction === "connect"}
+                          disabled={!!pendingAction}
+                        >
+                          ADB 連線
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => handleDisconnect(device.device_id)}
+                          className="console-button-pill ui-btn-sm ui-btn-muted"
+                          loading={pendingAction === "disconnect"}
+                          disabled={!!pendingAction && pendingAction !== "disconnect"}
+                        >
+                          {isConnecting ? "ADB 連線中" : "中斷 ADB"}
+                        </Button>
+                      )}
+                    </div>
+
+                    <div className="console-action-stack__icons">
+                      <IconActionButton
+                        onClick={() => navigate(`/devices/${device.device_id}`)}
+                        disabled={!!pendingAction}
+                        aria-label={`編輯 ${getDisplayName(device)}`}
+                        title="編輯"
+                      >
+                        <LuPencilLine className="h-4 w-4" />
+                      </IconActionButton>
+                      <IconActionButton
+                        onClick={() => handleDelete(device.device_id)}
+                        danger
+                        loading={pendingAction === "delete"}
+                        disabled={!!pendingAction && pendingAction !== "delete"}
+                        aria-label={`刪除 ${getDisplayName(device)}`}
+                        title="刪除"
+                      >
+                        <LuTrash2 className="h-4 w-4" />
+                      </IconActionButton>
+                    </div>
+                  </div>
+                </ConsoleListRow>
+              )
+            })
           : null}
       </ListShell>
 
@@ -765,22 +810,28 @@ export default function DevicesPage() {
           }
         >
           {usbDevices.map((device) => (
-            <ConsoleListRow key={device.serial} variant="compact" className="grid-cols-12 items-center">
+            <ConsoleListRow
+              key={device.serial}
+              variant="compact"
+              className="grid-cols-12 items-center"
+            >
               <div className="col-span-4">
                 <div className="console-table-title font-mono">{device.serial}</div>
                 <div className="console-meta mt-1">{device.connection_type.toUpperCase()}</div>
               </div>
 
               <div className="col-span-3">
-                <div className="text-sm font-semibold text-text-primary">{device.model || "—"}</div>
+                <div className="text-text-primary text-sm font-semibold">{device.model || "—"}</div>
                 <div className="console-meta mt-1">IP: {device.ip || "—"}</div>
               </div>
 
-              <div className="col-span-3 console-inline-status">
-                <span className={`ui-badge console-status-badge ${device.tcpip_enabled ? "ui-badge-success" : "ui-badge-muted"}`}>
+              <div className="console-inline-status col-span-3">
+                <span
+                  className={`ui-badge console-status-badge ${device.tcpip_enabled ? "ui-badge-success" : "ui-badge-muted"}`}
+                >
                   {getUSBTcpipStatusText(device)}
                 </span>
-                <LuUsb className="h-4 w-4 text-text-muted" />
+                <LuUsb className="text-text-muted h-4 w-4" />
               </div>
 
               <div className="col-span-2 flex justify-end">

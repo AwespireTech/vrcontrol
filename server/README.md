@@ -73,7 +73,7 @@ npm run dev
 
 ### 網路監控
 
-- ✅ 後台定時監控
+- ✅ 後台常駐 5 秒 ADB 連線校正
 - ✅ 自動狀態更新與重連
 - ✅ 併發 Ping 檢測
 
@@ -150,6 +150,8 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 - `POST /api/monitoring/stop`
 - `POST /api/monitoring/interval`
 - `POST /api/monitoring/run-once`
+
+監控會隨後端自動啟動，ADB 連線校正固定每 5 秒執行。`start` 保留為冪等相容端點；`stop` 與 `interval` 會回 `409`，避免停用連線真相同步。需要立即刷新時使用 `run-once` 或 `GET /api/devices/connection-status`。
 
 ### 控制
 
@@ -505,9 +507,11 @@ API 皆以 `/api` 為前綴（完整清單請見 [docs/API.md](../docs/API.md)�
 
 ### 監控狀態不更新
 
-1. 監控服務是否啟動
-2. 設備 IP 是否有效
-3. 網路連線是否正常
+1. 呼叫 `GET /api/monitoring/status`，檢查 `last_error` 與 `last_successful_check`
+2. 確認後端執行環境可從 `PATH` 找到 ADB
+3. 確認設備 IP、網路與 ADB over WiFi 狀態
+
+ADB 本身不可用時，系統會保留最後一次成功結果，不會把所有裝置誤判為離線。
 
 ## 環境變數
 

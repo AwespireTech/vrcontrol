@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import MonitoringManagementSection from "@/components/console/monitoring-management-section"
-import { monitoringApi, scrcpyApi, preferenceApi } from "@/services/api"
+import { scrcpyApi, preferenceApi } from "@/services/api"
 import { ScrcpyConfigForm } from "@/components/console/scrcpy-config-form"
 import type { ScrcpyConfig, UserPreference } from "@/services/api-types"
 import PageShell from "@/components/console/page-shell"
@@ -12,7 +12,6 @@ import {
 } from "@/environment"
 
 export default function SettingsPage() {
-  const [monitoringInterval, setMonitoringInterval] = useState(10)
   const [loading, setLoading] = useState(true)
 
   // Scrcpy 串流設定狀態
@@ -25,7 +24,6 @@ export default function SettingsPage() {
   const [preferenceChanged, setPreferenceChanged] = useState(false)
   const [savingPreference, setSavingPreference] = useState(false)
   const [savingScrcpyConfig, setSavingScrcpyConfig] = useState(false)
-  const [settingInterval, setSettingInterval] = useState(false)
 
   const loadSettings = async () => {
     try {
@@ -46,20 +44,6 @@ export default function SettingsPage() {
   useEffect(() => {
     loadSettings()
   }, [])
-
-  const handleSetInterval = async () => {
-    if (settingInterval) return
-    setSettingInterval(true)
-    try {
-      await monitoringApi.setInterval(monitoringInterval)
-      alert(`已設定監控間隔為 ${monitoringInterval} 秒`)
-    } catch (error) {
-      console.error("Failed to set interval:", error)
-      alert("設定失敗，請稍後再試")
-    } finally {
-      setSettingInterval(false)
-    }
-  }
 
   const handleScrcpyConfigChange = (config: ScrcpyConfig) => {
     setScrcpyConfig(config)
@@ -129,7 +113,7 @@ export default function SettingsPage() {
           {preference && (
             <div className="space-y-4">
               <div className="surface-panel p-4">
-                <p className="text-foreground mb-3 font-semibold">狀態更新間隔</p>
+                <p className="text-foreground mb-3 font-semibold">裝置資訊更新間隔</p>
                 <div className="flex items-center gap-3">
                   <input
                     type="number"
@@ -147,7 +131,7 @@ export default function SettingsPage() {
                   <span className="text-foreground/70">秒</span>
                 </div>
                 <p className="text-foreground/50 mt-2 text-xs">
-                  設定設備頁自動更新設備狀態的時間間隔（5–300 秒）
+                  設定電池、溫度等裝置資訊的更新間隔（5–300 秒）；ADB 連線狀態固定每 5 秒校正。
                 </p>
               </div>
 
@@ -261,42 +245,15 @@ export default function SettingsPage() {
           )}
         </div>
 
-        {/* 監控服務設定 */}
+        {/* 監控服務狀態 */}
         <div className="surface-card p-6">
-          <h2 className="text-foreground mb-4 text-xl font-bold">網路監控服務</h2>
+          <h2 className="text-foreground mb-4 text-xl font-bold">ADB 連線觀測</h2>
 
-          <div className="space-y-4">
-            <div className="surface-panel p-4">
-              <p className="text-foreground mb-2 font-semibold">說明</p>
-              <p className="text-foreground/70 text-sm">
-                監控的啟動、執行與設備管理已集中到下方 Monitoring 區塊，這裡保留服務層級設定。
-              </p>
-            </div>
-
-            <div className="surface-panel p-4">
-              <p className="text-foreground mb-3 font-semibold">監控間隔</p>
-              <div className="flex items-center gap-3">
-                <input
-                  type="number"
-                  min="1"
-                  max="300"
-                  value={monitoringInterval}
-                  onChange={(e) => setMonitoringInterval(parseInt(e.target.value) || 10)}
-                  className="ui-input px-4 py-2"
-                />
-                <span className="text-foreground/70">秒</span>
-                <Button
-                  onClick={handleSetInterval}
-                  className="ui-btn-md ui-btn-primary"
-                  loading={settingInterval}
-                >
-                  應用
-                </Button>
-              </div>
-              <p className="text-foreground/50 mt-2 text-xs">
-                設定監控服務檢查設備連線狀態的時間間隔（1–300 秒）
-              </p>
-            </div>
+          <div className="surface-panel p-4">
+            <p className="text-foreground mb-2 font-semibold">常駐服務 · 每 5 秒</p>
+            <p className="text-foreground/70 text-sm">
+              ADB 連線觀測是系統狀態正確性的基礎，不提供停止或放寬週期。自動重連仍可在下方逐台停用。
+            </p>
           </div>
         </div>
 

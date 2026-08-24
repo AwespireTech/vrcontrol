@@ -10,6 +10,7 @@
 ### 裝置管理
 
 - `GET /api/devices`
+- `GET /api/devices/connection-status`
 - `GET /api/devices/isolation`
 - `GET /api/devices/usb`
 - `GET /api/devices/:id`
@@ -28,6 +29,28 @@
 - `POST /api/devices/batch/auto-reconnect`
 - `POST /api/devices/:id/auto-reconnect/reset`
 - `POST /api/devices/batch/auto-reconnect/reset`
+
+`GET /api/devices/connection-status` 會立即執行一次 `adb devices -l`，以 `state=device` 作為可操作的唯一判斷，校正後回傳輕量連線快照：
+
+```json
+{
+  "success": true,
+  "data": {
+    "checked_at": "2026-08-23T12:00:00Z",
+    "last_successful_check": "2026-08-23T12:00:00Z",
+    "statuses": [
+      {
+        "device_id": "DEV-12345678",
+        "status": "offline"
+      }
+    ]
+  }
+}
+```
+
+- ADB 清單查詢失敗時回 `503`，並保留既有裝置狀態，不會把所有裝置誤判為離線。
+- `offline` 表示 ADB 成功觀測到裝置不可操作；`disconnected` 表示使用者已要求手動斷開，且不允許自動重連。
+- `POST /api/devices/:id/disconnect` 是冪等的目標狀態操作。目標原本已不在 ADB 清單時仍回成功；若 ADB 本身不可用或斷開後目標仍在線，則回錯且不寫入假狀態。
 
 ### 房間管理
 
@@ -135,6 +158,13 @@
 - `POST /api/monitoring/stop`
 - `POST /api/monitoring/interval`
 - `POST /api/monitoring/run-once`
+
+ADB 連線觀測會隨後端啟動並固定每 5 秒執行：
+
+- `GET /api/monitoring/status` 回傳 `always_on`、`interval_seconds`、最後檢查時間與最後錯誤。
+- `POST /api/monitoring/start` 保留為相容用的冪等操作。
+- `POST /api/monitoring/stop` 與 `POST /api/monitoring/interval` 回 `409`，因為連線真相同步不可停用或放寬。
+- `POST /api/monitoring/run-once` 可要求立即同步。
 
 ### Scrcpy WebRTC 串流設定
 

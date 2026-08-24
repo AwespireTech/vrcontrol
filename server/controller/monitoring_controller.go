@@ -2,7 +2,6 @@ package controller
 
 import (
 	"net/http"
-	"time"
 
 	"vrcontrol/server/service"
 
@@ -12,22 +11,30 @@ import (
 // MonitoringController 監控控制器
 type MonitoringController struct {
 	monitoringService *service.MonitoringService
+	connectionService *service.DeviceConnectionService
 }
 
 // NewMonitoringController 創建新的監控控制器
-func NewMonitoringController(monitoringService *service.MonitoringService) *MonitoringController {
+func NewMonitoringController(monitoringService *service.MonitoringService, connectionService *service.DeviceConnectionService) *MonitoringController {
 	return &MonitoringController{
 		monitoringService: monitoringService,
+		connectionService: connectionService,
 	}
 }
 
 // GetStatus 獲取監控服務狀態
 func (c *MonitoringController) GetStatus(ctx *gin.Context) {
 	isRunning := c.monitoringService.IsRunning()
+	health := c.connectionService.Health()
 	ctx.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
-			"running": isRunning,
+			"running":               isRunning,
+			"always_on":             true,
+			"interval_seconds":      int(c.monitoringService.Interval().Seconds()),
+			"last_checked":          health.LastChecked,
+			"last_successful_check": health.LastSuccessful,
+			"last_error":            health.LastError,
 		},
 		// Backward compatibility: keep legacy top-level `running` for older clients/scripts.
 		"running": isRunning,
@@ -52,32 +59,17 @@ func (c *MonitoringController) Start(ctx *gin.Context) {
 
 // Stop 停止監控服務
 func (c *MonitoringController) Stop(ctx *gin.Context) {
-	c.monitoringService.Stop()
-	ctx.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Monitoring service stopped",
+	ctx.JSON(http.StatusConflict, gin.H{
+		"success": false,
+		"error":   "ADB connection monitoring is always on",
 	})
 }
 
 // SetInterval 設置監控間隔
 func (c *MonitoringController) SetInterval(ctx *gin.Context) {
-	var req struct {
-		Interval int `json:"interval" binding:"required,min=1"` // 秒
-	}
-
-	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{
-			"success": false,
-			"error":   "Invalid interval value",
-		})
-		return
-	}
-
-	c.monitoringService.SetInterval(time.Duration(req.Interval) * time.Second)
-
-	ctx.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"message": "Monitoring interval updated",
+	ctx.JSON(http.StatusConflict, gin.H{
+		"success": false,
+		"error":   "ADB connection monitoring interval is fixed at 5 seconds",
 	})
 }
 
