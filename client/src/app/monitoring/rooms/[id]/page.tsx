@@ -13,6 +13,8 @@ import type { PlayerData, RoomInfoData } from "@/interfaces/room.interface"
 import { buildRoomMinimapDisplayMarkers } from "@/lib/room-minimap/display"
 import { buildRoomMinimapMarkers } from "@/lib/room-minimap/mappers"
 import { getDisplayName } from "@/lib/utils/device"
+import { mergeDeviceConnectionStatus } from "@/lib/utils/device"
+import { useDeviceConnectionStatuses } from "@/hooks/useDeviceConnectionStatuses"
 import { getAdbStatusText, getWsStatusText } from "@/lib/utils/device-status"
 import type { LiveStreamWindowState } from "@/lib/utils/live-stream-windows"
 
@@ -61,13 +63,16 @@ export default function MonitoringRoomPage() {
     [roomId],
   )
   const minimapConfig = useRoomMinimapConfig(roomId)
+  const connectionStatuses = useDeviceConnectionStatuses()
 
   const [room, setRoom] = useState<Room | null>(null)
-  const [devices, setDevices] = useState<Device[]>([])
+  const [loadedDevices, setDevices] = useState<Device[]>([])
   const [players, setPlayers] = useState<PlayerData[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState("")
-  const [connectionStatus, setConnectionStatus] = useState<"connecting" | "connected" | "disconnected">("connecting")
+  const [connectionStatus, setConnectionStatus] = useState<
+    "connecting" | "connected" | "disconnected"
+  >("connecting")
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null)
   const [activityMeta, setActivityMeta] = useState<{
     id: string
@@ -134,6 +139,14 @@ export default function MonitoringRoomPage() {
     }
   }, [roomControlSocketUrl, roomId])
 
+  const devices = useMemo(
+    () =>
+      loadedDevices.map((device) =>
+        mergeDeviceConnectionStatus(device, connectionStatuses.statuses[device.device_id]),
+      ),
+    [connectionStatuses.statuses, loadedDevices],
+  )
+
   const deviceMap = useMemo(
     () => new Map(devices.map((device) => [device.device_id, device])),
     [devices],
@@ -158,9 +171,11 @@ export default function MonitoringRoomPage() {
       <section className="surface-card p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
-            <div className="text-xs uppercase tracking-[0.2em] text-foreground/45">Room Monitor</div>
-            <h2 className="mt-2 text-2xl font-bold text-foreground">{title}</h2>
-            <div className="mt-2 flex flex-wrap gap-2 text-sm text-foreground/60">
+            <div className="text-foreground/45 text-xs tracking-[0.2em] uppercase">
+              Room Monitor
+            </div>
+            <h2 className="text-foreground mt-2 text-2xl font-bold">{title}</h2>
+            <div className="text-foreground/60 mt-2 flex flex-wrap gap-2 text-sm">
               <span>{devices.length} 台裝置</span>
               <span>·</span>
               <span>{onlineCount} 台在線</span>
@@ -173,10 +188,18 @@ export default function MonitoringRoomPage() {
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`ui-badge ${connectionStatus === "connected" ? "ui-badge-success" : connectionStatus === "connecting" ? "ui-badge-warning" : "ui-badge-muted"}`}>
-              {connectionStatus === "connected" ? "Room WS 已連線" : connectionStatus === "connecting" ? "Room WS 連線中" : "Room WS 離線"}
+            <span
+              className={`ui-badge ${connectionStatus === "connected" ? "ui-badge-success" : connectionStatus === "connecting" ? "ui-badge-warning" : "ui-badge-muted"}`}
+            >
+              {connectionStatus === "connected"
+                ? "Room WS 已連線"
+                : connectionStatus === "connecting"
+                  ? "Room WS 連線中"
+                  : "Room WS 離線"}
             </span>
-            {activityMeta.status ? <span className="ui-badge ui-badge-primary">{activityMeta.status}</span> : null}
+            {activityMeta.status ? (
+              <span className="ui-badge ui-badge-primary">{activityMeta.status}</span>
+            ) : null}
             <div className="live-stream-layout-toggle" role="group" aria-label="即時串流排版">
               <button
                 type="button"
@@ -194,11 +217,17 @@ export default function MonitoringRoomPage() {
               </button>
             </div>
             {displayMode === "wall" ? (
-              <Link to={`/monitoring/rooms/${encodeURIComponent(roomId)}`} className="ui-btn ui-btn-xs ui-btn-outline">
+              <Link
+                to={`/monitoring/rooms/${encodeURIComponent(roomId)}`}
+                className="ui-btn ui-btn-xs ui-btn-outline"
+              >
                 一般模式
               </Link>
             ) : (
-              <Link to={`/monitoring/rooms/${encodeURIComponent(roomId)}?display=wall&layout=${layout}`} className="ui-btn ui-btn-xs ui-btn-outline">
+              <Link
+                to={`/monitoring/rooms/${encodeURIComponent(roomId)}?display=wall&layout=${layout}`}
+                className="ui-btn ui-btn-xs ui-btn-outline"
+              >
                 牆面模式
               </Link>
             )}
@@ -223,12 +252,12 @@ export default function MonitoringRoomPage() {
 
             <section className="surface-card p-4">
               <div className="mb-3 flex items-center justify-between gap-3">
-                <h3 className="text-sm font-semibold text-foreground">裝置狀態</h3>
+                <h3 className="text-foreground text-sm font-semibold">裝置狀態</h3>
                 <span className="ui-badge ui-badge-muted">{devices.length}</span>
               </div>
               <div className="space-y-2">
                 {devices.length === 0 ? (
-                  <div className="rounded-[12px] border border-dashed border-border-subtle/70 p-4 text-sm text-foreground/60">
+                  <div className="border-border-subtle/70 text-foreground/60 rounded-xl border border-dashed p-4 text-sm">
                     這個房間目前沒有裝置。
                   </div>
                 ) : (
@@ -236,21 +265,31 @@ export default function MonitoringRoomPage() {
                     <button
                       key={device.device_id}
                       type="button"
-                      onClick={() => setSelectedDeviceId((current) => current === device.device_id ? null : device.device_id)}
-                      className={`w-full rounded-[12px] border px-3 py-2 text-left transition ${
+                      onClick={() =>
+                        setSelectedDeviceId((current) =>
+                          current === device.device_id ? null : device.device_id,
+                        )
+                      }
+                      className={`w-full rounded-xl border px-3 py-2 text-left transition ${
                         selectedDeviceId === device.device_id
                           ? "border-primary/70 bg-primary/10"
                           : "border-border-subtle/70 bg-bg-panel/55 hover:border-border-subtle hover:bg-bg-panel/80"
                       }`}
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <span className="truncate text-sm font-semibold text-foreground">{getDisplayName(device)}</span>
-                        <span className={`ui-badge ${getConnectionBadgeClass(device.status)} text-[11px]`}>
+                        <span className="text-foreground truncate text-sm font-semibold">
+                          {getDisplayName(device)}
+                        </span>
+                        <span
+                          className={`ui-badge ${getConnectionBadgeClass(device.status)} text-[11px]`}
+                        >
                           {getAdbStatusText(device.status)}
                         </span>
                       </div>
-                      <div className="mt-1 flex items-center justify-between gap-3 text-xs text-foreground/55">
-                        <span className="truncate">{device.ip}:{device.port}</span>
+                      <div className="text-foreground/55 mt-1 flex items-center justify-between gap-3 text-xs">
+                        <span className="truncate">
+                          {device.ip}:{device.port}
+                        </span>
                         <span>{getWsStatusText(device.ws_status)}</span>
                       </div>
                     </button>
@@ -263,15 +302,17 @@ export default function MonitoringRoomPage() {
           <section className="surface-card p-4 md:p-5">
             <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="text-lg font-bold text-foreground">即時串流</h3>
-                <p className="mt-1 text-sm text-foreground/60">
+                <h3 className="text-foreground text-lg font-bold">即時串流</h3>
+                <p className="text-foreground/60 mt-1 text-sm">
                   {droppedStreamCount > 0
                     ? `目前顯示前 ${LIVE_VIEW_MAX_STREAMS} 台，另有 ${droppedStreamCount} 台未開啟。`
                     : "每個監控頁會建立自己的 WebRTC viewer，不依賴控制頁。"}
                 </p>
               </div>
               {selectedDevice ? (
-                <span className="ui-badge ui-badge-primary">已選取 {getDisplayName(selectedDevice)}</span>
+                <span className="ui-badge ui-badge-primary">
+                  已選取 {getDisplayName(selectedDevice)}
+                </span>
               ) : null}
             </div>
 

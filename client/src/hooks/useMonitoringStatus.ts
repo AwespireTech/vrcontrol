@@ -6,6 +6,10 @@ type MonitoringStatusState = {
   known: boolean
   running: boolean
   loading: boolean
+  alwaysOn?: boolean
+  intervalSeconds?: number
+  lastSuccessfulCheck?: string
+  lastError?: string
   error?: string
   updatedAt?: number
 }
@@ -41,6 +45,10 @@ async function refreshInternal(): Promise<void> {
         known: true,
         running: status.running,
         loading: false,
+        alwaysOn: status.always_on,
+        intervalSeconds: status.interval_seconds,
+        lastSuccessfulCheck: status.last_successful_check,
+        lastError: status.last_error,
         error: undefined,
         updatedAt: Date.now(),
       })

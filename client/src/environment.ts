@@ -3,7 +3,7 @@
 import { getServerOrigin } from "@/lib/utils/server-url"
 
 export const SERVER =
-  import.meta.env.VITE_API_SERVER ||
+  import.meta.env?.VITE_API_SERVER ||
   (typeof window !== "undefined"
     ? getServerOrigin(undefined, window.location.origin)
     : "http://localhost:8080")

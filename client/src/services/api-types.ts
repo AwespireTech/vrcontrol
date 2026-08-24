@@ -83,6 +83,21 @@ export interface Device {
   updated_at: string
 }
 
+export interface DeviceConnectionStatus {
+  device_id: string
+  status: Device["status"]
+  auto_reconnect_disabled_reason?: Device["auto_reconnect_disabled_reason"]
+  auto_reconnect_retry_count?: number
+  auto_reconnect_next_attempt_at?: string
+  auto_reconnect_last_error?: string
+}
+
+export interface DeviceConnectionSnapshot {
+  checked_at: string
+  last_successful_check: string
+  statuses: DeviceConnectionStatus[]
+}
+
 // 隔離區連線資料
 export interface IsolationDevice {
   client_id: string
@@ -267,6 +282,11 @@ export interface SocketInfo {
 // 監控狀態
 export interface MonitoringStatus {
   running: boolean
+  always_on?: boolean
+  interval_seconds?: number
+  last_checked?: string
+  last_successful_check?: string
+  last_error?: string
 }
 
 export type WebRTCSignalMessageType = "offer" | "answer" | "ice" | "close" | "error"

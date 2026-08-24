@@ -15,6 +15,7 @@
 - 伺服器啟動：`go run main.go`
 - 前端啟動：`npm run dev`
 - 路由註冊：[server/routes/api_routes.go](server/routes/api_routes.go)
+- 伺服器啟動後會自動啟用固定 5 秒的 ADB 連線狀態校正
 
 ## Frontend Routes
 - 首頁頁面：[client/src/app/page.tsx](client/src/app/page.tsx)
@@ -48,6 +49,7 @@
 - 缺少 `vendor/scrcpy/scrcpy-server-v*` 或 ADB 不可用會導致 WebRTC live view 啟播失敗
 - JSON 數值在 Go 會解析為 `float64`（動作參數需注意）
 - 裝置必須為在線狀態才能啟動 scrcpy
+- ADB 查詢失敗時會保留最後狀態；請查看 `/api/monitoring/status` 的 `last_error`，不要把快取狀態當成最新觀測
 
 ## Coding Conventions
 - 優先維持既有命名與結構（避免引入新的命名風格）

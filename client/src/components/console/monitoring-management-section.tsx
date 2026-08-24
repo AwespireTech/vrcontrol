@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
 import Button from "@/components/button"
 import { useMonitoringStatus } from "@/hooks/useMonitoringStatus"
-import { getDisplayName } from "@/lib/utils/device"
+import { useDeviceConnectionStatuses } from "@/hooks/useDeviceConnectionStatuses"
+import { getDisplayName, mergeDeviceConnectionStatus } from "@/lib/utils/device"
 import { deviceApi, monitoringApi } from "@/services/api"
 import { DEVICE_STATUS, type Device } from "@/services/api-types"
 
@@ -66,17 +67,17 @@ export default function MonitoringManagementSection() {
   const [devices, setDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(true)
   const monitoring = useMonitoringStatus()
+  const connectionStatuses = useDeviceConnectionStatuses()
 
   const [batchResult, setBatchResult] = useState<BatchResult | null>(null)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
-  const [autoReconnectFilter, setAutoReconnectFilter] =
-    useState<AutoReconnectFilter>("all")
+  const [autoReconnectFilter, setAutoReconnectFilter] = useState<AutoReconnectFilter>("all")
   const [batchPending, setBatchPending] = useState<
     null | "enable" | "disable" | "reset" | "refresh"
   >(null)
   const [rowPending, setRowPending] = useState<Record<string, "toggle" | "reset">>({})
-  const [monitoringPending, setMonitoringPending] = useState<null | "runOnce" | "toggle">(null)
+  const [monitoringPending, setMonitoringPending] = useState<null | "runOnce">(null)
 
   const load = async () => {
     try {
@@ -94,55 +95,40 @@ export default function MonitoringManagementSection() {
     void load()
   }, [])
 
+  const currentDevices = useMemo(
+    () =>
+      devices.map((device) =>
+        mergeDeviceConnectionStatus(device, connectionStatuses.statuses[device.device_id]),
+      ),
+    [connectionStatuses.statuses, devices],
+  )
+
   const filteredDevices = useMemo(() => {
     const query = search.trim().toLowerCase()
-    return devices.filter((device) => {
+    return currentDevices.filter((device) => {
       if (statusFilter !== "all" && device.status !== statusFilter) return false
       if (autoReconnectFilter === "enabled" && !device.auto_reconnect_enabled) return false
       if (autoReconnectFilter === "disabled" && device.auto_reconnect_enabled) return false
 
       if (!query) return true
 
-      const haystack = `${getDisplayName(device)} ${device.alias ?? ""} ${device.name ?? ""} ${device.ip ?? ""} ${device.device_id}`.toLowerCase()
+      const haystack =
+        `${getDisplayName(device)} ${device.alias ?? ""} ${device.name ?? ""} ${device.ip ?? ""} ${device.device_id}`.toLowerCase()
       return haystack.includes(query)
     })
-  }, [devices, search, statusFilter, autoReconnectFilter])
+  }, [currentDevices, search, statusFilter, autoReconnectFilter])
 
   const filteredIds = useMemo(
     () => filteredDevices.map((device) => device.device_id),
     [filteredDevices],
   )
 
-  const toggleMonitoring = async () => {
-    if (monitoringPending) return
-    setMonitoringPending("toggle")
-    try {
-      if (!monitoring.known) {
-        await monitoring.refresh()
-        return
-      }
-
-      if (monitoring.running) {
-        await monitoringApi.stop()
-      } else {
-        await monitoringApi.start()
-      }
-
-      await monitoring.refresh()
-    } catch (error) {
-      console.error("Failed to toggle monitoring:", error)
-      alert("操作失敗，請稍後再試")
-    } finally {
-      setMonitoringPending(null)
-    }
-  }
-
   const runOnce = async () => {
     if (monitoringPending) return
     setMonitoringPending("runOnce")
     try {
       await monitoringApi.runOnce()
-      await load()
+      await Promise.all([load(), connectionStatuses.refresh(), monitoring.refresh()])
     } catch (error) {
       console.error("Failed to run monitoring once:", error)
       alert("操作失敗，請稍後再試")
@@ -242,9 +228,9 @@ export default function MonitoringManagementSection() {
     <section className="surface-card p-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
-          <h2 className="text-xl font-bold text-foreground">Monitoring</h2>
-          <p className="mt-2 text-sm text-foreground/70">
-            管理監控服務、篩選設備，並批次調整自動重連狀態。
+          <h2 className="text-foreground text-xl font-bold">Monitoring</h2>
+          <p className="text-foreground/70 mt-2 text-sm">
+            ADB 連線觀測固定常駐；可篩選設備並批次調整自動重連狀態。
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -255,20 +241,15 @@ export default function MonitoringManagementSection() {
           >
             手動執行一次
           </Button>
-          <Button
-            onClick={toggleMonitoring}
-            disabled={!monitoring.known || monitoring.loading}
-            loading={monitoringPending === "toggle"}
-            className={`ui-btn-md transition-colors ${
-              !monitoring.known
-                ? "ui-btn-muted"
-                : monitoring.running
-                  ? "ui-btn-danger"
-                  : "ui-btn-success"
-            }`}
+          <span
+            className={`ui-badge ${monitoring.running ? "ui-badge-success" : "ui-badge-danger"}`}
           >
-            {!monitoring.known ? "狀態未知" : monitoring.running ? "停止監控" : "啟動監控"}
-          </Button>
+            {monitoring.known
+              ? monitoring.running
+                ? `常駐中 · ${monitoring.intervalSeconds || 5} 秒`
+                : "服務異常"
+              : "狀態未知"}
+          </span>
         </div>
       </div>
 
@@ -309,8 +290,9 @@ export default function MonitoringManagementSection() {
           </div>
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
-            <div className="text-sm text-foreground/70">
-              將套用於目前篩選的 <span className="font-semibold text-foreground">{filteredIds.length}</span> 台
+            <div className="text-foreground/70 text-sm">
+              將套用於目前篩選的{" "}
+              <span className="text-foreground font-semibold">{filteredIds.length}</span> 台
             </div>
             <Button
               onClick={() => setAutoReconnectBatch(true)}
@@ -350,24 +332,28 @@ export default function MonitoringManagementSection() {
           <div className="surface-panel p-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <div className="font-semibold text-foreground">{batchResult.title}</div>
-                <div className="text-sm text-foreground/70">
-                  total: {batchResult.total} / success: {batchResult.success_count} / failed: {batchResult.failed_count}
+                <div className="text-foreground font-semibold">{batchResult.title}</div>
+                <div className="text-foreground/70 text-sm">
+                  total: {batchResult.total} / success: {batchResult.success_count} / failed:{" "}
+                  {batchResult.failed_count}
                 </div>
               </div>
-              <button onClick={() => setBatchResult(null)} className="ui-btn ui-btn-xs ui-btn-muted">
+              <button
+                onClick={() => setBatchResult(null)}
+                className="ui-btn ui-btn-xs ui-btn-muted"
+              >
                 清除
               </button>
             </div>
             {batchResult.failed_count > 0 ? (
               <details className="mt-3">
-                <summary className="cursor-pointer text-sm text-warning">
+                <summary className="text-warning cursor-pointer text-sm">
                   查看失敗清單（{batchResult.failed_count}）
                 </summary>
-                <div className="mt-2 rounded-[18px] border border-warning/30 bg-warning/10 p-3">
+                <div className="border-warning/30 bg-warning/10 mt-2 rounded-[18px] border p-3">
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                     {Object.entries(batchResult.failed).map(([id, reason]) => (
-                      <div key={id} className="text-xs text-foreground/80">
+                      <div key={id} className="text-foreground/80 text-xs">
                         <span className="font-mono">{id}</span>
                         <span className="text-foreground/60">: </span>
                         <span title={reason}>{reason}</span>
@@ -382,10 +368,10 @@ export default function MonitoringManagementSection() {
 
         <div className="surface-panel overflow-hidden">
           {loading ? (
-            <div className="p-6 text-foreground/70">載入中…</div>
+            <div className="text-foreground/70 p-6">載入中…</div>
           ) : (
             <>
-              <div className="grid grid-cols-12 gap-3 border-b border-border bg-surface/50 px-4 py-3 text-xs text-foreground/60">
+              <div className="border-border bg-surface/50 text-foreground/60 grid grid-cols-12 gap-3 border-b px-4 py-3 text-xs">
                 <div className="col-span-3">設備</div>
                 <div className="col-span-2">ADB</div>
                 <div className="col-span-2">WS</div>
@@ -395,7 +381,7 @@ export default function MonitoringManagementSection() {
               </div>
 
               {filteredDevices.length === 0 ? (
-                <div className="p-6 text-foreground/70">沒有符合條件的設備</div>
+                <div className="text-foreground/70 p-6">沒有符合條件的設備</div>
               ) : (
                 filteredDevices.map((device) => {
                   const reason = getReasonText(device.auto_reconnect_disabled_reason)
@@ -403,14 +389,18 @@ export default function MonitoringManagementSection() {
                   return (
                     <div
                       key={device.device_id}
-                      className="grid grid-cols-12 items-start gap-3 border-b border-border px-4 py-3 transition-colors last:border-b-0 hover:bg-surface/40"
+                      className="border-border hover:bg-surface/40 grid grid-cols-12 items-start gap-3 border-b px-4 py-3 transition-colors last:border-b-0"
                     >
                       <div className="col-span-3">
-                        <div className="font-semibold text-foreground">{getDisplayName(device)}</div>
-                        <div className="font-mono text-xs text-foreground/60">
+                        <div className="text-foreground font-semibold">
+                          {getDisplayName(device)}
+                        </div>
+                        <div className="text-foreground/60 font-mono text-xs">
                           {device.ip}:{device.port}
                         </div>
-                        <div className="font-mono text-xs text-foreground/50">{device.device_id}</div>
+                        <div className="text-foreground/50 font-mono text-xs">
+                          {device.device_id}
+                        </div>
                       </div>
 
                       <div className="col-span-2">
@@ -436,7 +426,7 @@ export default function MonitoringManagementSection() {
                       </div>
 
                       <div className="col-span-2">
-                        <label className="inline-flex items-center gap-2 text-sm text-foreground/80">
+                        <label className="text-foreground/80 inline-flex items-center gap-2 text-sm">
                           <input
                             type="checkbox"
                             checked={Boolean(device.auto_reconnect_enabled)}
@@ -449,7 +439,7 @@ export default function MonitoringManagementSection() {
                         </label>
                       </div>
 
-                      <div className="col-span-2 text-xs text-foreground/70">
+                      <div className="text-foreground/70 col-span-2 text-xs">
                         {reason ? (
                           <div className="text-warning">{reason}</div>
                         ) : (

@@ -2,6 +2,7 @@ import {
   API_BASE,
   type ApiResponse,
   type Device,
+  type DeviceConnectionSnapshot,
   type IsolationDevice,
   type USBDevice,
   type Room,
@@ -18,7 +19,6 @@ import {
   type BatchStatusResponse,
   type WebRTCStreamErrorCode,
 } from "./api-types"
-import { SERVER } from "@/environment"
 import { buildWebSocketUrl } from "@/lib/utils/server-url"
 
 const CONTROL_BASE = `${API_BASE}/control`
@@ -39,10 +39,6 @@ const webrtcErrorMessages: Record<WebRTCStreamErrorCode, string> = {
   no_h264_packets: "未收到可播放的 H264 畫面封包。",
 }
 
-function normalizeServerUrl() {
-  return new URL(SERVER)
-}
-
 // ============ 設備 API ============
 
 export const deviceApi = {
@@ -51,6 +47,15 @@ export const deviceApi = {
     const res = await fetch(`${API_BASE}/devices`)
     const data: ApiResponse<Device[]> = await res.json()
     return data.data || []
+  },
+
+  getConnectionStatus: async (): Promise<DeviceConnectionSnapshot> => {
+    const res = await fetch(`${API_BASE}/devices/connection-status`)
+    const data: ApiResponse<DeviceConnectionSnapshot> = await res.json()
+    if (!res.ok || !data.success || !data.data) {
+      throw new Error(data.error || "Failed to get device connection status")
+    }
+    return data.data
   },
 
   // 獲取隔離區連線清單
@@ -124,21 +129,23 @@ export const deviceApi = {
   },
 
   // 連接設備
-  connect: async (deviceId: string): Promise<void> => {
+  connect: async (deviceId: string): Promise<Device> => {
     const res = await fetch(`${API_BASE}/devices/${deviceId}/connect`, {
       method: "POST",
     })
-    const data: ApiResponse<void> = await res.json()
+    const data: ApiResponse<Device> = await res.json()
     if (!data.success) throw new Error(data.error || "Failed to connect device")
+    return data.data!
   },
 
   // 斷開設備
-  disconnect: async (deviceId: string): Promise<void> => {
+  disconnect: async (deviceId: string): Promise<Device> => {
     const res = await fetch(`${API_BASE}/devices/${deviceId}/disconnect`, {
       method: "POST",
     })
-    const data: ApiResponse<void> = await res.json()
+    const data: ApiResponse<Device> = await res.json()
     if (!data.success) throw new Error(data.error || "Failed to disconnect device")
+    return data.data!
   },
 
   // 對 USB 裝置啟用 adb tcpip 模式
@@ -541,7 +548,7 @@ export const monitoringApi = {
   getStatus: async (): Promise<MonitoringStatus> => {
     const res = await fetch(`${API_BASE}/monitoring/status`)
     const payload = (await res.json()) as
-      | { success?: boolean; data?: { running?: boolean }; running?: boolean; error?: string }
+      | { success?: boolean; data?: MonitoringStatus; running?: boolean; error?: string }
       | undefined
 
     if (!payload?.success) {
@@ -555,7 +562,7 @@ export const monitoringApi = {
       throw new Error("Invalid monitoring status response")
     }
 
-    return { running }
+    return { ...payload.data, running }
   },
 
   // 啟動監控

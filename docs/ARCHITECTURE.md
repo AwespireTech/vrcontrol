@@ -52,9 +52,12 @@
 
 ### 裝置監控
 
-1. 監控服務定期 Ping 裝置 IP
-2. 狀態更新回寫至資料庫
-3. 前端定期拉取狀態並更新 UI
+1. 後端啟動時建立單一 `DeviceConnectionService`，集中協調 connect、disconnect、背景校正與前端即時快照請求。
+2. 常駐監控固定每 5 秒讀取 `adb devices -l`；只有 `state=device` 視為 ADB 可操作，並將結果回寫至裝置資料庫。
+3. ADB 清單查詢失敗時保留最後成功狀態並記錄健康錯誤，不從基礎設施故障推導所有裝置離線。
+4. 前端透過共用 subscription store 每 5 秒呼叫 `/api/devices/connection-status`，只覆蓋連線與自動重連欄位；房間、USB、電池與溫度維持原本的資料載入週期。
+5. `offline` 是成功觀測到的意外掉線；`disconnected` 是經 ADB 確認後保存的手動停止意圖，背景監控不會覆寫或自動重連。
+6. 電池、溫度與 Ping 是獨立 telemetry；單次 `dumpsys battery` 或 Ping 失敗不直接改寫 ADB 連線狀態。
 
 ### Room 播放狀態與 Snapshot
 

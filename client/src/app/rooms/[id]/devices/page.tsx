@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { roomApi, deviceApi } from "@/services/api"
 import type { Room, Device } from "@/services/api-types"
-import { getDisplayName } from "@/lib/utils/device"
+import { getDisplayName, mergeDeviceConnectionStatus } from "@/lib/utils/device"
+import { useDeviceConnectionStatuses } from "@/hooks/useDeviceConnectionStatuses"
 import PageShell from "@/components/console/page-shell"
 import Button from "@/components/button"
 
@@ -52,6 +53,7 @@ const getWsStatusBadgeClass = (status?: Device["ws_status"]) => {
 
 export default function RoomDevicesPage() {
   const navigate = useNavigate()
+  const connectionStatuses = useDeviceConnectionStatuses()
   const { id } = useParams<{ id: string }>()
   const [room, setRoom] = useState<Room | null>(null)
   const [allDevices, setAllDevices] = useState<Device[]>([])
@@ -89,6 +91,21 @@ export default function RoomDevicesPage() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  const currentAllDevices = useMemo(
+    () =>
+      allDevices.map((device) =>
+        mergeDeviceConnectionStatus(device, connectionStatuses.statuses[device.device_id]),
+      ),
+    [allDevices, connectionStatuses.statuses],
+  )
+  const currentRoomDevices = useMemo(
+    () =>
+      roomDevices.map((device) =>
+        mergeDeviceConnectionStatus(device, connectionStatuses.statuses[device.device_id]),
+      ),
+    [connectionStatuses.statuses, roomDevices],
+  )
 
   const handleAddDevice = async (device: Device) => {
     if (!id) return
@@ -143,7 +160,7 @@ export default function RoomDevicesPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-6">
+      <div className="bg-background flex min-h-screen items-center justify-center p-6">
         <div className="text-foreground/70">載入中…</div>
       </div>
     )
@@ -151,14 +168,14 @@ export default function RoomDevicesPage() {
 
   if (!room) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-6">
+      <div className="bg-background flex min-h-screen items-center justify-center p-6">
         <div className="text-danger">房間不存在</div>
       </div>
     )
   }
 
   // 可以加入的設備（不在房間中的設備）
-  const availableDevices = allDevices.filter((d) => !room.device_ids?.includes(d.device_id))
+  const availableDevices = currentAllDevices.filter((d) => !room.device_ids?.includes(d.device_id))
 
   return (
     <PageShell
@@ -167,10 +184,7 @@ export default function RoomDevicesPage() {
       maxWidth="lg"
       actions={
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => navigate("/rooms")}
-            className="ui-btn ui-btn-md ui-btn-muted"
-          >
+          <button onClick={() => navigate("/rooms")} className="ui-btn ui-btn-md ui-btn-muted">
             返回房間列表
           </button>
           <button
@@ -185,28 +199,28 @@ export default function RoomDevicesPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* 房間中的設備 */}
         <div className="surface-card p-6">
-          <h2 className="mb-4 text-xl font-bold text-foreground">
-            房間中的設備 ({roomDevices.length})
+          <h2 className="text-foreground mb-4 text-xl font-bold">
+            房間中的設備 ({currentRoomDevices.length})
           </h2>
 
-          {roomDevices.length === 0 ? (
-            <div className="py-8 text-center text-foreground/50">此房間尚無設備</div>
+          {currentRoomDevices.length === 0 ? (
+            <div className="text-foreground/50 py-8 text-center">此房間尚無設備</div>
           ) : (
             <div className="space-y-3">
-              {roomDevices.map((device) => (
+              {currentRoomDevices.map((device) => (
                 <div
                   key={device.device_id}
                   className="surface-panel surface-card-hover flex items-center justify-between p-4"
                 >
                   <div>
-                    <div className="font-semibold text-foreground">{getDisplayName(device)}</div>
-                    <div className="text-sm text-foreground/50">
+                    <div className="text-foreground font-semibold">{getDisplayName(device)}</div>
+                    <div className="text-foreground/50 text-sm">
                       {device.ip}:{device.port}
                     </div>
                   </div>
                   <div className="mt-2 space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="w-9 text-[11px] uppercase tracking-wide text-foreground/50">
+                      <span className="text-foreground/50 w-9 text-[11px] tracking-wide uppercase">
                         ADB
                       </span>
                       <span className={`ui-badge ${getAdbStatusBadgeClass(device.status)}`}>
@@ -214,7 +228,7 @@ export default function RoomDevicesPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="w-9 text-[11px] uppercase tracking-wide text-foreground/50">
+                      <span className="text-foreground/50 w-9 text-[11px] tracking-wide uppercase">
                         WS
                       </span>
                       <span className={`ui-badge ${getWsStatusBadgeClass(device.ws_status)}`}>
@@ -238,12 +252,12 @@ export default function RoomDevicesPage() {
 
         {/* 可加入的設備 */}
         <div className="surface-card p-6">
-          <h2 className="mb-4 text-xl font-bold text-foreground">
+          <h2 className="text-foreground mb-4 text-xl font-bold">
             可加入的設備 ({availableDevices.length})
           </h2>
 
           {availableDevices.length === 0 ? (
-            <div className="py-8 text-center text-foreground/50">尚無可加入的設備</div>
+            <div className="text-foreground/50 py-8 text-center">尚無可加入的設備</div>
           ) : (
             <div className="space-y-3">
               {availableDevices.map((device) => (
@@ -252,19 +266,19 @@ export default function RoomDevicesPage() {
                   className="surface-panel surface-card-hover flex items-center justify-between p-4"
                 >
                   <div>
-                    <div className="font-semibold text-foreground">{getDisplayName(device)}</div>
-                    <div className="text-sm text-foreground/50">
+                    <div className="text-foreground font-semibold">{getDisplayName(device)}</div>
+                    <div className="text-foreground/50 text-sm">
                       {device.ip}:{device.port}
                     </div>
                   </div>
                   {device.room_id && device.room_id !== room.room_id && (
-                    <div className="mt-1 text-xs text-warning">
+                    <div className="text-warning mt-1 text-xs">
                       目前房間：{roomNameMap.get(device.room_id) || device.room_id}
                     </div>
                   )}
                   <div className="mt-2 space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="w-9 text-[11px] uppercase tracking-wide text-foreground/50">
+                      <span className="text-foreground/50 w-9 text-[11px] tracking-wide uppercase">
                         ADB
                       </span>
                       <span className={`ui-badge ${getAdbStatusBadgeClass(device.status)}`}>
@@ -272,7 +286,7 @@ export default function RoomDevicesPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="w-9 text-[11px] uppercase tracking-wide text-foreground/50">
+                      <span className="text-foreground/50 w-9 text-[11px] tracking-wide uppercase">
                         WS
                       </span>
                       <span className={`ui-badge ${getWsStatusBadgeClass(device.ws_status)}`}>

@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { actionApi, deviceApi } from "@/services/api"
 import { ACTION_TYPES, type Action, Device } from "@/services/api-types"
-import { getDisplayName } from "@/lib/utils/device"
+import { getDisplayName, mergeDeviceConnectionStatus } from "@/lib/utils/device"
+import { useDeviceConnectionStatuses } from "@/hooks/useDeviceConnectionStatuses"
 import PageShell from "@/components/console/page-shell"
 import Button from "@/components/button"
 import DeviceSelectionModal from "@/components/console/device-selection-modal"
@@ -55,6 +56,7 @@ const getActionIcon = (type: string) => {
 
 export default function ActionsPage() {
   const navigate = useNavigate()
+  const connectionStatuses = useDeviceConnectionStatuses()
   const [actions, setActions] = useState<Action[]>([])
   const [devices, setDevices] = useState<Device[]>([])
   const [loading, setLoading] = useState(true)
@@ -145,7 +147,15 @@ export default function ActionsPage() {
     }
   }
 
-  const executeTargets = devices.map((device) => ({
+  const currentDevices = useMemo(
+    () =>
+      devices.map((device) =>
+        mergeDeviceConnectionStatus(device, connectionStatuses.statuses[device.device_id]),
+      ),
+    [connectionStatuses.statuses, devices],
+  )
+
+  const executeTargets = currentDevices.map((device) => ({
     id: device.device_id,
     label: `${getDisplayName(device)}`,
     ip: device.ip,
@@ -155,8 +165,8 @@ export default function ActionsPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="text-xl text-foreground">載入中…</div>
+      <div className="bg-background flex min-h-screen items-center justify-center">
+        <div className="text-foreground text-xl">載入中…</div>
       </div>
     )
   }
@@ -177,12 +187,12 @@ export default function ActionsPage() {
       {actions.length === 0 ? (
         <div className="surface-card p-10 text-center">
           <div className="text-5xl">⚡</div>
-          <div className="mt-4 text-lg font-semibold text-foreground">尚無動作</div>
-          <div className="mt-2 text-sm text-foreground/70">點擊上方按鈕建立第一個動作</div>
+          <div className="text-foreground mt-4 text-lg font-semibold">尚無動作</div>
+          <div className="text-foreground/70 mt-2 text-sm">點擊上方按鈕建立第一個動作</div>
         </div>
       ) : (
         <div className="surface-card overflow-hidden">
-          <div className="grid grid-cols-12 gap-3 border-b border-border bg-surface/50 px-4 py-3 text-xs text-foreground/60">
+          <div className="border-border bg-surface/50 text-foreground/60 grid grid-cols-12 gap-3 border-b px-4 py-3 text-xs">
             <div className="col-span-5">動作</div>
             <div className="col-span-3">統計</div>
             <div className="col-span-2">最後執行</div>
@@ -195,30 +205,30 @@ export default function ActionsPage() {
             return (
               <div
                 key={action.action_id}
-                className="grid grid-cols-12 items-start gap-3 border-b border-border px-4 py-3 transition-colors last:border-b-0 hover:bg-surface/40"
+                className="border-border hover:bg-surface/40 grid grid-cols-12 items-start gap-3 border-b px-4 py-3 transition-colors last:border-b-0"
               >
                 <div className="col-span-5">
                   <div className="flex items-center gap-2">
                     <span className="text-2xl">{getActionIcon(action.action_type)}</span>
                     <div>
-                      <div className="font-semibold text-foreground">{action.name}</div>
-                      <div className="text-xs text-foreground/50">
+                      <div className="text-foreground font-semibold">{action.name}</div>
+                      <div className="text-foreground/50 text-xs">
                         {getActionTypeText(action.action_type)}
                       </div>
                     </div>
                   </div>
                   {action.description ? (
-                    <div className="mt-1 text-xs text-foreground/70">{action.description}</div>
+                    <div className="text-foreground/70 mt-1 text-xs">{action.description}</div>
                   ) : null}
                 </div>
-                <div className="col-span-3 text-xs text-foreground/70">
+                <div className="text-foreground/70 col-span-3 text-xs">
                   <div className="flex flex-wrap gap-2">
                     <span className="ui-badge ui-badge-success">成功 {action.success_count}</span>
                     <span className="ui-badge ui-badge-danger">失敗 {action.failure_count}</span>
                     <span className="ui-badge ui-badge-muted">成功率 {successRate}%</span>
                   </div>
                 </div>
-                <div className="col-span-2 text-xs text-foreground/60">
+                <div className="text-foreground/60 col-span-2 text-xs">
                   {action.last_executed_at
                     ? new Date(action.last_executed_at).toLocaleString("zh-TW")
                     : "—"}

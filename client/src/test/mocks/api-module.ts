@@ -29,7 +29,18 @@ const voidAsync = async () => undefined
 
 const deviceApi = {
   getAll: (async () => mockDevices) satisfies AsyncValue<typeof mockDevices>,
-  getIsolation: (async () => mockIsolationDevices) satisfies AsyncValue<typeof mockIsolationDevices>,
+  getConnectionStatus: async () => ({
+    checked_at: new Date().toISOString(),
+    last_successful_check: new Date().toISOString(),
+    statuses: mockDevices.map((device) => ({
+      device_id: device.device_id,
+      status: device.status,
+      auto_reconnect_disabled_reason: device.auto_reconnect_disabled_reason,
+    })),
+  }),
+  getIsolation: (async () => mockIsolationDevices) satisfies AsyncValue<
+    typeof mockIsolationDevices
+  >,
   getUSBDevices: (async () => mockUsbDevices) satisfies AsyncValue<typeof mockUsbDevices>,
   getStatusBatch: (async () =>
     ({
@@ -45,8 +56,12 @@ const deviceApi = {
         },
       ],
     }) satisfies BatchStatusResponse) satisfies AsyncValue<BatchStatusResponse>,
-  connect: voidAsync,
-  disconnect: voidAsync,
+  connect: async () => mockDevices[0],
+  disconnect: async () => ({
+    ...mockDevices[0],
+    status: "disconnected",
+    auto_reconnect_disabled_reason: "manual_disconnect" as const,
+  }),
   delete: voidAsync,
   ping: voidAsync,
   connectBatch: async (): Promise<BatchExecuteResponse> => ({
@@ -101,7 +116,8 @@ const actionApi = {
 }
 
 const monitoringApi = {
-  getStatus: (async () => ({ running: true }) satisfies MonitoringStatus) satisfies AsyncValue<MonitoringStatus>,
+  getStatus: (async () =>
+    ({ running: true }) satisfies MonitoringStatus) satisfies AsyncValue<MonitoringStatus>,
   start: voidAsync,
   stop: voidAsync,
   setInterval: voidAsync,
